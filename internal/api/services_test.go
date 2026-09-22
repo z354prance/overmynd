@@ -608,10 +608,10 @@ func TestConfigurationRoutesRequireAuthentication(t *testing.T) {
 			response := request(
 				t,
 				handler,
+				"",
 				route.method,
 				route.path,
 				route.body,
-				"",
 			)
 
 			if response.Code != http.StatusUnauthorized {
@@ -639,9 +639,9 @@ func TestPublicObservabilityRoutesDoNotRequireAuthentication(t *testing.T) {
 			response := request(
 				t,
 				handler,
+				"",
 				http.MethodGet,
 				path,
-				"",
 				"",
 			)
 
@@ -662,16 +662,16 @@ func TestPublicServicesAreSanitized(t *testing.T) {
 	createResponse := request(
 		t,
 		handler,
+		sessionToken,
 		http.MethodPost,
 		"/api/v1/services",
-		`{
+		{
 			"type": "radarr",
 			"name": "Radarr",
 			"enabled": true,
 			"base_url": "http://radarr:7878",
 			"credential": "private-api-key"
-		}`,
-		sessionToken,
+		},
 	)
 	if createResponse.Code != http.StatusCreated {
 		t.Fatalf(
@@ -685,9 +685,9 @@ func TestPublicServicesAreSanitized(t *testing.T) {
 	response := request(
 		t,
 		handler,
+		"",
 		http.MethodGet,
 		"/api/v1/public/services",
-		"",
 		"",
 	)
 	if response.Code != http.StatusOK {
