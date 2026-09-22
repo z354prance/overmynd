@@ -40,6 +40,7 @@ func NewRouter(
 	mux.HandleFunc("GET /api/v1/downloads", api.downloads)
 	mux.HandleFunc("GET /api/v1/playback", api.playback)
 	mux.HandleFunc("GET /api/v1/processing", api.processing)
+	mux.HandleFunc("GET /api/v1/public/services", api.listPublicServices)
 
 	// Authentication endpoints.
 	mux.HandleFunc("GET /api/v1/auth/status", api.authStatus)
