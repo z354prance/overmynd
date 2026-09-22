@@ -73,3 +73,7 @@ Navigation opens with the menu button and closes on selection, Escape, or a back
 click. Now Playing and Playback load Tracearr's relative image-proxy URLs through a
 restricted Overmynd route; missing artwork displays a play placeholder. The image
 route accepts only signed Tracearr image paths and never forwards API credentials.
+
+## Unraid management
+
+Use the [Unraid template and installation instructions](unraid/README.md) to manage the container through Unraid with the existing configuration directory and port pre-filled. The template uses the locally built image.

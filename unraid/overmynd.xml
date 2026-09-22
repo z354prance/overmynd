@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Container version="2">
+  <Name>overmynd</Name>
+  <Repository>overmynd:auth-completion</Repository>
+  <Registry/>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/z354prance/overmynd/issues</Support>
+  <Project>https://github.com/z354prance/overmynd</Project>
+  <Overview>Overmynd media dashboard with public playback, progress, and optional Seerr requests. Administration requires sign-in. Uses the locally built overmynd:auth-completion image; build it before applying this template. Existing settings are preserved in /mnt/user/appdata/overmynd/config.</Overview>
+  <Category>MediaApp:Other</Category>
+  <WebUI>http://[IP]:[PORT:8080]</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/z354prance/overmynd/auth-completion/unraid/overmynd.xml</TemplateURL>
+  <ExtraParams/>
+  <PostArgs/>
+  <Config Name="WebUI Port" Target="8080" Default="18080" Mode="tcp" Description="Overmynd dashboard port" Type="Port" Display="always" Required="true" Mask="false">18080</Config>
+  <Config Name="Configuration" Target="/config" Default="/mnt/user/appdata/overmynd/config" Mode="rw" Description="Persistent database, settings, and administrator account. Keep this existing path when migrating." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/overmynd/config</Config>
+</Container>
