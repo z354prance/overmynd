@@ -1042,6 +1042,10 @@ function setView(view) {
       element: "playbackView",
       title: "Playback",
     },
+    settings: {
+      element: "settingsView",
+      title: "Settings",
+    },
   };
 
   if (!views[view]) {
@@ -1081,6 +1085,21 @@ $("processingState").addEventListener("change", renderProcessing);
 $("playbackSearch").addEventListener("input", renderPlaybackView);
 $("playbackState").addEventListener("change", renderPlaybackView);
 $("playbackMode").addEventListener("change", renderPlaybackView);
+
+$("logoutButton").addEventListener("click", async () => {
+  try {
+    const response = await fetch("/api/v1/auth/logout", {
+      method: "POST",
+      credentials: "same-origin",
+    });
+
+    if (response.ok) {
+      window.location.reload();
+    }
+  } catch (_) {
+    // Keep the current session if logout cannot reach the server.
+  }
+});
 
 refreshDashboard();
 setInterval(refreshDashboard, 10000);
