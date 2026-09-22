@@ -193,46 +193,6 @@ function renderPipeline() {
   }
 }
 
-function renderProblems() {
-  const items = state.activity.filter(
-    (item) =>
-      Array.isArray(item.problems) &&
-      item.problems.some((problem) => problem !== "missing")
-  );
-
-  $("problemsPanelCount").textContent = items.length;
-
-  if (!items.length) {
-    $("problemList").innerHTML =
-      '<div class="empty-state">No active problems.</div>';
-    return;
-  }
-
-  $("problemList").innerHTML = items
-    .slice(0, 10)
-    .map((item) => {
-      const problems = item.problems.filter(
-        (problem) => problem !== "missing"
-      );
-
-      return `
-        <div class="problem-row">
-          <div>
-            <div class="item-title">${escapeHTML(item.title || "Unknown media")}</div>
-            <div class="item-meta">
-              <span>${escapeHTML(mediaLabel(item))}</span>
-              <span>${escapeHTML(pretty(item.stage))}</span>
-            </div>
-          </div>
-          <span class="problem-badge">${escapeHTML(
-            problems.map(pretty).join(", ")
-          )}</span>
-        </div>
-      `;
-    })
-    .join("");
-}
-
 function renderPlayback() {
   $("playbackCount").textContent = state.playback.length;
 
@@ -991,7 +951,6 @@ function renderProcessing() {
 function render() {
   renderSummary();
   renderPipeline();
-  renderProblems();
   renderPlayback();
   renderPlaybackView();
   renderServices();

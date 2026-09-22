@@ -85,31 +85,7 @@
       </header>
 
       <div class="view active" id="dashboardView">
-        <section class="summary-grid" aria-label="Media summary">
-          <article class="summary-card">
-            <div class="summary-label">Missing</div>
-            <strong class="summary-value" id="missingCount">—</strong>
-            <span class="summary-note">Monitored media</span>
-          </article>
 
-          <article class="summary-card">
-            <div class="summary-label">Downloading</div>
-            <strong class="summary-value" id="downloadingCount">—</strong>
-            <span class="summary-note">Active transfers</span>
-          </article>
-
-          <article class="summary-card">
-            <div class="summary-label">Processing</div>
-            <strong class="summary-value" id="processingCount">—</strong>
-            <span class="summary-note">Tdarr jobs</span>
-          </article>
-
-          <article class="summary-card problem-card">
-            <div class="summary-label">Problems</div>
-            <strong class="summary-value" id="problemCount">—</strong>
-            <span class="summary-note">Needs attention</span>
-          </article>
-        </section>
 
         <section class="dashboard-grid">
           <article class="panel pipeline-panel">
@@ -140,6 +116,28 @@
             </div>
           </article>
 
+        <section class="summary-grid" aria-label="Media summary">
+          <article class="summary-card">
+            <div class="summary-label">Missing</div>
+            <strong class="summary-value" id="missingCount">—</strong>
+          </article>
+
+          <article class="summary-card">
+            <div class="summary-label">Downloading</div>
+            <strong class="summary-value" id="downloadingCount">—</strong>
+          </article>
+
+          <article class="summary-card">
+            <div class="summary-label">Processing</div>
+            <strong class="summary-value" id="processingCount">—</strong>
+          </article>
+
+          <article class="summary-card problem-card">
+            <div class="summary-label">Problems</div>
+            <strong class="summary-value" id="problemCount">—</strong>
+          </article>
+        </section>
+
           <article class="panel health-panel">
             <div class="panel-header">
               <div>
@@ -154,19 +152,7 @@
             </div>
           </article>
 
-          <article class="panel problems-panel">
-            <div class="panel-header">
-              <div>
-                <p class="panel-kicker">ATTENTION</p>
-                <h2>Problems</h2>
-              </div>
-              <span class="panel-count danger" id="problemsPanelCount">0</span>
-            </div>
 
-            <div class="problem-list" id="problemList">
-              <div class="empty-state">Loading problems…</div>
-            </div>
-          </article>
         </section>
       </div>
 
@@ -388,7 +374,7 @@
             </div>
           </div>
           <div class="settings-content">
-            <p class="settings-user" id="settingsUsername">Checking session�</p>
+            <p class="settings-user" id="settingsUsername">Checking session…</p>
             <button class="service-secondary-button" id="logoutButton" type="button" hidden>Log Out</button>
           </div>
           <form id="authForm" class="auth-form" hidden>

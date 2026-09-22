@@ -1390,3 +1390,14 @@ h2 {
 @media (prefers-reduced-motion: reduce) {
   .pipeline-progress-fill { transition: none; }
 }
+
+/* Keep live media first and the secondary counters beside service health. */
+#dashboardView .dashboard-grid { display: flex; flex-direction: column; }
+#dashboardView .summary-grid { margin: 0; gap: 8px; }
+#dashboardView .summary-card { min-height: 54px; padding: 10px 14px; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; border-radius: 9px; }
+#dashboardView .summary-value { margin: 0; padding: 0; font-size: 22px; }
+#dashboardView .summary-label { font-size: 11px; }
+@media (max-width: 600px) {
+  #dashboardView .summary-card { min-height: 46px; padding: 9px 12px; }
+  #dashboardView .summary-value { font-size: 19px; }
+}
