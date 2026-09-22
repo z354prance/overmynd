@@ -1084,6 +1084,9 @@ function setView(view) {
 
   $(views[view].element).classList.add("active");
   $("pageTitle").textContent = views[view].title;
+  $("pageTitle").hidden = view === "dashboard";
+  $("dashboardBrand").hidden = view !== "dashboard";
+  $("pageHeader").classList.toggle("dashboard-topbar", view === "dashboard");
 
   document.querySelectorAll(".nav-item[data-view]").forEach((button) => {
     button.classList.toggle("active", button.dataset.view === view);

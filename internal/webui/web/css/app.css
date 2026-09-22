@@ -1448,3 +1448,15 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 }
 
 #servicesView .health-panel { margin-bottom: 18px; }
+
+.dashboard-topbar { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; }
+.dashboard-brand { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.dashboard-brand h1 { font-size: clamp(20px, 3vw, 28px); letter-spacing: .17em; padding-left: .17em; }
+.dashboard-brand img { display: block; width: 88px; height: 88px; object-fit: contain; }
+.dashboard-topbar .topbar-meta { justify-self: end; }
+@media (max-width: 700px) {
+  .dashboard-topbar { gap: 12px; }
+  .dashboard-topbar .topbar-meta { grid-column: 1 / -1; justify-self: end; }
+  .dashboard-brand { grid-column: 2; grid-row: 1; }
+  .dashboard-brand img { width: 72px; height: 72px; }
+}
