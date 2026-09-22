@@ -665,13 +665,13 @@ func TestPublicServicesAreSanitized(t *testing.T) {
 		sessionToken,
 		http.MethodPost,
 		"/api/v1/services",
-		{
+		`{
 			"type": "radarr",
 			"name": "Radarr",
 			"enabled": true,
 			"base_url": "http://radarr:7878",
 			"credential": "private-api-key"
-		},
+		}`,
 	)
 	if createResponse.Code != http.StatusCreated {
 		t.Fatalf(
