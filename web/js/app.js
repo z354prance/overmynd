@@ -1917,7 +1917,7 @@ async function refreshRequestStatus() {
   try {
     const status = await getJSON("/api/v1/media-request/status");
     $("mediaSearchButton").disabled = !status.enabled;
-    $("mediaRequestMessage").textContent = status.enabled ? "Search and request here. No Overmynd sign-in required." : "Requests are not enabled. An administrator can configure Seerr under Settings.";
+    $("mediaRequestMessage").textContent = status.enabled ? "" : "Requests are not enabled. An administrator can configure Seerr under Settings.";
   } catch {
     $("mediaSearchButton").disabled = true;
     $("mediaRequestMessage").textContent = "Unable to check Seerr. Refresh the page to try again.";
