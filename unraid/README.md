@@ -36,3 +36,13 @@ The WebUI remains at `http://SERVER-IP:18080`. Do not run the old and new contai
 Pull and rebuild the image in the same checkout. Then recreate the container through Unraid using its saved template. The template uses a local image, so registry-based Update/Force Update is not the image build mechanism. Do not delete the image or the appdata directory. Keep the configuration mapping unchanged to preserve the database and administrator account.
 
 Unraid stores user templates under `/boot/config/plugins/dockerMan/templates-user`; see the [Unraid documentation](https://docs.unraid.net/community-applications/). Adding this file to the repository does not automatically list the app in Community Applications.
+
+## Icon for an existing container
+
+The template includes the project icon. If you installed an earlier template, open the existing container's **Edit → Advanced View**, set **Icon URL** to the following, and click **Apply**:
+
+```text
+https://raw.githubusercontent.com/z354prance/overmynd/auth-completion/web/overmynd-icon.svg
+```
+
+Refresh the Docker page afterward. You do not need to rebuild the application image or replace your saved configuration to add the icon.

@@ -11,6 +11,7 @@
   <Project>https://github.com/z354prance/overmynd</Project>
   <Overview>Overmynd media dashboard with public playback, progress, and optional Seerr requests. Administration requires sign-in. Uses the locally built overmynd:auth-completion image; build it before applying this template. Existing settings are preserved in /mnt/user/appdata/overmynd/config.</Overview>
   <Category>MediaApp:Other</Category>
+  <Icon>https://raw.githubusercontent.com/z354prance/overmynd/auth-completion/web/overmynd-icon.svg</Icon>
   <WebUI>http://[IP]:[PORT:8080]</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/z354prance/overmynd/auth-completion/unraid/overmynd.xml</TemplateURL>
   <ExtraParams/>
