@@ -1,0 +1,24 @@
+# Runtime data and credentials
+/config/
+*.db
+*.db-shm
+*.db-wal
+.env
+
+# Local binaries
+/overmynd
+
+# Temporary / backup files
+*.pre-*
+*.bak
+*~
+*.tmp
+
+# Local debugging / captured API data
+tdarr-active-workers.json
+
+# OS / editor files
+.DS_Store
+.vscode/
+.idea/
+*.before-*

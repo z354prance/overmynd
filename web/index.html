@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#090b10">
+  <title>Overmynd</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">O</span>
+        <span class="brand-name">OVERMYND</span>
+      </div>
+
+      <nav class="nav" aria-label="Primary navigation">
+        <button class="nav-item active" type="button" data-view="dashboard">
+          <span class="nav-icon">⌂</span>
+          <span>Dashboard</span>
+        </button>
+
+        <button class="nav-item" type="button" disabled>
+          <span class="nav-icon">◉</span>
+          <span>Activity</span>
+        </button>
+
+        <button class="nav-item" type="button" disabled>
+          <span class="nav-icon">↓</span>
+          <span>Downloads</span>
+        </button>
+
+        <button class="nav-item" type="button" disabled>
+          <span class="nav-icon">◇</span>
+          <span>Processing</span>
+        </button>
+
+        <button class="nav-item" type="button" disabled>
+          <span class="nav-icon">▶</span>
+          <span>Playback</span>
+        </button>
+
+        <div class="nav-spacer"></div>
+
+        <button class="nav-item" type="button" disabled>
+          <span class="nav-icon">⚙</span>
+          <span>Services</span>
+        </button>
+
+        <button class="nav-item" type="button" disabled>
+          <span class="nav-icon">⋯</span>
+          <span>Settings</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-status">
+        <span class="status-dot" id="sidebarHealthDot"></span>
+        <div>
+          <strong id="sidebarHealth">Checking</strong>
+          <span>Overmynd</span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">MEDIA INTELLIGENCE</p>
+          <h1>Dashboard</h1>
+        </div>
+
+        <div class="topbar-meta">
+          <span id="lastUpdated">Waiting for data</span>
+          <span class="live-indicator">
+            <span class="status-dot"></span>
+            LIVE
+          </span>
+        </div>
+      </header>
+
+      <section class="summary-grid" aria-label="Media summary">
+        <article class="summary-card">
+          <div class="summary-label">Missing</div>
+          <strong class="summary-value" id="missingCount">—</strong>
+          <span class="summary-note">Monitored media</span>
+        </article>
+
+        <article class="summary-card">
+          <div class="summary-label">Downloading</div>
+          <strong class="summary-value" id="downloadingCount">—</strong>
+          <span class="summary-note">Active transfers</span>
+        </article>
+
+        <article class="summary-card">
+          <div class="summary-label">Processing</div>
+          <strong class="summary-value" id="processingCount">—</strong>
+          <span class="summary-note">Tdarr jobs</span>
+        </article>
+
+        <article class="summary-card problem-card">
+          <div class="summary-label">Problems</div>
+          <strong class="summary-value" id="problemCount">—</strong>
+          <span class="summary-note">Needs attention</span>
+        </article>
+      </section>
+
+      <section class="dashboard-grid">
+        <article class="panel pipeline-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">ACTIVE MEDIA</p>
+              <h2>Pipeline</h2>
+            </div>
+            <span class="panel-count" id="pipelineCount">0</span>
+          </div>
+
+          <div class="pipeline-list" id="pipelineList">
+            <div class="empty-state">Loading activity…</div>
+          </div>
+        </article>
+
+        <article class="panel playback-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">TRACEARR</p>
+              <h2>Now Playing</h2>
+            </div>
+            <span class="panel-count" id="playbackCount">0</span>
+          </div>
+
+          <div class="playback-list" id="playbackList">
+            <div class="empty-state">Loading playback…</div>
+          </div>
+        </article>
+
+        <article class="panel health-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">SYSTEM</p>
+              <h2>Service Health</h2>
+            </div>
+            <span class="health-summary" id="serviceHealthSummary">Checking</span>
+          </div>
+
+          <div class="service-list" id="serviceList">
+            <div class="empty-state">Loading services…</div>
+          </div>
+        </article>
+
+        <article class="panel problems-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">ATTENTION</p>
+              <h2>Problems</h2>
+            </div>
+            <span class="panel-count danger" id="problemsPanelCount">0</span>
+          </div>
+
+          <div class="problem-list" id="problemList">
+            <div class="empty-state">Loading problems…</div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

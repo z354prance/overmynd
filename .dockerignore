@@ -1,0 +1,11 @@
+.git
+.gitignore
+config
+docs
+docker
+migrations
+web
+README.md
+*.db
+*.db-shm
+*.db-wal
