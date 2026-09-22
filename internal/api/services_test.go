@@ -514,7 +514,7 @@ func TestRadarrConnectionEndpoint(t *testing.T) {
 }
 
 func TestDownloadsRouteExists(t *testing.T) {
-	handler, sessionToken := testRouter(t)
+	handler, _ := testRouter(t)
 
 	request := httptest.NewRequest(
 		http.MethodGet,
@@ -542,7 +542,7 @@ func TestDownloadsRouteExists(t *testing.T) {
 }
 
 func TestActivityRouteExists(t *testing.T) {
-	handler, sessionToken := testRouter(t)
+	handler, _ := testRouter(t)
 
 	req := httptest.NewRequest(
 		http.MethodGet,
