@@ -141,7 +141,7 @@ func (a *API) searchMedia(w http.ResponseWriter, r *http.Request) {
 	var result struct {
 		Results []seerr.SearchResult `json:"results"`
 	}
-	err := seerr.UserJSON(r.Context(), service.BaseURL, key, settings.UserID, "GET", "search?"+url.Values{"query": {query}, "page": {"1"}}.Encode(), nil, &result)
+	err := seerr.UserJSON(r.Context(), service.BaseURL, key, settings.UserID, "GET", "search?"+strings.ReplaceAll(url.Values{"query": {query}, "page": {"1"}}.Encode(), "+", "%20"), nil, &result)
 	if err != nil {
 		writeError(w, 502, err)
 		return

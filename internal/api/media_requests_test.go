@@ -21,7 +21,7 @@ func TestPublicRequestsUseConfiguredUser(t *testing.T) {
 		case "/api/v1/auth/me":
 			fmt.Fprint(w, `{"id":7}`)
 		case "/api/v1/search":
-			if r.URL.Query().Get("query") != "test & title" {
+			if r.URL.RawQuery != "page=1&query=test%20%26%20title" {
 				t.Errorf("query not encoded correctly: %s", r.URL.RawQuery)
 			}
 			fmt.Fprint(w, `{"results":[{"id":1,"mediaType":"movie","title":"Test","secret":"private-key"},{"id":2,"mediaType":"person","name":"Person"}]}`)
