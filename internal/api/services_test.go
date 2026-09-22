@@ -447,12 +447,21 @@ func TestRadarrConnectionEndpoint(t *testing.T) {
 		t.Fatalf("register Radarr: %v", err)
 	}
 
-	handler := NewRouter(manager, registry)
+	authManager := auth.NewManager(db)
+	session, err := authManager.Setup(
+		"admin",
+		"correct horse battery staple",
+	)
+	if err != nil {
+		t.Fatalf("setup administrator: %v", err)
+	}
+
+	handler := NewRouter(manager, registry, authManager)
 
 	response := request(
 		t,
 		handler,
-		sessionToken,
+		session.Token,
 		http.MethodPost,
 		fmt.Sprintf(
 			"/api/v1/services/%d/test",
