@@ -7,7 +7,7 @@ import (
 
 // content contains the complete Overmynd frontend.
 //
-//go:embed web/index.html web/css web/js
+//go:embed web/index.html web/css web/js web/overmynd-icon.svg
 var content embed.FS
 
 func Files() (fs.FS, error) {

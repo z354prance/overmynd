@@ -25,6 +25,7 @@ func TestAdminWriteAcceptsSameOrigin(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "http://overmynd.local/api/v1/services", bytes.NewBufferString(`{"type":"radarr","name":"Radarr","enabled":true,"base_url":"http://10.0.0.10:7878","credential":"test-key"}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://overmynd.local")
+	req.Header.Set("X-Overmynd-Request", "1")
 	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionToken})
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, req)
