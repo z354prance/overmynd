@@ -79,64 +79,118 @@ function renderSummary() {
   $("problemCount").textContent = problemCount(lifecycles);
 }
 
-function renderPipeline() {
-  const activeStages = new Set([
-    "downloading",
-    "downloaded",
-    "processing",
-    "importing",
-  ]);
+// Match normalized records by their complete reference, never by title or ID alone.
+function pipelineRecords(item, type, records) {
+  return records.filter((record) => (item.references || []).some((ref) =>
+    ref.record_type === type && ref.source === record.source &&
+    Number(ref.source_service_id) === Number(record.source_service_id) &&
+    String(ref.record_id) === String(record.id)
+  ));
+}
 
-  const priority = {
-    importing: 0,
-    processing: 1,
-    downloading: 2,
-    downloaded: 3,
+function pipelineProgress(item) {
+  const problems = (item.problems || []).filter((problem) => problem !== "missing");
+  const stages = {
+    requested: "Requested", wanted: "Waiting for download", downloading: "Downloading",
+    downloaded: "Download complete", processing: "Processing", importing: "Importing",
+    available: "Ready to watch", playing: "Playing",
   };
+  let label = stages[item.stage] || pretty(item.stage || "Waiting");
+  let percent = null;
+  let detail = "Progress not reported";
+  let sources = [];
+  let paused = false;
+  if (item.stage === "downloading") {
+    const downloads = pipelineRecords(item, "download", state.downloads);
+    // Prefer the download client's byte counts over an ARR copy of the same queue.
+    const clients = downloads.filter((d) => ["qbittorrent", "nzbget"].includes(d.source));
+    const records = clients.length ? clients : downloads;
+    sources = records;
+    const measured = records.filter((d) => Number.isFinite(Number(d.size)) && Number(d.size) > 0);
+    if (measured.length && measured.length === records.length) {
+      const total = measured.reduce((sum, d) => sum + Number(d.size), 0);
+      const remaining = measured.reduce((sum, d) => sum + Math.min(Number(d.size), Math.max(0, Number(d.size_left) || 0)), 0);
+      percent = 100 * (total - remaining) / total;
+      detail = `${formatBytes(total - remaining)} of ${formatBytes(total)}`;
+    }
+    paused = records.some((d) => /paused|queued/i.test(d.status || ""));
+    if (paused) label = "Download paused / queued";
+    if (records.length === 1 && records[0].time_left && !paused) detail += ` · ${records[0].time_left} remaining`;
+  } else if (item.stage === "processing") {
+    const jobs = pipelineRecords(item, "processing", state.processing);
+    sources = jobs;
+    paused = jobs.some((job) => ["held", "queued", "problem"].includes(job.state));
+    if (jobs.length && jobs.every((job) => typeof job.progress === "number" && Number.isFinite(job.progress))) {
+      percent = jobs.reduce((sum, job) => sum + Math.max(0, Math.min(100, job.progress)), 0) / jobs.length;
+      detail = jobs.length > 1 ? `Average across ${jobs.length} processing jobs` : "Current processing job";
+    }
+    if (jobs.length === 1) {
+      label = jobs[0].state === "queued" ? "Queued for processing" : jobs[0].state === "held" ? "Processing on hold" : label;
+      if (jobs[0].stage) detail = pretty(jobs[0].stage);
+    }
+  } else if (["downloaded", "available", "playing"].includes(item.stage)) {
+    percent = 100;
+    detail = item.stage === "downloaded" ? "Waiting for the next stage" : "Media is available";
+  } else if (["requested", "wanted"].includes(item.stage)) {
+    detail = "Waiting for a download to start";
+  }
+  if (percent !== null) percent = Math.max(0, Math.min(100, percent));
+  const serviceNames = [...new Set(sources.map((source) =>
+    state.services.find((service) => Number(service.id) === Number(source.source_service_id))?.name || pretty(source.source)
+  ))];
+  return { label, percent, detail, problems, serviceNames, paused };
+}
 
-  const activeItems = state.activity.filter((item) =>
-    activeStages.has(item.stage)
-  );
+function pipelineCardMarkup(item) {
+  const progress = pipelineProgress(item);
+  const title = item.title || "Unknown media";
+  const waiting = progress.percent === null;
+  const steps = [
+    ["requested", "Requested"], ["downloading", "Download"],
+    ["processing", "Process"], ["importing", "Import"], ["available", "Ready"],
+  ];
+  const current = { wanted: "requested", downloaded: "downloading", playing: "available" }[item.stage] || item.stage;
+  return `
+    <div class="pipeline-card-heading">
+      <div><h3>${escapeHTML(title)}</h3><p class="item-meta">${escapeHTML(mediaLabel(item))}</p></div>
+      <span class="pipeline-stage">${escapeHTML(progress.label)}</span>
+    </div>
+    <div class="pipeline-progress-label"><span>${waiting ? "Awaiting progress" : "Current stage"}</span><strong>${waiting ? "—" : `${Math.round(progress.percent)}%`}</strong></div>
+    <div class="pipeline-progress${waiting ? " unmeasured" : ""}${progress.problems.length || progress.paused ? " paused" : ""}" role="progressbar" aria-label="${escapeHTML(title)}: ${escapeHTML(progress.label)}" aria-valuemin="0" aria-valuemax="100" ${waiting ? 'aria-valuetext="Progress not reported"' : `aria-valuenow="${Math.round(progress.percent)}"`}>
+      <div class="pipeline-progress-fill" style="width:${waiting ? 100 : progress.percent}%"></div>
+    </div>
+    <p class="pipeline-detail">${escapeHTML(progress.detail)}${progress.serviceNames.length ? ` · ${escapeHTML(progress.serviceNames.join(", "))}` : ""}</p>
+    <ol class="pipeline-steps" aria-label="Workflow stages">${steps.map(([stage, name]) => `<li${stage === current ? ' aria-current="step"' : ""}>${name}</li>`).join("")}</ol>
+    ${progress.problems.length ? `<p class="pipeline-problem">${escapeHTML(progress.problems.map(pretty).join(" · "))}</p>` : ""}
+  `;
+}
 
-  const items = [...activeItems]
-    .sort(
-      (a, b) =>
-        (priority[a.stage] ?? 99) - (priority[b.stage] ?? 99)
-    )
-    .slice(0, 12);
-
-  $("pipelineCount").textContent = activeItems.length;
-
+function renderPipeline() {
+  const priority = { importing: 0, processing: 1, downloading: 2, downloaded: 3, requested: 4, wanted: 5 };
+  // Ready/playing media has its own views; include new requests and wanted items here.
+  const items = state.activity.filter((item) => Object.hasOwn(priority, item.stage))
+    .sort((a, b) => priority[a.stage] - priority[b.stage] || String(a.title).localeCompare(String(b.title)));
+  $("pipelineCount").textContent = items.length;
+  const list = $("pipelineList");
   if (!items.length) {
-    $("pipelineList").innerHTML =
-      '<div class="empty-state">Nothing is moving through the pipeline right now.</div>';
+    list.innerHTML = '<div class="empty-state">No media in progress. New requests and downloads will appear here.</div>';
     return;
   }
-
-  $("pipelineList").innerHTML = items
-    .map((item) => {
-      const problems = Array.isArray(item.problems)
-        ? item.problems.filter((problem) => problem !== "missing")
-        : [];
-
-      return `
-        <div class="pipeline-row">
-          <div>
-            <div class="item-title">${escapeHTML(item.title || "Unknown media")}</div>
-            <div class="item-meta">
-              <span>${escapeHTML(mediaLabel(item))}</span>
-              ${
-                problems.length
-                  ? `<span>${escapeHTML(problems.map(pretty).join(", "))}</span>`
-                  : ""
-              }
-            </div>
-          </div>
-          <span class="stage">${escapeHTML(pretty(item.stage))}</span>
-        </div>
-      `;
-    })
-    .join("");
+  list.querySelector(".empty-state")?.remove();
+  const existing = new Map([...list.children].map((card) => [card.dataset.lifecycleId, card]));
+  const keep = new Set(items.map((item) => String(item.id)));
+  for (const card of [...list.children]) {
+    if (!keep.has(card.dataset.lifecycleId)) card.remove();
+  }
+  for (const item of items) {
+    const id = String(item.id);
+    const card = existing.get(id) || document.createElement("article");
+    card.className = "pipeline-card";
+    card.dataset.lifecycleId = id;
+    const markup = pipelineCardMarkup(item);
+    if (card.innerHTML !== markup) card.innerHTML = markup;
+    list.append(card);
+  }
 }
 
 function renderProblems() {
