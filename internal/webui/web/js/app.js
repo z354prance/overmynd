@@ -973,7 +973,7 @@ async function refreshDashboard() {
       getJSON("/health"),
       getJSON("/api/v1/activity"),
       getJSON("/api/v1/playback"),
-      getJSON("/api/v1/services"),
+      getJSON("/api/v1/public/services"),
       getJSON("/api/v1/missing"),
       getJSON("/api/v1/downloads"),
       getJSON("/api/v1/processing"),
