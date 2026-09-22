@@ -616,3 +616,22 @@ h2 {
     gap: 8px;
   }
 }
+
+
+.settings-panel {
+  max-width: 640px;
+}
+
+.settings-content {
+  padding: 18px 20px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settings-user {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
