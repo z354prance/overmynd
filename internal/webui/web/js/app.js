@@ -60,8 +60,8 @@ function problemCount(lifecycles) {
 function renderSummary() {
   const lifecycles = state.activity;
 
-  $("missingCount").textContent = lifecycles.filter(
-    (item) => Array.isArray(item.problems) && item.problems.includes("missing")
+  $("pendingCount").textContent = lifecycles.filter(
+    (item) => ["requested", "wanted"].includes(item.stage)
   ).length;
 
   $("downloadingCount").textContent = lifecycles.filter(
@@ -241,7 +241,7 @@ function renderPlayback() {
 
       return `
         <div class="playback-row">
-          <div class="play-icon">▶</div>
+          ${playbackPoster(session)}
           <div>
             <div class="item-title">${escapeHTML(title)}</div>
             <div class="item-meta">
@@ -417,9 +417,7 @@ function renderPlaybackView() {
         technical.push(`${Number(session.bitrate).toLocaleString()} kbps`);
       }
 
-      const poster = session.poster_url
-        ? `<img class="playback-poster" src="${escapeHTML(session.poster_url)}" alt="" loading="lazy">`
-        : '<div class="playback-poster playback-poster-empty">▶</div>';
+      const poster = playbackPoster(session);
 
       const progressMarkup =
         duration > 0
@@ -494,7 +492,13 @@ function renderPlaybackView() {
 }
 
 function renderServices() {
-  const services = state.services;
+  $("serviceHealthPanel").hidden = !state.authenticated;
+  if (!state.authenticated) {
+    $("serviceList").replaceChildren();
+    $("serviceHealthSummary").textContent = "";
+    return;
+  }
+  const services = state.managedServices;
   const errorsByID = new Set(
     state.serviceErrors.map((error) => Number(error.service_id))
   );
@@ -1029,6 +1033,8 @@ async function refreshDashboard() {
 }
 
 function setView(view) {
+  if ($("navigationDrawer").open) $("navigationDrawer").close();
+  if (view === "settings" && state.authenticated) loadRequestSettings();
   if (view === "services" && !state.authenticated) view = "settings";
   if (view === "services") {
     refreshServiceManagement().catch((error) => showServiceMessage(error.message, "error"));
@@ -1117,6 +1123,10 @@ $("logoutButton").addEventListener("click", async () => {
 
 function applyAuth(status) {
   state.authenticated = Boolean(status.authenticated);
+  renderServices();
+  $("requestSettingsPanel").hidden = !state.authenticated;
+  if (state.authenticated) loadRequestSettings();
+  else $("requestSettingsForm").reset();
   state.setupRequired = Boolean(status.setup_required);
   $("settingsUsername").textContent = state.authenticated ? `Signed in as ${status.username}` : "Public read-only access";
   $("logoutButton").hidden = !state.authenticated;
@@ -1638,6 +1648,7 @@ async function refreshServiceManagement() {
   const services = await serviceAPIRequest("/api/v1/services");
   if (!state.authenticated) return;
   state.managedServices = Array.isArray(services) ? services : [];
+  renderServices();
 
   renderServiceManagement();
 }
@@ -1873,3 +1884,127 @@ $("serviceManagementList").addEventListener("click", async (event) => {
 
   await deleteManagedService(service, button);
 });
+
+
+// Native modal navigation supplies focus trapping, Escape handling and backdrop.
+$("menuToggle").addEventListener("click", () => {
+  $("navigationDrawer").showModal();
+  $("menuToggle").setAttribute("aria-expanded", "true");
+});
+$("menuClose").addEventListener("click", () => $("navigationDrawer").close());
+$("navigationDrawer").addEventListener("close", () => {
+  $("menuToggle").setAttribute("aria-expanded", "false");
+  $("menuToggle").focus();
+});
+$("navigationDrawer").addEventListener("click", (event) => {
+  if (event.target !== $("navigationDrawer")) return;
+  const bounds = event.target.getBoundingClientRect();
+  if (event.clientX > bounds.right || event.clientY > bounds.bottom) event.target.close();
+});
+
+function playbackPoster(session) {
+  const src = typeof session.poster_url === "string" && session.poster_url.startsWith("/api/v1/playback/poster?") ? session.poster_url : "";
+  return `<div class="playback-art"><span class="poster-fallback" aria-label="Poster unavailable">▶</span>${src ? `<img src="${escapeHTML(src)}" alt="" loading="lazy" class="playback-poster">` : ""}</div>`;
+}
+document.addEventListener("error", (event) => {
+  if (event.target.matches?.(".playback-poster, .request-poster")) event.target.hidden = true;
+}, true);
+
+let mediaSearchResults = [];
+let selectedMediaRequest = null;
+let searchGeneration = 0;
+async function refreshRequestStatus() {
+  try {
+    const status = await getJSON("/api/v1/media-request/status");
+    $("mediaSearchButton").disabled = !status.enabled;
+    $("mediaRequestMessage").textContent = status.enabled ? "Search and request here. No Overmynd sign-in required." : "Requests are not enabled. An administrator can configure Seerr under Settings.";
+  } catch {
+    $("mediaSearchButton").disabled = true;
+    $("mediaRequestMessage").textContent = "Unable to check Seerr. Refresh the page to try again.";
+  }
+}
+
+async function loadRequestSettings() {
+  try {
+    const [settings, integrations] = await Promise.all([
+      serviceAPIRequest("/api/v1/request-settings"), serviceAPIRequest("/api/v1/services"),
+    ]);
+    if (!state.authenticated) return;
+    $("requestServiceID").innerHTML = '<option value="">Select Seerr</option>' + integrations.filter(s => s.type === "seerr" && s.enabled).map(s => `<option value="${Number(s.id)}">${escapeHTML(s.name)}</option>`).join("");
+    $("requestsEnabled").checked = settings.enabled;
+    $("requestServiceID").value = settings.service_id || "";
+    $("requestUserID").value = settings.user_id || "";
+    requestSettingsRequired();
+  } catch (error) { $("requestSettingsMessage").textContent = error.message; }
+}
+function requestSettingsRequired() {
+  $("requestServiceID").required = $("requestsEnabled").checked;
+  $("requestUserID").required = $("requestsEnabled").checked;
+}
+$("requestsEnabled").addEventListener("change", requestSettingsRequired);
+$("requestSettingsForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  $("requestSettingsSave").disabled = true;
+  try {
+    await serviceAPIRequest("/api/v1/request-settings", { method:"PUT", body:JSON.stringify({
+      enabled:$("requestsEnabled").checked, service_id:Number($("requestServiceID").value), user_id:Number($("requestUserID").value),
+    }) });
+    $("requestSettingsMessage").textContent = "Saved. Requests will use this Seerr account and its approval permissions.";
+    await refreshRequestStatus();
+  } catch (error) { $("requestSettingsMessage").textContent = error.message; }
+  finally { $("requestSettingsSave").disabled = false; }
+});
+
+$("mediaSearchForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const generation = ++searchGeneration;
+  $("mediaSearchButton").disabled = true;
+  $("mediaRequestMessage").textContent = "Searching Seerr…";
+  $("mediaSearchResults").replaceChildren();
+  try {
+    const response = await serviceAPIRequest(`/api/v1/media-request/search?query=${encodeURIComponent($("mediaSearchQuery").value.trim())}`);
+    if (generation !== searchGeneration) return;
+    mediaSearchResults = response.results || [];
+    $("mediaSearchResults").innerHTML = mediaSearchResults.map((item,index) => {
+      const title = item.title || item.name || "Untitled";
+      const existing = [2,3,5].includes(item.mediaInfo?.status);
+      const availability = item.mediaInfo?.status === 5 ? "Available" : "Already requested";
+      const poster = /^\/[A-Za-z0-9_.-]+$/.test(item.posterPath || "") ? `https://image.tmdb.org/t/p/w185${item.posterPath}` : "";
+      return `<article class="request-result"><div class="request-art">${poster ? `<img class="request-poster" src="${escapeHTML(poster)}" alt="" loading="lazy">` : ""}</div><div class="request-result-content"><h3>${escapeHTML(title)}</h3><p>${item.mediaType === "tv" ? "TV show" : "Movie"} · ${escapeHTML((item.releaseDate || item.firstAirDate || "").slice(0,4))}</p><p class="request-overview">${escapeHTML(item.overview || "No description available.")}</p><button class="service-primary-button" type="button" data-request-index="${index}" ${existing ? "disabled" : ""}>${existing ? availability : "Request"}</button></div></article>`;
+    }).join("");
+    $("mediaRequestMessage").textContent = mediaSearchResults.length ? `${mediaSearchResults.length} results. Select a title to confirm your request.` : "No movies or TV shows found. Try another title.";
+  } catch (error) { $("mediaRequestMessage").textContent = error.message; }
+  finally { $("mediaSearchButton").disabled = false; }
+});
+$("mediaSearchResults").addEventListener("click", event => {
+  const button = event.target.closest("[data-request-index]");
+  if (!button || button.disabled) return;
+  selectedMediaRequest = { item:mediaSearchResults[Number(button.dataset.requestIndex)], button };
+  const item = selectedMediaRequest.item;
+  $("requestConfirmTitle").textContent = `Request ${item.title || item.name}?`;
+  $("requestConfirmDescription").textContent = item.mediaType === "tv" ? "This requests all seasons through Seerr." : "This sends a movie request to Seerr.";
+  $("requestSeasonsLabel").hidden = item.mediaType !== "tv";
+  $("requestAllSeasons").checked = false;
+  $("requestConfirmMessage").textContent = "";
+  $("mediaRequestDialog").showModal();
+});
+$("requestCancel").addEventListener("click", () => $("mediaRequestDialog").close());
+$("requestConfirm").addEventListener("click", async () => {
+  if (!selectedMediaRequest) return;
+  const {item,button} = selectedMediaRequest;
+  if (item.mediaType === "tv" && !$("requestAllSeasons").checked) {
+    $("requestConfirmMessage").textContent = "Confirm all seasons before sending this request.";
+    return;
+  }
+  $("requestConfirm").disabled = true;
+  $("requestCancel").disabled = true;
+  try {
+    const result = await serviceAPIRequest("/api/v1/media-request", { method:"POST", body:JSON.stringify({ media_id:item.id, media_type:item.mediaType, all_seasons:item.mediaType === "tv" }) });
+    button.disabled = true; button.textContent = "Requested";
+    $("mediaRequestMessage").textContent = result.status === 1 ? "Request sent. Waiting for approval in Seerr." : "Request accepted by Seerr.";
+    $("mediaRequestDialog").close();
+  } catch (error) { $("requestConfirmMessage").textContent = error.message; }
+  finally { $("requestConfirm").disabled = false; $("requestCancel").disabled = false; }
+});
+$("mediaRequestDialog").addEventListener("cancel", event => { if ($("requestConfirm").disabled) event.preventDefault(); });
+refreshRequestStatus();

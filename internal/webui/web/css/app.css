@@ -1401,3 +1401,50 @@ h2 {
   #dashboardView .summary-card { min-height: 46px; padding: 9px 12px; }
   #dashboardView .summary-value { font-size: 19px; }
 }
+
+/* Modal navigation, shared across desktop and mobile. */
+.app-shell { display: block; }
+#navigationDrawer { position: fixed; inset: 0 auto 0 0; width: min(300px, 90vw); max-width: 90vw; height: 100dvh; max-height: 100dvh; margin: 0; padding: 24px 18px; border: 0; border-right: 1px solid var(--border); color: var(--text); overflow-y: auto; background: #10131a; z-index: 100; }
+#navigationDrawer:not([open]) { display: none; }
+#navigationDrawer[open] { display: flex; flex-direction: column; }
+#navigationDrawer::backdrop, .request-dialog::backdrop { background: rgba(0,0,0,.65); backdrop-filter: blur(3px); }
+#navigationDrawer .brand, #navigationDrawer .sidebar-status { display: flex; justify-content: flex-start; }
+#navigationDrawer .brand-name, #navigationDrawer .nav-item span, #navigationDrawer .sidebar-status div { display: block; }
+#navigationDrawer .nav { display: flex; flex-direction: column; margin-top: 24px; overflow: visible; justify-content: flex-start; }
+#navigationDrawer .nav-item { display: flex; width: 100%; justify-content: flex-start; padding: 10px 12px; }
+#navigationDrawer .nav-spacer { display: block; min-height: 18px; }
+.drawer-close { align-self: flex-end; background: transparent; border: 0; color: var(--text); font-size: 28px; min-width: 44px; min-height: 44px; cursor: pointer; }
+.topbar-heading { display: flex; align-items: center; gap: 18px; }
+.menu-toggle { width: 44px; height: 44px; flex-shrink: 0; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 9px; font-size: 22px; cursor: pointer; }
+.playback-art { position: relative; width: 58px; height: 86px; border-radius: 8px; overflow: hidden; background: var(--panel-soft); flex-shrink: 0; }
+.poster-fallback { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); }
+.playback-art .playback-poster { position: relative; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.playback-row { grid-template-columns: 58px minmax(0,1fr); }
+.media-search-form { display: flex; gap: 12px; align-items: flex-end; padding: 20px 20px 12px; }
+.media-search-form label { flex: 1; min-width: 0; }
+.request-message { color: var(--muted); font-size: 12px; margin: 0; padding: 0 20px 18px; }
+.media-search-results { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,320px),1fr)); gap: 12px; padding: 0 20px 20px; }
+.media-search-results:empty { display: none; }
+.request-result { display: flex; gap: 14px; border: 1px solid var(--border); padding: 14px; border-radius: 10px; min-width: 0; }
+.request-art { width: 75px; min-width: 75px; height: 112px; border-radius: 7px; overflow: hidden; background: var(--panel-soft); }
+.request-poster { width: 100%; height: 100%; object-fit: cover; }
+.request-result-content { min-width: 0; }
+.request-result h3 { margin: 0; font-size: 15px; overflow-wrap: anywhere; }
+.request-result p { color: var(--muted); font-size: 12px; }
+.request-overview { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.request-settings { margin-top: 18px; }
+.request-dialog { width: min(480px,calc(100vw - 32px)); padding: 24px; color: var(--text); border: 1px solid var(--border); border-radius: 14px; background: var(--panel); }
+.request-dialog h2 { font-size: 20px; overflow-wrap: anywhere; }
+.request-dialog p { color: var(--muted); font-size: 13px; line-height: 1.5; }
+.request-dialog-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
+button:disabled { cursor: not-allowed; opacity: .55; }
+@media (max-width: 600px) {
+  .main { padding-bottom: 26px; }
+  .topbar-heading { gap: 12px; }
+  .topbar-heading h1 { font-size: 28px; }
+  .media-search-form { flex-wrap: wrap; }
+  .media-search-form label { flex-basis: 100%; }
+  .media-search-form button { width: 100%; }
+}
+
+#servicesView .health-panel { margin-bottom: 18px; }

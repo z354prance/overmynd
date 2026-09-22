@@ -19,5 +19,9 @@ func (a *API) playback(
 		return
 	}
 
+	for index := range result.Sessions {
+		session := &result.Sessions[index]
+		session.PosterURL = a.posterURL(session.SourceServiceID, session.PosterURL)
+	}
 	writeJSON(w, http.StatusOK, result)
 }

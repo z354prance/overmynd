@@ -35,5 +35,6 @@ jobs:
           done
           node scripts/auth-ui-test.cjs
           node scripts/pipeline-ui-test.cjs
+          node scripts/requests-ui-test.cjs
       - name: Build Unraid container
         run: docker build -t overmynd:ci .

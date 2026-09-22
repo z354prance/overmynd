@@ -9,7 +9,8 @@
 </head>
 <body>
   <div class="app-shell">
-    <aside class="sidebar">
+    <dialog class="sidebar" id="navigationDrawer" aria-label="Navigation">
+      <button id="menuClose" class="drawer-close" type="button" aria-label="Close navigation">&times;</button>
       <div class="brand">
         <span class="brand-mark"><img src="/overmynd-icon.svg" alt="" aria-hidden="true"></span>
         <span class="brand-name">OVERMYND</span>
@@ -66,14 +67,16 @@
           <span>Overmynd</span>
         </div>
       </div>
-    </aside>
+    </dialog>
 
     <main class="main">
       <header class="topbar">
+        <div class="topbar-heading">
+          <button id="menuToggle" class="menu-toggle" type="button" aria-controls="navigationDrawer" aria-expanded="false" aria-label="Open navigation">&#9776;</button>
         <div>
           <p class="eyebrow">MEDIA INTELLIGENCE</p>
           <h1 id="pageTitle">Dashboard</h1>
-        </div>
+        </div></div>
 
         <div class="topbar-meta">
           <span id="lastUpdated">Waiting for data</span>
@@ -88,6 +91,15 @@
 
 
         <section class="dashboard-grid">
+          <section class="panel request-panel" aria-labelledby="requestHeading">
+            <div class="panel-header"><div><p class="panel-kicker">SEERR</p><h2 id="requestHeading">Request something to watch</h2></div></div>
+            <form id="mediaSearchForm" class="media-search-form">
+              <label class="service-form-field"><span>Movie or TV show</span><input id="mediaSearchQuery" type="search" placeholder="Search movies and TV shows…" minlength="2" maxlength="200" required></label>
+              <button id="mediaSearchButton" class="service-primary-button" type="submit" disabled>Search</button>
+            </form>
+            <p id="mediaRequestMessage" class="request-message" role="status" aria-live="polite">Checking request availability…</p>
+            <div id="mediaSearchResults" class="media-search-results"></div>
+          </section>
           <article class="panel pipeline-panel">
             <div class="panel-header">
               <div>
@@ -118,8 +130,8 @@
 
         <section class="summary-grid" aria-label="Media summary">
           <article class="summary-card">
-            <div class="summary-label">Missing</div>
-            <strong class="summary-value" id="missingCount">—</strong>
+            <div class="summary-label">Pending</div>
+            <strong class="summary-value" id="pendingCount">—</strong>
           </article>
 
           <article class="summary-card">
@@ -138,19 +150,7 @@
           </article>
         </section>
 
-          <article class="panel health-panel">
-            <div class="panel-header">
-              <div>
-                <p class="panel-kicker">SYSTEM</p>
-                <h2>Service Health</h2>
-              </div>
-              <span class="health-summary" id="serviceHealthSummary">Checking</span>
-            </div>
 
-            <div class="service-list" id="serviceList">
-              <div class="empty-state">Loading services…</div>
-            </div>
-          </article>
 
 
         </section>
@@ -385,6 +385,17 @@
           </form>
           <p id="authMessage" class="auth-message" role="status" aria-live="polite"></p>
         </section>
+        <section class="panel settings-panel request-settings" id="requestSettingsPanel" hidden>
+          <div class="panel-header"><div><p class="panel-kicker">SEERR</p><h2>Public media requests</h2></div></div>
+          <form id="requestSettingsForm" class="auth-form">
+            <label class="service-enabled-field"><input type="checkbox" id="requestsEnabled"><span>Allow requests without signing in</span></label>
+            <label class="service-form-field"><span>Seerr integration</span><select id="requestServiceID" required></select></label>
+            <label class="service-form-field"><span>Seerr user ID</span><input id="requestUserID" type="number" min="1" step="1" required></label>
+            <p class="service-field-help">Use the numeric ID from the chosen user's Seerr profile URL. Every public request uses this account. Manage its request permissions, quotas, and automatic approval in Seerr.</p>
+            <button class="service-primary-button" id="requestSettingsSave" type="submit">Save request settings</button>
+            <p id="requestSettingsMessage" role="status" aria-live="polite"></p>
+          </form>
+        </section>
       </div>
 
       <div class="view" id="servicesView">
@@ -399,6 +410,20 @@
             + Add Service
           </button>
         </section>
+
+          <article class="panel health-panel" id="serviceHealthPanel" hidden>
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">SYSTEM</p>
+                <h2>Service Health</h2>
+              </div>
+              <span class="health-summary" id="serviceHealthSummary">Checking</span>
+            </div>
+
+            <div class="service-list" id="serviceList">
+              <div class="empty-state">Loading services…</div>
+            </div>
+          </article>
 
         <div class="service-management-message" id="serviceManagementMessage"></div>
 
@@ -526,6 +551,14 @@
     </main>
   </div>
 
+  <dialog id="mediaRequestDialog" class="request-dialog" aria-labelledby="requestConfirmTitle">
+    <h2 id="requestConfirmTitle">Request media</h2>
+    <p id="requestConfirmDescription"></p>
+    <label id="requestSeasonsLabel" class="service-enabled-field" hidden><input id="requestAllSeasons" type="checkbox"><span>Request all seasons</span></label>
+    <p>Seerr will apply the configured request user's approval rules.</p>
+    <div class="request-dialog-actions"><button id="requestCancel" class="service-secondary-button" type="button">Cancel</button><button id="requestConfirm" class="service-primary-button" type="button">Send request</button></div>
+    <p id="requestConfirmMessage" role="status" aria-live="polite"></p>
+  </dialog>
   <script src="/js/app.js"></script>
 </body>
 </html>
