@@ -61,7 +61,7 @@ function renderSummary() {
   const lifecycles = state.activity;
 
   $("pendingCount").textContent = lifecycles.filter(
-    (item) => ["requested", "wanted"].includes(item.stage)
+    (item) => Array.isArray(item.problems) && item.problems.includes("missing")
   ).length;
 
   $("downloadingCount").textContent = lifecycles.filter(
