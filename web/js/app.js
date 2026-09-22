@@ -166,14 +166,14 @@ function pipelineCardMarkup(item) {
 }
 
 function renderPipeline() {
-  const priority = { importing: 0, processing: 1, downloading: 2, downloaded: 3, requested: 4, wanted: 5 };
-  // Ready/playing media has its own views; include new requests and wanted items here.
+  const priority = { importing: 0, processing: 1, downloading: 2 };
+  // Pending requests and completed downloads stay off the active dashboard.
   const items = state.activity.filter((item) => Object.hasOwn(priority, item.stage))
     .sort((a, b) => priority[a.stage] - priority[b.stage] || String(a.title).localeCompare(String(b.title)));
   $("pipelineCount").textContent = items.length;
   const list = $("pipelineList");
   if (!items.length) {
-    list.innerHTML = '<div class="empty-state">No media in progress. New requests and downloads will appear here.</div>';
+    list.innerHTML = '<div class="empty-state">No active downloads, processing, or imports right now.</div>';
     return;
   }
   list.querySelector(".empty-state")?.remove();
