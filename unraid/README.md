@@ -42,7 +42,7 @@ Unraid stores user templates under `/boot/config/plugins/dockerMan/templates-use
 The template includes the project icon. If you installed an earlier template, open the existing container's **Edit → Advanced View**, set **Icon URL** to the following, and click **Apply**:
 
 ```text
-https://raw.githubusercontent.com/z354prance/overmynd/auth-completion/web/overmynd-icon.svg
+https://raw.githubusercontent.com/z354prance/overmynd/auth-completion/unraid/overmynd-icon.png
 ```
 
 Refresh the Docker page afterward. You do not need to rebuild the application image or replace your saved configuration to add the icon.
