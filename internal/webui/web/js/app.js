@@ -1916,14 +1916,20 @@ document.addEventListener("error", (event) => {
 let mediaSearchResults = [];
 let selectedMediaRequest = null;
 let searchGeneration = 0;
+let mediaRequestsEnabled = false;
+let mediaRequestIdleMessage = "Checking request availability…";
 async function refreshRequestStatus() {
   try {
     const status = await getJSON("/api/v1/media-request/status");
+    mediaRequestsEnabled = status.enabled;
     $("mediaSearchButton").disabled = !status.enabled;
-    $("mediaRequestMessage").textContent = status.enabled ? "" : "Requests are not enabled. An administrator can configure Seerr under Settings.";
+    mediaRequestIdleMessage = status.enabled ? "" : "Requests are not enabled. An administrator can configure Seerr under Settings.";
+    $("mediaRequestMessage").textContent = mediaRequestIdleMessage;
   } catch {
+    mediaRequestsEnabled = false;
     $("mediaSearchButton").disabled = true;
-    $("mediaRequestMessage").textContent = "Unable to check Seerr. Refresh the page to try again.";
+    mediaRequestIdleMessage = "Unable to check Seerr. Refresh the page to try again.";
+    $("mediaRequestMessage").textContent = mediaRequestIdleMessage;
   }
 }
 
@@ -1958,9 +1964,24 @@ $("requestSettingsForm").addEventListener("submit", async event => {
   finally { $("requestSettingsSave").disabled = false; }
 });
 
+$("mediaSearchQuery").addEventListener("input", () => {
+  $("mediaSearchClear").hidden = !$("mediaSearchQuery").value && !$("mediaSearchResults").childElementCount;
+});
+$("mediaSearchClear").addEventListener("click", () => {
+  ++searchGeneration;
+  mediaSearchResults = [];
+  selectedMediaRequest = null;
+  $("mediaSearchQuery").value = "";
+  $("mediaSearchResults").replaceChildren();
+  $("mediaRequestMessage").textContent = mediaRequestIdleMessage;
+  $("mediaSearchButton").disabled = !mediaRequestsEnabled;
+  $("mediaSearchClear").hidden = true;
+  $("mediaSearchQuery").focus();
+});
 $("mediaSearchForm").addEventListener("submit", async event => {
   event.preventDefault();
   const generation = ++searchGeneration;
+  $("mediaSearchClear").hidden = false;
   $("mediaSearchButton").disabled = true;
   $("mediaRequestMessage").textContent = "Searching Seerr…";
   $("mediaSearchResults").replaceChildren();
@@ -1976,8 +1997,8 @@ $("mediaSearchForm").addEventListener("submit", async event => {
       return `<article class="request-result"><div class="request-art">${poster ? `<img class="request-poster" src="${escapeHTML(poster)}" alt="" loading="lazy">` : ""}</div><div class="request-result-content"><h3>${escapeHTML(title)}</h3><p>${item.mediaType === "tv" ? "TV show" : "Movie"} · ${escapeHTML((item.releaseDate || item.firstAirDate || "").slice(0,4))}</p><p class="request-overview">${escapeHTML(item.overview || "No description available.")}</p><button class="service-primary-button" type="button" data-request-index="${index}" ${existing ? "disabled" : ""}>${existing ? availability : "Request"}</button></div></article>`;
     }).join("");
     $("mediaRequestMessage").textContent = mediaSearchResults.length ? `${mediaSearchResults.length} results. Select a title to confirm your request.` : "No movies or TV shows found. Try another title.";
-  } catch (error) { $("mediaRequestMessage").textContent = error.message; }
-  finally { $("mediaSearchButton").disabled = false; }
+  } catch (error) { if (generation === searchGeneration) $("mediaRequestMessage").textContent = error.message; }
+  finally { if (generation === searchGeneration) $("mediaSearchButton").disabled = !mediaRequestsEnabled; }
 });
 $("mediaSearchResults").addEventListener("click", event => {
   const button = event.target.closest("[data-request-index]");
