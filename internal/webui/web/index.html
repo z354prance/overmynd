@@ -53,7 +53,7 @@
           <span>Services</span>
         </button>
 
-        <button class="nav-item" type="button" disabled>
+        <button class="nav-item" type="button" data-view="settings">
           <span class="nav-icon">⋯</span>
           <span>Settings</span>
         </button>
@@ -367,6 +367,29 @@
 
           <div class="activity-list" id="missingList">
             <div class="empty-state">Loading missing media…</div>
+          </div>
+        </section>
+      </div>
+
+      <div class="view" id="settingsView">
+        <section class="services-heading">
+          <div>
+            <p class="panel-kicker">SYSTEM</p>
+            <h2>Settings</h2>
+            <p class="services-description">Account and application controls.</p>
+          </div>
+        </section>
+
+        <section class="panel settings-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">ACCOUNT</p>
+              <h2>Session</h2>
+            </div>
+          </div>
+          <div class="settings-content">
+            <p class="settings-user" id="settingsUsername">Signed in</p>
+            <button class="service-secondary-button" id="logoutButton" type="button">Log Out</button>
           </div>
         </section>
       </div>
