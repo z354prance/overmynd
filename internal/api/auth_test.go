@@ -52,7 +52,7 @@ func TestAuthLifecycleAPI(t *testing.T) {
 		"",
 		http.MethodPost,
 		"/api/v1/auth/setup",
-		"{"username":"admin","password":"correct horse battery staple"}",
+		`{"username":"admin","password":"correct horse battery staple"}`,
 	)
 	if setup.Code != http.StatusCreated {
 		t.Fatalf("setup = %d: %s", setup.Code, setup.Body.String())
@@ -88,7 +88,7 @@ func TestAuthLifecycleAPI(t *testing.T) {
 		"",
 		http.MethodPost,
 		"/api/v1/auth/setup",
-		"{"username":"another","password":"another secure password"}",
+		`{"username":"another","password":"another secure password"}`,
 	)
 	if setupAgain.Code != http.StatusConflict {
 		t.Fatalf("second setup = %d, want %d: %s", setupAgain.Code, http.StatusConflict, setupAgain.Body.String())
@@ -105,7 +105,7 @@ func TestAuthLifecycleAPI(t *testing.T) {
 		"",
 		http.MethodPost,
 		"/api/v1/auth/login",
-		"{"username":"admin","password":"correct horse battery staple"}",
+		`{"username":"admin","password":"correct horse battery staple"}`,
 	)
 	if login.Code != http.StatusOK {
 		t.Fatalf("login = %d: %s", login.Code, login.Body.String())
@@ -122,7 +122,7 @@ func TestAuthLifecycleAPI(t *testing.T) {
 		"",
 		http.MethodPost,
 		"/api/v1/auth/login",
-		"{"username":"admin","password":"wrong password"}",
+		`{"username":"admin","password":"wrong password"}`,
 	)
 	if wrong.Code != http.StatusUnauthorized {
 		t.Fatalf("wrong password = %d, want %d", wrong.Code, http.StatusUnauthorized)
