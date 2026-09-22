@@ -91,7 +91,7 @@ func NewRouter(
 
 	mux.Handle("/", http.FileServerFS(webFS))
 
-	return mux
+	return protectRequests(mux)
 }
 
 func health(w http.ResponseWriter, _ *http.Request) {

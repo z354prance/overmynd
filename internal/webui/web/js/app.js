@@ -8,6 +8,9 @@ const state = {
   processingErrors: [],
   playback: [],
   services: [],
+  managedServices: [],
+  authenticated: false,
+  setupRequired: false,
   serviceErrors: [],
 };
 
@@ -1013,6 +1016,10 @@ async function refreshDashboard() {
 }
 
 function setView(view) {
+  if (view === "services" && !state.authenticated) view = "settings";
+  if (view === "services") {
+    refreshServiceManagement().catch((error) => showServiceMessage(error.message, "error"));
+  }
   const views = {
     dashboard: {
       element: "dashboardView",
@@ -1088,19 +1095,62 @@ $("playbackMode").addEventListener("change", renderPlaybackView);
 
 $("logoutButton").addEventListener("click", async () => {
   try {
-    const response = await fetch("/api/v1/auth/logout", {
-      method: "POST",
-      credentials: "same-origin",
-    });
-
-    if (response.ok) {
-      window.location.reload();
-    }
-  } catch (_) {
-    // Keep the current session if logout cannot reach the server.
+    await serviceAPIRequest("/api/v1/auth/logout", { method: "POST" });
+    applyAuth({ authenticated: false, setup_required: false });
+  } catch (error) {
+    $("authMessage").textContent = error.message;
   }
 });
 
+function applyAuth(status) {
+  state.authenticated = Boolean(status.authenticated);
+  state.setupRequired = Boolean(status.setup_required);
+  $("settingsUsername").textContent = state.authenticated ? `Signed in as ${status.username}` : "Public read-only access";
+  $("logoutButton").hidden = !state.authenticated;
+  $("authForm").hidden = state.authenticated;
+  $("authSubmit").textContent = state.setupRequired ? "Create administrator" : "Sign in";
+  $("authPassword").autocomplete = state.setupRequired ? "new-password" : "current-password";
+  $("authPassword").minLength = state.setupRequired ? 12 : 1;
+  $("authPassword").value = "";
+  if (!state.authenticated) {
+    state.managedServices = [];
+    closeServiceEditor();
+    $("serviceForm").reset();
+    renderServiceManagement();
+    if ($("servicesView").classList.contains("active")) setView("settings");
+  }
+}
+
+async function refreshAuth() {
+  try {
+    applyAuth(await getJSON("/api/v1/auth/status"));
+  } catch {
+    applyAuth({});
+    $("authMessage").textContent = "Unable to check your session. Try again.";
+  }
+}
+
+$("authForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  $("authSubmit").disabled = true;
+  $("authMessage").textContent = "";
+  try {
+    const result = await serviceAPIRequest(`/api/v1/auth/${state.setupRequired ? "setup" : "login"}`, {
+      method: "POST",
+      body: JSON.stringify({ username: $("authUsername").value, password: $("authPassword").value }),
+    });
+    applyAuth(result);
+    setView("services");
+  } catch (error) {
+    $("authMessage").textContent = error.message;
+    await refreshAuth();
+  } finally {
+    $("authPassword").value = "";
+    $("authSubmit").disabled = false;
+  }
+});
+
+refreshAuth();
 refreshDashboard();
 setInterval(refreshDashboard, 10000);
 
@@ -1329,7 +1379,7 @@ function serviceDefaultName(type) {
 function renderServiceManagement() {
   const list = $("serviceManagementList");
 
-  if (!state.services.length) {
+  if (!state.managedServices.length) {
     list.innerHTML = `
       <div class="panel empty-state">
         No services configured. Add a service to get started.
@@ -1338,7 +1388,7 @@ function renderServiceManagement() {
     return;
   }
 
-  list.innerHTML = state.services
+  list.innerHTML = state.managedServices
     .map((service) => {
       const failed = state.serviceErrors.some(
         (error) => Number(error.service_id) === Number(service.id)
@@ -1520,7 +1570,7 @@ $("serviceManagementList").addEventListener("click", (event) => {
   }
 
   const serviceID = Number(button.dataset.serviceId);
-  const service = state.services.find(
+  const service = state.managedServices.find(
     (item) => Number(item.id) === serviceID
   );
 
@@ -1537,12 +1587,15 @@ $("serviceManagementList").addEventListener("click", (event) => {
 async function serviceAPIRequest(url, options = {}) {
   const response = await fetch(url, {
     ...options,
+    credentials: "same-origin",
     headers: {
+      "X-Overmynd-Request": "1",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(options.headers || {}),
     },
   });
 
+  if (response.status === 401) applyAuth({});
   if (!response.ok) {
     let message = `${response.status} ${response.statusText}`;
 
@@ -1569,18 +1622,10 @@ async function serviceAPIRequest(url, options = {}) {
 }
 
 async function refreshServiceManagement() {
-  const response = await fetch("/api/v1/services");
+  const services = await serviceAPIRequest("/api/v1/services");
+  if (!state.authenticated) return;
+  state.managedServices = Array.isArray(services) ? services : [];
 
-  if (!response.ok) {
-    throw new Error(
-      `Unable to refresh services: ${response.status} ${response.statusText}`
-    );
-  }
-
-  const services = await response.json();
-  state.services = Array.isArray(services) ? services : [];
-
-  renderServices();
   renderServiceManagement();
 }
 
@@ -1799,7 +1844,7 @@ $("serviceManagementList").addEventListener("click", async (event) => {
   }
 
   const serviceID = Number(button.dataset.serviceId);
-  const service = state.services.find(
+  const service = state.managedServices.find(
     (item) => Number(item.id) === serviceID
   );
 

@@ -384,13 +384,20 @@
           <div class="panel-header">
             <div>
               <p class="panel-kicker">ACCOUNT</p>
-              <h2>Session</h2>
+              <h2>Administrator access</h2>
             </div>
           </div>
           <div class="settings-content">
-            <p class="settings-user" id="settingsUsername">Signed in</p>
-            <button class="service-secondary-button" id="logoutButton" type="button">Log Out</button>
+            <p class="settings-user" id="settingsUsername">Checking session…</p>
+            <button class="service-secondary-button" id="logoutButton" type="button" hidden>Log Out</button>
           </div>
+          <form id="authForm" class="auth-form" hidden>
+            <label class="service-form-field"><span>Username</span><input id="authUsername" autocomplete="username" required minlength="3" maxlength="64"></label>
+            <label class="service-form-field"><span>Password</span><input id="authPassword" type="password" autocomplete="current-password" required maxlength="1024"></label>
+            <p class="service-field-help">First-time setup requires a password of at least 12 characters.</p>
+            <button id="authSubmit" class="service-primary-button" type="submit">Sign in</button>
+          </form>
+          <p id="authMessage" class="auth-message" role="status" aria-live="polite"></p>
         </section>
       </div>
 

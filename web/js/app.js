@@ -1,7 +1,16 @@
 const state = {
   activity: [],
+  missing: [],
+  missingErrors: [],
+  downloads: [],
+  downloadErrors: [],
+  processing: [],
+  processingErrors: [],
   playback: [],
   services: [],
+  managedServices: [],
+  authenticated: false,
+  setupRequired: false,
   serviceErrors: [],
 };
 
@@ -71,29 +80,36 @@ function renderSummary() {
 }
 
 function renderPipeline() {
+  const activeStages = new Set([
+    "downloading",
+    "downloaded",
+    "processing",
+    "importing",
+  ]);
+
   const priority = {
     importing: 0,
     processing: 1,
     downloading: 2,
     downloaded: 3,
-    requested: 4,
-    wanted: 5,
-    playing: 6,
-    available: 7,
   };
 
-  const items = [...state.activity]
+  const activeItems = state.activity.filter((item) =>
+    activeStages.has(item.stage)
+  );
+
+  const items = [...activeItems]
     .sort(
       (a, b) =>
         (priority[a.stage] ?? 99) - (priority[b.stage] ?? 99)
     )
     .slice(0, 12);
 
-  $("pipelineCount").textContent = state.activity.length;
+  $("pipelineCount").textContent = activeItems.length;
 
   if (!items.length) {
     $("pipelineList").innerHTML =
-      '<div class="empty-state">Nothing currently needs attention.</div>';
+      '<div class="empty-state">Nothing is moving through the pipeline right now.</div>';
     return;
   }
 
@@ -228,6 +244,241 @@ function renderPlayback() {
     .join("");
 }
 
+
+function formatPlaybackTime(milliseconds) {
+  const totalSeconds = Math.max(0, Math.floor(Number(milliseconds || 0) / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function playbackMode(session) {
+  if (
+    session.is_transcode ||
+    String(session.video_decision || "").toLowerCase() === "transcode" ||
+    String(session.audio_decision || "").toLowerCase() === "transcode"
+  ) {
+    return "transcode";
+  }
+
+  return "direct";
+}
+
+function filteredPlayback() {
+  const search = $("playbackSearch").value.trim().toLowerCase();
+  const playbackState = $("playbackState").value;
+  const mode = $("playbackMode").value;
+
+  return state.playback.filter((session) => {
+    if (playbackState && session.state !== playbackState) {
+      return false;
+    }
+
+    if (mode && playbackMode(session) !== mode) {
+      return false;
+    }
+
+    if (search) {
+      const searchable = [
+        session.media_title,
+        session.show_title,
+        session.artist_name,
+        session.album_name,
+        session.username,
+        session.server_name,
+        session.device,
+        session.player,
+        session.product,
+        session.platform,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      if (!searchable.includes(search)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+}
+
+function renderPlaybackView() {
+  const sessions = filteredPlayback();
+
+  $("playbackViewCount").textContent = sessions.length;
+
+  const playbackErrors = state.serviceErrors.filter(
+    (item) => item.type === "tracearr"
+  );
+
+  if (playbackErrors.length) {
+    $("playbackErrors").innerHTML = playbackErrors
+      .map((item) => {
+        const service = item.name || "Tracearr";
+        return `<div>${escapeHTML(service)}: ${escapeHTML(item.error || "Unavailable")}</div>`;
+      })
+      .join("");
+  } else {
+    $("playbackErrors").innerHTML = "";
+  }
+
+  if (!sessions.length) {
+    $("playbackViewList").innerHTML =
+      state.playback.length === 0
+        ? '<div class="empty-state">Nothing is playing right now.</div>'
+        : '<div class="empty-state">No playback sessions match these filters.</div>';
+    return;
+  }
+
+  $("playbackViewList").innerHTML = sessions
+    .map((session) => {
+      const isEpisode =
+        session.media_type === "episode" && session.show_title;
+
+      const title = isEpisode
+        ? session.show_title
+        : session.media_title || "Unknown media";
+
+      const subtitle = [];
+
+      if (isEpisode && session.season_number && session.episode_number) {
+        subtitle.push(
+          `S${String(session.season_number).padStart(2, "0")}E${String(
+            session.episode_number
+          ).padStart(2, "0")}`
+        );
+      }
+
+      if (
+        isEpisode &&
+        session.media_title &&
+        session.media_title !== title
+      ) {
+        subtitle.push(session.media_title);
+      }
+
+      if (session.year) {
+        subtitle.push(String(session.year));
+      }
+
+      const client = [];
+      if (session.player) client.push(session.player);
+      if (session.device && session.device !== session.player) {
+        client.push(session.device);
+      }
+      if (session.platform && !client.includes(session.platform)) {
+        client.push(session.platform);
+      }
+
+      const duration = Number(session.duration_ms || 0);
+      const progress = Number(session.progress_ms || 0);
+      const percent =
+        duration > 0
+          ? Math.max(0, Math.min(100, (progress / duration) * 100))
+          : 0;
+
+      const mode = playbackMode(session);
+      const modeLabel =
+        mode === "transcode" ? "Transcode" : "Direct Play";
+
+      const technical = [];
+
+      if (session.video_decision) {
+        technical.push(`Video: ${pretty(session.video_decision)}`);
+      }
+
+      if (session.audio_decision) {
+        technical.push(`Audio: ${pretty(session.audio_decision)}`);
+      }
+
+      if (session.bitrate) {
+        technical.push(`${Number(session.bitrate).toLocaleString()} kbps`);
+      }
+
+      const poster = session.poster_url
+        ? `<img class="playback-poster" src="${escapeHTML(session.poster_url)}" alt="" loading="lazy">`
+        : '<div class="playback-poster playback-poster-empty">▶</div>';
+
+      const progressMarkup =
+        duration > 0
+          ? `
+            <div class="playback-detail-progress">
+              <div class="progress-track">
+                <div class="progress-bar" style="width:${percent.toFixed(1)}%"></div>
+              </div>
+              <div class="playback-time">
+                <span>${escapeHTML(formatPlaybackTime(progress))}</span>
+                <span>${escapeHTML(Math.round(percent))}%</span>
+                <span>${escapeHTML(formatPlaybackTime(duration))}</span>
+              </div>
+            </div>
+          `
+          : `
+            <div class="playback-live">
+              ${session.media_type === "live" ? "LIVE" : "Duration unavailable"}
+            </div>
+          `;
+
+      return `
+        <article class="playback-card">
+          ${poster}
+
+          <div class="playback-card-body">
+            <div class="playback-card-top">
+              <div>
+                <div class="item-title">${escapeHTML(title)}</div>
+                ${
+                  subtitle.length
+                    ? `<div class="playback-subtitle">${escapeHTML(subtitle.join(" · "))}</div>`
+                    : ""
+                }
+              </div>
+
+              <div class="playback-card-badges">
+                <span class="stage">${escapeHTML(pretty(session.state || "playing"))}</span>
+                <span class="stage">${escapeHTML(modeLabel)}</span>
+              </div>
+            </div>
+
+            <div class="playback-details">
+              ${
+                session.username
+                  ? `<span><strong>User:</strong> ${escapeHTML(session.username)}</span>`
+                  : ""
+              }
+              ${
+                client.length
+                  ? `<span><strong>Player:</strong> ${escapeHTML(client.join(" · "))}</span>`
+                  : ""
+              }
+              ${
+                session.server_name
+                  ? `<span><strong>Server:</strong> ${escapeHTML(session.server_name)}</span>`
+                  : ""
+              }
+              ${
+                technical.length
+                  ? `<span><strong>Stream:</strong> ${escapeHTML(technical.join(" · "))}</span>`
+                  : ""
+              }
+            </div>
+
+            ${progressMarkup}
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
 function renderServices() {
   const services = state.services;
   const errorsByID = new Set(
@@ -269,12 +520,432 @@ function renderServices() {
     .join("");
 }
 
+function activityProblems(item) {
+  return Array.isArray(item.problems) ? item.problems : [];
+}
+
+function filteredActivity() {
+  const search = $("activitySearch").value.trim().toLowerCase();
+  const stage = $("activityStage").value;
+  const problem = $("activityProblem").value;
+
+  return state.activity.filter((item) => {
+    const problems = activityProblems(item);
+
+    if (stage && item.stage !== stage) {
+      return false;
+    }
+
+    if (problem === "healthy" && problems.length) {
+      return false;
+    }
+
+    if (problem === "problem" && !problems.length) {
+      return false;
+    }
+
+    if (
+      problem &&
+      problem !== "healthy" &&
+      problem !== "problem" &&
+      !problems.includes(problem)
+    ) {
+      return false;
+    }
+
+    if (search) {
+      const searchable = [
+        item.title,
+        item.kind,
+        item.stage,
+        item.year,
+        item.season_number,
+        item.episode_number,
+        ...problems,
+      ]
+        .filter((value) => value !== undefined && value !== null)
+        .join(" ")
+        .toLowerCase();
+
+      if (!searchable.includes(search)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+}
+
+function renderActivity() {
+  const items = filteredActivity();
+
+  $("activityCount").textContent = items.length;
+
+  if (!items.length) {
+    $("activityList").innerHTML =
+      '<div class="empty-state">No lifecycle activity matches these filters.</div>';
+    return;
+  }
+
+  $("activityList").innerHTML = items
+    .map((item) => {
+      const problems = activityProblems(item);
+
+      const problemBadges = problems
+        .map(
+          (problem) =>
+            `<span class="activity-problem ${
+              problem === "missing" ? "missing" : ""
+            }">${escapeHTML(pretty(problem))}</span>`
+        )
+        .join("");
+
+      return `
+        <div class="activity-row">
+          <div class="activity-main">
+            <div class="item-title">${escapeHTML(item.title || "Unknown media")}</div>
+            <div class="item-meta">
+              <span>${escapeHTML(mediaLabel(item))}</span>
+            </div>
+          </div>
+          <div class="activity-badges">
+            ${problemBadges}
+            <span class="stage">${escapeHTML(pretty(item.stage))}</span>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function formatBytes(value) {
+  const bytes = Number(value) || 0;
+
+  if (bytes <= 0) {
+    return "0 B";
+  }
+
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const index = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    units.length - 1
+  );
+
+  const amount = bytes / Math.pow(1024, index);
+
+  return `${amount >= 10 || index === 0 ? amount.toFixed(0) : amount.toFixed(1)} ${units[index]}`;
+}
+
+function downloadProgress(item) {
+  const size = Number(item.size) || 0;
+  const left = Math.max(0, Number(item.size_left) || 0);
+
+  if (size <= 0) {
+    return null;
+  }
+
+  return Math.max(0, Math.min(100, ((size - left) / size) * 100));
+}
+
+function updateDownloadStatusOptions() {
+  const select = $("downloadStatus");
+  const selected = select.value;
+
+  const statuses = [...new Set(
+    state.downloads
+      .filter((item) => item.source === "qbittorrent" || item.source === "nzbget")
+      .map((item) => item.status)
+      .filter(Boolean)
+  )].sort();
+
+  select.innerHTML =
+    '<option value="">All status</option>' +
+    statuses
+      .map(
+        (status) =>
+          `<option value="${escapeHTML(status)}">${escapeHTML(pretty(status))}</option>`
+      )
+      .join("");
+
+  if (statuses.includes(selected)) {
+    select.value = selected;
+  }
+}
+
+function filteredDownloads() {
+  const search = $("downloadSearch").value.trim().toLowerCase();
+  const source = $("downloadSource").value;
+  const status = $("downloadStatus").value;
+
+  return state.downloads.filter((item) => {
+    if (item.source !== "qbittorrent" && item.source !== "nzbget") {
+      return false;
+    }
+
+    if (source && item.source !== source) {
+      return false;
+    }
+
+    if (status && item.status !== status) {
+      return false;
+    }
+
+    if (search) {
+      const searchable = [
+        item.title,
+        item.source,
+        item.status,
+        item.tracked_download_status,
+        item.protocol,
+        item.download_client,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      if (!searchable.includes(search)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+}
+
+function renderDownloads() {
+  updateDownloadStatusOptions();
+
+  const items = filteredDownloads();
+
+  $("downloadCount").textContent = items.length;
+
+  if (state.downloadErrors.length) {
+    $("downloadErrors").innerHTML = state.downloadErrors
+      .map((item) => {
+        const service = item.name || pretty(item.type) || "Download service";
+        return `<div>${escapeHTML(service)}: ${escapeHTML(item.error || "Unavailable")}</div>`;
+      })
+      .join("");
+  } else {
+    $("downloadErrors").innerHTML = "";
+  }
+
+  if (!items.length) {
+    $("downloadList").innerHTML =
+      state.downloads.length === 0
+        ? '<div class="empty-state">No active downloads.</div>'
+        : '<div class="empty-state">No downloads match these filters.</div>';
+    return;
+  }
+
+  $("downloadList").innerHTML = items
+    .map((item) => {
+      const progress = downloadProgress(item);
+      const progressText =
+        progress === null ? "" : `${Math.round(progress)}%`;
+
+      const source = pretty(item.source);
+      const status = pretty(item.status);
+
+      const details = [
+        item.protocol ? pretty(item.protocol) : "",
+        item.download_client || "",
+        item.time_left ? `${item.time_left} remaining` : "",
+      ].filter(Boolean);
+
+      const size = Number(item.size) || 0;
+      const left = Number(item.size_left) || 0;
+
+      if (size > 0) {
+        details.push(`${formatBytes(Math.max(0, left))} of ${formatBytes(size)} remaining`);
+      }
+
+      return `
+        <div class="download-row">
+          <div class="download-row-top">
+            <div class="download-main">
+              <div class="item-title">${escapeHTML(item.title || "Unknown download")}</div>
+              <div class="item-meta">
+                <span>${escapeHTML(details.join(" · ") || "Active download")}</span>
+              </div>
+            </div>
+
+            <div class="download-badges">
+              ${item.tracked_download_status
+                ? `<span class="activity-problem">${escapeHTML(pretty(item.tracked_download_status))}</span>`
+                : ""}
+              <span class="stage">${escapeHTML(source)}</span>
+              <span class="stage">${escapeHTML(status)}</span>
+            </div>
+          </div>
+
+          ${progress === null
+            ? ""
+            : `
+              <div class="download-progress" aria-label="Download progress ${escapeHTML(progressText)}">
+                <div class="download-progress-bar" style="width:${progress.toFixed(2)}%"></div>
+              </div>
+              <div class="download-stats">
+                <span>${escapeHTML(progressText)} complete</span>
+              </div>
+            `}
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function filteredProcessing() {
+  const search = $("processingSearch").value.trim().toLowerCase();
+  const stage = $("processingStage").value;
+  const processingState = $("processingState").value;
+
+  return state.processing.filter((item) => {
+    if (stage && item.stage !== stage) {
+      return false;
+    }
+
+    if (processingState && item.state !== processingState) {
+      return false;
+    }
+
+    if (search) {
+      const searchable = [
+        item.title,
+        item.state,
+        item.stage,
+        item.health_check,
+        item.transcode,
+        item.node_name,
+        item.worker_id,
+        item.message,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      if (!searchable.includes(search)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+}
+
+function renderProcessing() {
+  const items = filteredProcessing();
+
+  $("processingCount").textContent = items.length;
+
+  if (state.processingErrors.length) {
+    $("processingErrors").innerHTML = state.processingErrors
+      .map((item) => {
+        const service = item.name || pretty(item.type) || "Tdarr";
+        return `<div>${escapeHTML(service)}: ${escapeHTML(item.error || "Unavailable")}</div>`;
+      })
+      .join("");
+  } else {
+    $("processingErrors").innerHTML = "";
+  }
+
+  if (!items.length) {
+    $("processingList").innerHTML =
+      state.processing.length === 0
+        ? '<div class="empty-state">No active processing jobs.</div>'
+        : '<div class="empty-state">No processing jobs match these filters.</div>';
+    return;
+  }
+
+  $("processingList").innerHTML = items
+    .map((item) => {
+      const details = [];
+
+      if (item.health_check) {
+        details.push(`Health: ${pretty(item.health_check)}`);
+      }
+
+      if (item.transcode) {
+        details.push(`Transcode: ${pretty(item.transcode)}`);
+      }
+
+      if (item.node_name) {
+        details.push(`Node: ${item.node_name}`);
+      }
+
+      if (item.worker_id) {
+        details.push(`Worker: ${item.worker_id}`);
+      }
+
+      if (item.hold_until) {
+        const hold = new Date(item.hold_until);
+        if (!Number.isNaN(hold.getTime())) {
+          details.push(`Held until ${hold.toLocaleString()}`);
+        }
+      }
+
+      const progress = Number(item.progress) || 0;
+      const showProgress =
+        item.state === "processing" || progress > 0;
+
+      const problemBadge =
+        item.state === "problem"
+          ? '<span class="activity-problem">Problem</span>'
+          : item.state === "held"
+            ? '<span class="activity-problem missing">Held</span>'
+            : "";
+
+      return `
+        <div class="download-row">
+          <div class="download-row-top">
+            <div class="download-main">
+              <div class="item-title">${escapeHTML(item.title || "Unknown processing job")}</div>
+              <div class="item-meta">
+                <span>${escapeHTML(details.join(" · ") || "Tdarr")}</span>
+              </div>
+              ${item.message
+                ? `<div class="item-meta"><span>${escapeHTML(item.message)}</span></div>`
+                : ""}
+            </div>
+
+            <div class="download-badges">
+              ${problemBadge}
+              <span class="stage">TDARR</span>
+              ${item.stage
+                ? `<span class="stage">${escapeHTML(pretty(item.stage))}</span>`
+                : ""}
+              <span class="stage">${escapeHTML(pretty(item.state))}</span>
+            </div>
+          </div>
+
+          ${showProgress
+            ? `
+              <div class="download-progress" aria-label="Processing progress ${escapeHTML(Math.round(progress))}%">
+                <div class="download-progress-bar" style="width:${Math.max(0, Math.min(100, progress)).toFixed(2)}%"></div>
+              </div>
+              <div class="download-stats">
+                <span>${escapeHTML(Math.round(progress))}% complete</span>
+              </div>
+            `
+            : ""}
+        </div>
+      `;
+    })
+    .join("");
+}
+
 function render() {
   renderSummary();
   renderPipeline();
   renderProblems();
   renderPlayback();
+  renderPlaybackView();
   renderServices();
+  renderServiceManagement();
+  renderActivity();
+  renderMissing();
+  renderDownloads();
+  renderProcessing();
 
   $("lastUpdated").textContent =
     `Updated ${new Date().toLocaleTimeString([], {
@@ -301,20 +972,32 @@ async function getJSON(path) {
 
 async function refreshDashboard() {
   try {
-    const [health, activity, playback, services] = await Promise.all([
+    const [health, activity, playback, services, missing, downloads, processing] = await Promise.all([
       getJSON("/health"),
       getJSON("/api/v1/activity"),
       getJSON("/api/v1/playback"),
-      getJSON("/api/v1/services"),
+      getJSON("/api/v1/public/services"),
+      getJSON("/api/v1/missing"),
+      getJSON("/api/v1/downloads"),
+      getJSON("/api/v1/processing"),
     ]);
 
     state.activity = activity.lifecycles || [];
     state.playback = playback.sessions || [];
     state.services = services.services || services || [];
+    state.missing = missing.items || [];
+    state.missingErrors = missing.errors || [];
+    state.downloads = downloads.downloads || [];
+    state.downloadErrors = downloads.errors || [];
+    state.processing = processing.jobs || [];
+    state.processingErrors = processing.errors || [];
 
     state.serviceErrors = [
       ...(activity.errors || []),
       ...(playback.errors || []),
+      ...state.missingErrors,
+      ...state.downloadErrors,
+      ...state.processingErrors,
     ];
 
     $("sidebarHealth").textContent = "Online";
@@ -332,5 +1015,848 @@ async function refreshDashboard() {
   }
 }
 
+function setView(view) {
+  if (view === "services" && !state.authenticated) view = "settings";
+  if (view === "services") {
+    refreshServiceManagement().catch((error) => showServiceMessage(error.message, "error"));
+  }
+  const views = {
+    dashboard: {
+      element: "dashboardView",
+      title: "Dashboard",
+    },
+    activity: {
+      element: "activityView",
+      title: "Activity",
+    },
+    missing: {
+      element: "missingView",
+      title: "Missing",
+    },
+    downloads: {
+      element: "downloadsView",
+      title: "Downloads",
+    },
+    processing: {
+      element: "processingView",
+      title: "Processing",
+    },
+    services: {
+      element: "servicesView",
+      title: "Services",
+    },
+    playback: {
+      element: "playbackView",
+      title: "Playback",
+    },
+    settings: {
+      element: "settingsView",
+      title: "Settings",
+    },
+  };
+
+  if (!views[view]) {
+    return;
+  }
+
+  Object.values(views).forEach((entry) => {
+    $(entry.element).classList.remove("active");
+  });
+
+  $(views[view].element).classList.add("active");
+  $("pageTitle").textContent = views[view].title;
+
+  document.querySelectorAll(".nav-item[data-view]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.view === view);
+  });
+}
+
+document.querySelectorAll(".nav-item[data-view]").forEach((button) => {
+  button.addEventListener("click", () => {
+    setView(button.dataset.view);
+  });
+});
+
+$("activitySearch").addEventListener("input", renderActivity);
+$("activityStage").addEventListener("change", renderActivity);
+$("activityProblem").addEventListener("change", renderActivity);
+
+$("downloadSearch").addEventListener("input", renderDownloads);
+$("downloadSource").addEventListener("change", renderDownloads);
+$("downloadStatus").addEventListener("change", renderDownloads);
+
+$("processingSearch").addEventListener("input", renderProcessing);
+$("processingStage").addEventListener("change", renderProcessing);
+$("processingState").addEventListener("change", renderProcessing);
+
+$("playbackSearch").addEventListener("input", renderPlaybackView);
+$("playbackState").addEventListener("change", renderPlaybackView);
+$("playbackMode").addEventListener("change", renderPlaybackView);
+
+$("logoutButton").addEventListener("click", async () => {
+  try {
+    await serviceAPIRequest("/api/v1/auth/logout", { method: "POST" });
+    applyAuth({ authenticated: false, setup_required: false });
+  } catch (error) {
+    $("authMessage").textContent = error.message;
+  }
+});
+
+function applyAuth(status) {
+  state.authenticated = Boolean(status.authenticated);
+  state.setupRequired = Boolean(status.setup_required);
+  $("settingsUsername").textContent = state.authenticated ? `Signed in as ${status.username}` : "Public read-only access";
+  $("logoutButton").hidden = !state.authenticated;
+  $("authForm").hidden = state.authenticated;
+  $("authSubmit").textContent = state.setupRequired ? "Create administrator" : "Sign in";
+  $("authPassword").autocomplete = state.setupRequired ? "new-password" : "current-password";
+  $("authPassword").minLength = state.setupRequired ? 12 : 1;
+  $("authPassword").value = "";
+  if (!state.authenticated) {
+    state.managedServices = [];
+    closeServiceEditor();
+    $("serviceForm").reset();
+    renderServiceManagement();
+    if ($("servicesView").classList.contains("active")) setView("settings");
+  }
+}
+
+async function refreshAuth() {
+  try {
+    applyAuth(await getJSON("/api/v1/auth/status"));
+  } catch {
+    applyAuth({});
+    $("authMessage").textContent = "Unable to check your session. Try again.";
+  }
+}
+
+$("authForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  $("authSubmit").disabled = true;
+  $("authMessage").textContent = "";
+  try {
+    const result = await serviceAPIRequest(`/api/v1/auth/${state.setupRequired ? "setup" : "login"}`, {
+      method: "POST",
+      body: JSON.stringify({ username: $("authUsername").value, password: $("authPassword").value }),
+    });
+    applyAuth(result);
+    setView("services");
+  } catch (error) {
+    $("authMessage").textContent = error.message;
+    await refreshAuth();
+  } finally {
+    $("authPassword").value = "";
+    $("authSubmit").disabled = false;
+  }
+});
+
+refreshAuth();
 refreshDashboard();
 setInterval(refreshDashboard, 10000);
+
+function missingAvailability(item) {
+  if (!item.air_date) {
+    return "unknown";
+  }
+
+  const date = new Date(item.air_date);
+  if (Number.isNaN(date.getTime())) {
+    return "unknown";
+  }
+
+  const releaseDay = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+  );
+
+  const now = new Date();
+  const today = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
+
+  return releaseDay <= today ? "available" : "upcoming";
+}
+
+function missingDateLabel(item) {
+  if (!item.air_date) {
+    return "Date unknown";
+  }
+
+  const date = new Date(item.air_date);
+  if (Number.isNaN(date.getTime())) {
+    return "Date unknown";
+  }
+
+  return date.toLocaleDateString([], {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function missingMediaLabel(item) {
+  if (item.kind === "episode") {
+    const season = Number(item.season_number || 0);
+    const episode = Number(item.episode_number || 0);
+
+    if (season > 0 && episode > 0) {
+      return `S${String(season).padStart(2, "0")}E${String(episode).padStart(2, "0")}`;
+    }
+  }
+
+  if (item.kind === "movie" && item.year) {
+    return String(item.year);
+  }
+
+  return pretty(item.kind || "media");
+}
+
+function filteredMissing() {
+  const query = $("missingSearch").value.trim().toLowerCase();
+  const kind = $("missingKind").value;
+  const source = $("missingSource").value;
+  const availability = $("missingAvailability").value;
+
+  return state.missing.filter((item) => {
+    if (kind && item.kind !== kind) {
+      return false;
+    }
+
+    if (source && item.source !== source) {
+      return false;
+    }
+
+    if (availability && missingAvailability(item) !== availability) {
+      return false;
+    }
+
+    if (query) {
+      const haystack = [
+        item.title,
+        item.year,
+        item.kind,
+        item.source,
+        item.season_number,
+        item.episode_number,
+      ]
+        .filter((value) => value !== undefined && value !== null)
+        .join(" ")
+        .toLowerCase();
+
+      if (!haystack.includes(query)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+}
+
+function renderMissing() {
+  const items = filteredMissing();
+  const list = $("missingList");
+  const errors = $("missingErrors");
+
+  $("missingViewCount").textContent = items.length;
+
+  if (state.missingErrors.length) {
+    errors.innerHTML = state.missingErrors
+      .map((error) => `
+        <div class="download-error">
+          ${escapeHTML(error.message || error.error || "Missing-media source error")}
+        </div>
+      `)
+      .join("");
+  } else {
+    errors.innerHTML = "";
+  }
+
+  if (!items.length) {
+    list.innerHTML = `
+      <div class="empty-state">
+        No missing media matches these filters.
+      </div>
+    `;
+    return;
+  }
+
+  const sorted = [...items].sort((a, b) => {
+    const aAvailability = missingAvailability(a);
+    const bAvailability = missingAvailability(b);
+
+    const rank = {
+      available: 0,
+      upcoming: 1,
+      unknown: 2,
+    };
+
+    if (rank[aAvailability] !== rank[bAvailability]) {
+      return rank[aAvailability] - rank[bAvailability];
+    }
+
+    const aDate = a.air_date ? new Date(a.air_date).getTime() : 0;
+    const bDate = b.air_date ? new Date(b.air_date).getTime() : 0;
+
+    if (aAvailability === "upcoming" && aDate !== bDate) {
+      return aDate - bDate;
+    }
+
+    if (aAvailability === "available" && aDate !== bDate) {
+      return bDate - aDate;
+    }
+
+    return String(a.title || "").localeCompare(String(b.title || ""));
+  });
+
+  list.innerHTML = sorted
+    .map((item) => {
+      const availability = missingAvailability(item);
+
+      const availabilityLabel = {
+        available: "Available now",
+        upcoming: "Upcoming",
+        unknown: "Unknown date",
+      }[availability];
+
+      return `
+        <article class="activity-row missing-row">
+          <div class="activity-row-main">
+            <div class="activity-row-title">
+              ${escapeHTML(item.title || "Unknown media")}
+            </div>
+
+            <div class="activity-row-meta">
+              <span>${escapeHTML(pretty(item.source))}</span>
+              <span>${escapeHTML(pretty(item.kind))}</span>
+              <span>${escapeHTML(missingMediaLabel(item))}</span>
+              <span>${escapeHTML(missingDateLabel(item))}</span>
+            </div>
+          </div>
+
+          <div class="activity-row-side">
+            <span class="status-badge missing-${escapeHTML(availability)}">
+              ${escapeHTML(availabilityLabel)}
+            </span>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+["missingSearch", "missingKind", "missingSource", "missingAvailability"]
+  .forEach((id) => {
+    $(id).addEventListener("input", renderMissing);
+    $(id).addEventListener("change", renderMissing);
+  });
+
+function serviceUsesLogin(type) {
+  return type === "qbittorrent" || type === "nzbget";
+}
+
+function serviceNeedsNoCredential(type) {
+  return type === "tdarr";
+}
+
+function serviceDefaultName(type) {
+  const names = {
+    radarr: "Radarr",
+    sonarr: "Sonarr",
+    lidarr: "Lidarr",
+    seerr: "Seerr",
+    tdarr: "Tdarr",
+    qbittorrent: "qBittorrent",
+    nzbget: "NZBGet",
+    tracearr: "Tracearr",
+  };
+
+  return names[type] || pretty(type);
+}
+
+function renderServiceManagement() {
+  const list = $("serviceManagementList");
+
+  if (!state.managedServices.length) {
+    list.innerHTML = `
+      <div class="panel empty-state">
+        No services configured. Add a service to get started.
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = state.managedServices
+    .map((service) => {
+      const failed = state.serviceErrors.some(
+        (error) => Number(error.service_id) === Number(service.id)
+      );
+
+      const stateLabel = !service.enabled
+        ? "Disabled"
+        : failed
+          ? "Error"
+          : "Healthy";
+
+      return `
+        <article class="panel service-management-card">
+          <div class="service-management-card-header">
+            <div>
+              <div class="service-management-name">
+                ${escapeHTML(service.name)}
+              </div>
+              <div class="service-management-type">
+                ${escapeHTML(serviceDefaultName(service.type))}
+              </div>
+            </div>
+
+            <span class="service-management-state ${
+              failed ? "bad" : ""
+            } ${!service.enabled ? "disabled" : ""}">
+              <span class="status-dot ${failed ? "bad" : ""}"></span>
+              ${escapeHTML(stateLabel)}
+            </span>
+          </div>
+
+          <div class="service-management-details">
+            <div>
+              <span>URL</span>
+              <strong>${escapeHTML(service.base_url)}</strong>
+            </div>
+            <div>
+              <span>Credential</span>
+              <strong>${
+                serviceNeedsNoCredential(service.type)
+                  ? "Not required"
+                  : service.has_credential
+                    ? "Configured"
+                    : "Not configured"
+              }</strong>
+            </div>
+          </div>
+
+          <div class="service-management-actions">
+            <button
+              class="service-secondary-button"
+              type="button"
+              data-service-action="edit"
+              data-service-id="${Number(service.id)}"
+            >
+              Edit
+            </button>
+
+            <button
+              class="service-secondary-button"
+              type="button"
+              data-service-action="test"
+              data-service-id="${Number(service.id)}"
+            >
+              Test
+            </button>
+
+            <button
+              class="service-danger-button"
+              type="button"
+              data-service-action="delete"
+              data-service-id="${Number(service.id)}"
+            >
+              Delete
+            </button>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function updateServiceCredentialFields() {
+  const type = $("serviceType").value;
+  const editing = Boolean($("serviceID").value);
+
+  const apiFields = $("serviceAPIKeyFields");
+  const loginFields = $("serviceLoginFields");
+  const credentialSection = $("serviceCredentialSection");
+
+  if (serviceNeedsNoCredential(type)) {
+    credentialSection.hidden = true;
+    return;
+  }
+
+  credentialSection.hidden = false;
+
+  if (serviceUsesLogin(type)) {
+    apiFields.hidden = true;
+    loginFields.hidden = false;
+
+    $("serviceLoginHelp").textContent = editing
+      ? "Leave username and password blank to keep the saved credentials."
+      : "Enter the username and password used by this service.";
+  } else {
+    apiFields.hidden = false;
+    loginFields.hidden = true;
+
+    $("serviceCredentialHelp").textContent = editing
+      ? "Leave this blank to keep the saved credential."
+      : "Enter the API key or access token for this service.";
+  }
+}
+
+function closeServiceEditor() {
+  $("serviceEditor").hidden = true;
+  $("serviceForm").reset();
+  $("serviceID").value = "";
+  $("serviceEnabled").checked = true;
+}
+
+function openServiceEditor(service = null) {
+  $("serviceForm").reset();
+
+  $("serviceID").value = service ? service.id : "";
+  $("serviceType").value = service ? service.type : "";
+  $("serviceName").value = service ? service.name : "";
+  $("serviceBaseURL").value = service ? service.base_url : "";
+  $("serviceEnabled").checked = service ? Boolean(service.enabled) : true;
+
+  $("serviceCredential").value = "";
+  $("serviceUsername").value = "";
+  $("servicePassword").value = "";
+
+  $("serviceEditorKicker").textContent =
+    service ? "EDIT INTEGRATION" : "NEW INTEGRATION";
+
+  $("serviceEditorTitle").textContent =
+    service ? `Edit ${service.name}` : "Add Service";
+
+  $("serviceSaveButton").textContent =
+    service ? "Save Changes" : "Add Service";
+
+  updateServiceCredentialFields();
+
+  $("serviceEditor").hidden = false;
+  $("serviceEditor").scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+}
+
+function showServiceMessage(message, kind = "") {
+  const element = $("serviceManagementMessage");
+  element.textContent = message;
+  element.className = `service-management-message ${kind}`.trim();
+}
+
+$("addServiceButton").addEventListener("click", () => {
+  showServiceMessage("");
+  openServiceEditor();
+});
+
+$("serviceEditorClose").addEventListener("click", closeServiceEditor);
+$("serviceCancelButton").addEventListener("click", closeServiceEditor);
+
+$("serviceType").addEventListener("change", () => {
+  if (!$("serviceID").value && !$("serviceName").value.trim()) {
+    $("serviceName").value = serviceDefaultName($("serviceType").value);
+  }
+
+  updateServiceCredentialFields();
+});
+
+$("serviceManagementList").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-service-action]");
+  if (!button) {
+    return;
+  }
+
+  const serviceID = Number(button.dataset.serviceId);
+  const service = state.managedServices.find(
+    (item) => Number(item.id) === serviceID
+  );
+
+  if (!service) {
+    return;
+  }
+
+  if (button.dataset.serviceAction === "edit") {
+    showServiceMessage("");
+    openServiceEditor(service);
+  }
+});
+
+async function serviceAPIRequest(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    credentials: "same-origin",
+    headers: {
+      "X-Overmynd-Request": "1",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(options.headers || {}),
+    },
+  });
+
+  if (response.status === 401) applyAuth({});
+  if (!response.ok) {
+    let message = `${response.status} ${response.statusText}`;
+
+    try {
+      const body = await response.json();
+
+      if (body && typeof body.error === "string" && body.error) {
+        message = body.error;
+      } else if (body && typeof body.message === "string" && body.message) {
+        message = body.message;
+      }
+    } catch {
+      // Keep the HTTP status text when the response is not JSON.
+    }
+
+    throw new Error(message);
+  }
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  return response.json();
+}
+
+async function refreshServiceManagement() {
+  const services = await serviceAPIRequest("/api/v1/services");
+  if (!state.authenticated) return;
+  state.managedServices = Array.isArray(services) ? services : [];
+
+  renderServiceManagement();
+}
+
+function serviceFormPayload() {
+  const id = $("serviceID").value;
+  const type = $("serviceType").value;
+  const editing = Boolean(id);
+
+  const payload = {
+    type,
+    name: $("serviceName").value.trim(),
+    enabled: $("serviceEnabled").checked,
+    base_url: $("serviceBaseURL").value.trim(),
+    update_credential: false,
+  };
+
+  if (serviceNeedsNoCredential(type)) {
+    if (editing) {
+      payload.update_credential = false;
+    }
+
+    return payload;
+  }
+
+  if (serviceUsesLogin(type)) {
+    const username = $("serviceUsername").value;
+    const password = $("servicePassword").value;
+    const replacingCredential = username !== "" || password !== "";
+
+    if (replacingCredential) {
+      payload.username = username;
+      payload.password = password;
+      payload.update_credential = true;
+    }
+
+    return payload;
+  }
+
+  const credential = $("serviceCredential").value;
+
+  if (credential !== "") {
+    payload.credential = credential;
+    payload.update_credential = true;
+  }
+
+  return payload;
+}
+
+$("serviceForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const id = $("serviceID").value;
+  const editing = Boolean(id);
+  const saveButton = $("serviceSaveButton");
+  const originalLabel = saveButton.textContent;
+
+  saveButton.disabled = true;
+  saveButton.textContent = editing ? "Saving…" : "Adding…";
+  showServiceMessage("");
+
+  try {
+    const payload = serviceFormPayload();
+
+    if (!payload.type) {
+      throw new Error("Select a service type.");
+    }
+
+    if (!payload.name) {
+      throw new Error("Enter a service name.");
+    }
+
+    if (!payload.base_url) {
+      throw new Error("Enter the service base URL.");
+    }
+
+    if (!editing && !serviceNeedsNoCredential(payload.type)) {
+      if (
+        serviceUsesLogin(payload.type) &&
+        !payload.update_credential
+      ) {
+        throw new Error("Enter the service username and password.");
+      }
+
+      if (
+        !serviceUsesLogin(payload.type) &&
+        !payload.update_credential
+      ) {
+        throw new Error("Enter the service API key or token.");
+      }
+    }
+
+    await serviceAPIRequest(
+      editing
+        ? `/api/v1/services/${Number(id)}`
+        : "/api/v1/services",
+      {
+        method: editing ? "PUT" : "POST",
+        body: JSON.stringify(payload),
+      }
+    );
+
+    closeServiceEditor();
+    await refreshServiceManagement();
+
+    showServiceMessage(
+      editing
+        ? "Service updated successfully."
+        : "Service added successfully.",
+      "success"
+    );
+  } catch (error) {
+    showServiceMessage(
+      error instanceof Error ? error.message : "Unable to save service.",
+      "error"
+    );
+  } finally {
+    saveButton.disabled = false;
+    saveButton.textContent = originalLabel;
+  }
+});
+
+async function testManagedService(service, button) {
+  const originalLabel = button.textContent;
+
+  button.disabled = true;
+  button.textContent = "Testing…";
+  showServiceMessage("");
+
+  try {
+    const result = await serviceAPIRequest(
+      `/api/v1/services/${Number(service.id)}/test`,
+      {
+        method: "POST",
+      }
+    );
+
+    const detail =
+      result && typeof result.message === "string" && result.message
+        ? ` ${result.message}`
+        : "";
+
+    showServiceMessage(
+      `${service.name} connection successful.${detail}`,
+      "success"
+    );
+  } catch (error) {
+    showServiceMessage(
+      `${service.name}: ${
+        error instanceof Error ? error.message : "connection test failed"
+      }`,
+      "error"
+    );
+  } finally {
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
+}
+
+async function deleteManagedService(service, button) {
+  const confirmed = window.confirm(
+    `Delete ${service.name} from Overmynd?\n\nThis removes only the Overmynd integration. It does not change the service itself.`
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  const originalLabel = button.textContent;
+
+  button.disabled = true;
+  button.textContent = "Deleting…";
+  showServiceMessage("");
+
+  try {
+    await serviceAPIRequest(
+      `/api/v1/services/${Number(service.id)}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    if (Number($("serviceID").value) === Number(service.id)) {
+      closeServiceEditor();
+    }
+
+    await refreshServiceManagement();
+
+    showServiceMessage(
+      `${service.name} removed from Overmynd.`,
+      "success"
+    );
+  } catch (error) {
+    showServiceMessage(
+      `${service.name}: ${
+        error instanceof Error ? error.message : "unable to delete service"
+      }`,
+      "error"
+    );
+
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
+}
+
+$("serviceManagementList").addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-service-action]");
+
+  if (!button) {
+    return;
+  }
+
+  const action = button.dataset.serviceAction;
+
+  if (action !== "test" && action !== "delete") {
+    return;
+  }
+
+  const serviceID = Number(button.dataset.serviceId);
+  const service = state.managedServices.find(
+    (item) => Number(item.id) === serviceID
+  );
+
+  if (!service) {
+    showServiceMessage("Service could not be found.", "error");
+    return;
+  }
+
+  if (action === "test") {
+    await testManagedService(service, button);
+    return;
+  }
+
+  await deleteManagedService(service, button);
+});

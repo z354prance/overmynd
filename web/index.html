@@ -21,34 +21,39 @@
           <span>Dashboard</span>
         </button>
 
-        <button class="nav-item" type="button" disabled>
+        <button class="nav-item" type="button" data-view="activity">
           <span class="nav-icon">◉</span>
           <span>Activity</span>
         </button>
+        <button class="nav-item" type="button" data-view="missing">
+          <span class="nav-icon">○</span>
+          <span>Missing</span>
+        </button>
 
-        <button class="nav-item" type="button" disabled>
+
+        <button class="nav-item" type="button" data-view="downloads">
           <span class="nav-icon">↓</span>
           <span>Downloads</span>
         </button>
 
-        <button class="nav-item" type="button" disabled>
+        <button class="nav-item" type="button" data-view="processing">
           <span class="nav-icon">◇</span>
           <span>Processing</span>
         </button>
 
-        <button class="nav-item" type="button" disabled>
+        <button class="nav-item" type="button" data-view="playback">
           <span class="nav-icon">▶</span>
           <span>Playback</span>
         </button>
 
         <div class="nav-spacer"></div>
 
-        <button class="nav-item" type="button" disabled>
+        <button class="nav-item" type="button" data-view="services">
           <span class="nav-icon">⚙</span>
           <span>Services</span>
         </button>
 
-        <button class="nav-item" type="button" disabled>
+        <button class="nav-item" type="button" data-view="settings">
           <span class="nav-icon">⋯</span>
           <span>Settings</span>
         </button>
@@ -67,7 +72,7 @@
       <header class="topbar">
         <div>
           <p class="eyebrow">MEDIA INTELLIGENCE</p>
-          <h1>Dashboard</h1>
+          <h1 id="pageTitle">Dashboard</h1>
         </div>
 
         <div class="topbar-meta">
@@ -79,89 +84,459 @@
         </div>
       </header>
 
-      <section class="summary-grid" aria-label="Media summary">
-        <article class="summary-card">
-          <div class="summary-label">Missing</div>
-          <strong class="summary-value" id="missingCount">—</strong>
-          <span class="summary-note">Monitored media</span>
-        </article>
+      <div class="view active" id="dashboardView">
+        <section class="summary-grid" aria-label="Media summary">
+          <article class="summary-card">
+            <div class="summary-label">Missing</div>
+            <strong class="summary-value" id="missingCount">—</strong>
+            <span class="summary-note">Monitored media</span>
+          </article>
 
-        <article class="summary-card">
-          <div class="summary-label">Downloading</div>
-          <strong class="summary-value" id="downloadingCount">—</strong>
-          <span class="summary-note">Active transfers</span>
-        </article>
+          <article class="summary-card">
+            <div class="summary-label">Downloading</div>
+            <strong class="summary-value" id="downloadingCount">—</strong>
+            <span class="summary-note">Active transfers</span>
+          </article>
 
-        <article class="summary-card">
-          <div class="summary-label">Processing</div>
-          <strong class="summary-value" id="processingCount">—</strong>
-          <span class="summary-note">Tdarr jobs</span>
-        </article>
+          <article class="summary-card">
+            <div class="summary-label">Processing</div>
+            <strong class="summary-value" id="processingCount">—</strong>
+            <span class="summary-note">Tdarr jobs</span>
+          </article>
 
-        <article class="summary-card problem-card">
-          <div class="summary-label">Problems</div>
-          <strong class="summary-value" id="problemCount">—</strong>
-          <span class="summary-note">Needs attention</span>
-        </article>
-      </section>
+          <article class="summary-card problem-card">
+            <div class="summary-label">Problems</div>
+            <strong class="summary-value" id="problemCount">—</strong>
+            <span class="summary-note">Needs attention</span>
+          </article>
+        </section>
 
-      <section class="dashboard-grid">
-        <article class="panel pipeline-panel">
+        <section class="dashboard-grid">
+          <article class="panel pipeline-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">ACTIVE MEDIA</p>
+                <h2>Pipeline</h2>
+              </div>
+              <span class="panel-count" id="pipelineCount">0</span>
+            </div>
+
+            <div class="pipeline-list" id="pipelineList">
+              <div class="empty-state">Loading activity…</div>
+            </div>
+          </article>
+
+          <article class="panel playback-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">TRACEARR</p>
+                <h2>Now Playing</h2>
+              </div>
+              <span class="panel-count" id="playbackCount">0</span>
+            </div>
+
+            <div class="playback-list" id="playbackList">
+              <div class="empty-state">Loading playback…</div>
+            </div>
+          </article>
+
+          <article class="panel health-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">SYSTEM</p>
+                <h2>Service Health</h2>
+              </div>
+              <span class="health-summary" id="serviceHealthSummary">Checking</span>
+            </div>
+
+            <div class="service-list" id="serviceList">
+              <div class="empty-state">Loading services…</div>
+            </div>
+          </article>
+
+          <article class="panel problems-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">ATTENTION</p>
+                <h2>Problems</h2>
+              </div>
+              <span class="panel-count danger" id="problemsPanelCount">0</span>
+            </div>
+
+            <div class="problem-list" id="problemList">
+              <div class="empty-state">Loading problems…</div>
+            </div>
+          </article>
+        </section>
+      </div>
+
+      <div class="view" id="activityView">
+        <section class="activity-toolbar" aria-label="Activity filters">
+          <label class="activity-search">
+            <span>Search</span>
+            <input
+              id="activitySearch"
+              type="search"
+              placeholder="Search media…"
+              autocomplete="off"
+            >
+          </label>
+
+          <label class="activity-filter">
+            <span>Stage</span>
+            <select id="activityStage">
+              <option value="">All stages</option>
+              <option value="requested">Requested</option>
+              <option value="wanted">Wanted</option>
+              <option value="downloading">Downloading</option>
+              <option value="downloaded">Downloaded</option>
+              <option value="processing">Processing</option>
+              <option value="importing">Importing</option>
+              <option value="available">Available</option>
+              <option value="playing">Playing</option>
+            </select>
+          </label>
+
+          <label class="activity-filter">
+            <span>Status</span>
+            <select id="activityProblem">
+              <option value="">All status</option>
+              <option value="healthy">No problems</option>
+              <option value="problem">Has problem</option>
+              <option value="missing">Missing</option>
+              <option value="stalled">Stalled</option>
+              <option value="failed">Failed</option>
+              <option value="held">Held</option>
+              <option value="import_blocked">Import blocked</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="panel activity-panel">
           <div class="panel-header">
             <div>
-              <p class="panel-kicker">ACTIVE MEDIA</p>
-              <h2>Pipeline</h2>
+              <p class="panel-kicker">CORRELATED MEDIA</p>
+              <h2>Lifecycle Activity</h2>
             </div>
-            <span class="panel-count" id="pipelineCount">0</span>
+            <span class="panel-count" id="activityCount">0</span>
           </div>
 
-          <div class="pipeline-list" id="pipelineList">
+          <div class="activity-list" id="activityList">
             <div class="empty-state">Loading activity…</div>
           </div>
-        </article>
+        </section>
+      </div>
 
-        <article class="panel playback-panel">
+      <div class="view" id="downloadsView">
+        <section class="activity-toolbar" aria-label="Download filters">
+          <label class="activity-search">
+            <span>Search</span>
+            <input id="downloadSearch" type="search" placeholder="Search downloads…" autocomplete="off">
+          </label>
+
+          <label class="activity-filter">
+            <span>Source</span>
+            <select id="downloadSource">
+              <option value="">All sources</option>
+              <option value="radarr">Radarr</option>
+              <option value="sonarr">Sonarr</option>
+              <option value="lidarr">Lidarr</option>
+              <option value="qbittorrent">qBittorrent</option>
+              <option value="nzbget">NZBGet</option>
+            </select>
+          </label>
+
+          <label class="activity-filter">
+            <span>Status</span>
+            <select id="downloadStatus">
+              <option value="">All status</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="panel activity-panel">
           <div class="panel-header">
             <div>
-              <p class="panel-kicker">TRACEARR</p>
-              <h2>Now Playing</h2>
+              <p class="panel-kicker">ACTIVE TRANSFERS</p>
+              <h2>Downloads</h2>
             </div>
-            <span class="panel-count" id="playbackCount">0</span>
+            <span class="panel-count" id="downloadCount">0</span>
           </div>
 
-          <div class="playback-list" id="playbackList">
-            <div class="empty-state">Loading playback…</div>
-          </div>
-        </article>
+          <div class="download-errors" id="downloadErrors"></div>
 
-        <article class="panel health-panel">
+          <div class="activity-list" id="downloadList">
+            <div class="empty-state">Loading downloads…</div>
+          </div>
+        </section>
+      </div>
+      <div class="view" id="processingView">
+        <section class="activity-toolbar" aria-label="Processing filters">
+          <label class="activity-search">
+            <span>Search</span>
+            <input id="processingSearch" type="search" placeholder="Search processing…" autocomplete="off">
+          </label>
+
+          <label class="activity-filter">
+            <span>Stage</span>
+            <select id="processingStage">
+              <option value="">All stages</option>
+              <option value="health_check">Health check</option>
+              <option value="transcode">Transcode</option>
+              <option value="held">Held</option>
+            </select>
+          </label>
+
+          <label class="activity-filter">
+            <span>Status</span>
+            <select id="processingState">
+              <option value="">All status</option>
+              <option value="queued">Queued</option>
+              <option value="processing">Processing</option>
+              <option value="held">Held</option>
+              <option value="problem">Problem</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="panel activity-panel">
           <div class="panel-header">
             <div>
-              <p class="panel-kicker">SYSTEM</p>
-              <h2>Service Health</h2>
+              <p class="panel-kicker">TDARR WORK QUEUE</p>
+              <h2>Processing</h2>
             </div>
-            <span class="health-summary" id="serviceHealthSummary">Checking</span>
+            <span class="panel-count" id="processingCount">0</span>
           </div>
 
-          <div class="service-list" id="serviceList">
-            <div class="empty-state">Loading services…</div>
-          </div>
-        </article>
+          <div class="download-errors" id="processingErrors"></div>
 
-        <article class="panel problems-panel">
+          <div class="activity-list" id="processingList">
+            <div class="empty-state">Loading processing jobs…</div>
+          </div>
+        </section>
+      </div>
+
+      <div class="view" id="missingView">
+        <section class="activity-toolbar" aria-label="Missing media filters">
+          <label class="activity-search">
+            <span>Search</span>
+            <input id="missingSearch" type="search" placeholder="Search missing media…" autocomplete="off">
+          </label>
+
+          <label class="activity-filter">
+            <span>Type</span>
+            <select id="missingKind">
+              <option value="">All types</option>
+              <option value="movie">Movies</option>
+              <option value="episode">Episodes</option>
+              <option value="album">Albums</option>
+            </select>
+          </label>
+
+          <label class="activity-filter">
+            <span>Source</span>
+            <select id="missingSource">
+              <option value="">All sources</option>
+              <option value="radarr">Radarr</option>
+              <option value="sonarr">Sonarr</option>
+              <option value="lidarr">Lidarr</option>
+            </select>
+          </label>
+
+          <label class="activity-filter">
+            <span>Availability</span>
+            <select id="missingAvailability">
+              <option value="">All availability</option>
+              <option value="available">Available now</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="unknown">Unknown date</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="panel activity-panel">
           <div class="panel-header">
             <div>
-              <p class="panel-kicker">ATTENTION</p>
-              <h2>Problems</h2>
+              <p class="panel-kicker">RADARR · SONARR · LIDARR</p>
+              <h2>Missing Media</h2>
             </div>
-            <span class="panel-count danger" id="problemsPanelCount">0</span>
+            <span class="panel-count" id="missingViewCount">0</span>
           </div>
 
-          <div class="problem-list" id="problemList">
-            <div class="empty-state">Loading problems…</div>
+          <div class="download-errors" id="missingErrors"></div>
+
+          <div class="activity-list" id="missingList">
+            <div class="empty-state">Loading missing media…</div>
           </div>
-        </article>
-      </section>
+        </section>
+      </div>
+
+      <div class="view" id="settingsView">
+        <section class="services-heading">
+          <div>
+            <p class="panel-kicker">SYSTEM</p>
+            <h2>Settings</h2>
+            <p class="services-description">Account and application controls.</p>
+          </div>
+        </section>
+
+        <section class="panel settings-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">ACCOUNT</p>
+              <h2>Administrator access</h2>
+            </div>
+          </div>
+          <div class="settings-content">
+            <p class="settings-user" id="settingsUsername">Checking session�</p>
+            <button class="service-secondary-button" id="logoutButton" type="button" hidden>Log Out</button>
+          </div>
+          <form id="authForm" class="auth-form" hidden>
+            <label class="service-form-field"><span>Username</span><input id="authUsername" autocomplete="username" required minlength="3" maxlength="64"></label>
+            <label class="service-form-field"><span>Password</span><input id="authPassword" type="password" autocomplete="current-password" required maxlength="1024"></label>
+            <p class="service-field-help">First-time setup requires a password of at least 12 characters.</p>
+            <button id="authSubmit" class="service-primary-button" type="submit">Sign in</button>
+          </form>
+          <p id="authMessage" class="auth-message" role="status" aria-live="polite"></p>
+        </section>
+      </div>
+
+      <div class="view" id="servicesView">
+        <section class="services-heading">
+          <div>
+            <p class="panel-kicker">INTEGRATIONS</p>
+            <h2>Services</h2>
+            <p class="services-description">Configure the applications Overmynd observes.</p>
+          </div>
+
+          <button class="service-primary-button" id="addServiceButton" type="button">
+            + Add Service
+          </button>
+        </section>
+
+        <div class="service-management-message" id="serviceManagementMessage"></div>
+
+        <section class="service-management-grid" id="serviceManagementList">
+          <div class="panel empty-state">Loading configured services…</div>
+        </section>
+
+        <section class="panel service-editor" id="serviceEditor" hidden>
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker" id="serviceEditorKicker">CONFIGURATION</p>
+              <h2 id="serviceEditorTitle">Add Service</h2>
+            </div>
+            <button class="service-close-button" id="serviceEditorClose" type="button" aria-label="Close service editor">×</button>
+          </div>
+
+          <form id="serviceForm">
+            <input id="serviceID" type="hidden">
+
+            <div class="service-form-grid">
+              <label class="service-form-field">
+                <span>Type</span>
+                <select id="serviceType" required>
+                  <option value="">Select service…</option>
+                  <option value="radarr">Radarr</option>
+                  <option value="sonarr">Sonarr</option>
+                  <option value="lidarr">Lidarr</option>
+                  <option value="seerr">Seerr</option>
+                  <option value="tdarr">Tdarr</option>
+                  <option value="qbittorrent">qBittorrent</option>
+                  <option value="nzbget">NZBGet</option>
+                  <option value="tracearr">Tracearr</option>
+                </select>
+              </label>
+
+              <label class="service-form-field">
+                <span>Name</span>
+                <input id="serviceName" type="text" required placeholder="Service name">
+              </label>
+
+              <label class="service-form-field service-form-wide">
+                <span>Base URL</span>
+                <input id="serviceBaseURL" type="url" required placeholder="http://192.168.1.10:7878" autocomplete="off">
+              </label>
+
+              <label class="service-enabled-field">
+                <input id="serviceEnabled" type="checkbox" checked>
+                <span>Enabled</span>
+              </label>
+            </div>
+
+            <div class="service-credential-section" id="serviceCredentialSection">
+              <div id="serviceAPIKeyFields">
+                <label class="service-form-field">
+                  <span>API Key / Token</span>
+                  <input id="serviceCredential" type="password" autocomplete="new-password">
+                </label>
+                <p class="service-field-help" id="serviceCredentialHelp"></p>
+              </div>
+
+              <div class="service-login-fields" id="serviceLoginFields" hidden>
+                <label class="service-form-field">
+                  <span>Username</span>
+                  <input id="serviceUsername" type="text" autocomplete="off">
+                </label>
+                <label class="service-form-field">
+                  <span>Password</span>
+                  <input id="servicePassword" type="password" autocomplete="new-password">
+                </label>
+                <p class="service-field-help service-form-wide" id="serviceLoginHelp"></p>
+              </div>
+            </div>
+
+            <div class="service-form-actions">
+              <button class="service-secondary-button" id="serviceCancelButton" type="button">Cancel</button>
+              <button class="service-primary-button" id="serviceSaveButton" type="submit">Save Service</button>
+            </div>
+          </form>
+        </section>
+      </div>
+
+      <div class="view" id="playbackView">
+        <section class="activity-toolbar" aria-label="Playback filters">
+          <label class="activity-search">
+            <span>Search</span>
+            <input id="playbackSearch" type="search" placeholder="Search playback…" autocomplete="off">
+          </label>
+
+          <label class="activity-filter">
+            <span>State</span>
+            <select id="playbackState">
+              <option value="">All states</option>
+              <option value="playing">Playing</option>
+              <option value="paused">Paused</option>
+            </select>
+          </label>
+
+          <label class="activity-filter">
+            <span>Mode</span>
+            <select id="playbackMode">
+              <option value="">All modes</option>
+              <option value="direct">Direct Play</option>
+              <option value="transcode">Transcode</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="panel activity-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">TRACEARR · LIVE SESSIONS</p>
+              <h2>Playback</h2>
+            </div>
+            <span class="panel-count" id="playbackViewCount">0</span>
+          </div>
+
+          <div class="download-errors" id="playbackErrors"></div>
+
+          <div class="playback-view-list" id="playbackViewList">
+            <div class="empty-state">Loading playback sessions…</div>
+          </div>
+        </section>
+      </div>
+
     </main>
   </div>
 

@@ -88,6 +88,7 @@ func request(
 	}
 
 	recorder := httptest.NewRecorder()
+	req.Header.Set("X-Overmynd-Request", "1")
 
 	handler.ServeHTTP(recorder, req)
 
@@ -584,7 +585,6 @@ func TestActivityRouteExists(t *testing.T) {
 		t.Fatal("errors must be an array, not null")
 	}
 }
-
 
 func TestConfigurationRoutesRequireAuthentication(t *testing.T) {
 	handler, _ := testRouter(t)

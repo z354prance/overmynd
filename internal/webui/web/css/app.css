@@ -1350,3 +1350,15 @@ h2 {
     width: 100%;
   }
 }
+
+[hidden] { display: none !important; }
+.auth-form { display: grid; gap: 16px; padding: 20px; }
+.auth-message { margin: 0; padding: 0 20px 20px; overflow-wrap: anywhere; }
+.settings-content { flex-wrap: wrap; }
+.service-management-card, .settings-panel, .service-form-field { min-width: 0; }
+.service-form-field input { max-width: 100%; box-sizing: border-box; }
+@media (max-width: 600px) {
+  .nav { overflow-x: auto; justify-content: flex-start; }
+  .nav-item[data-view="services"], .nav-item[data-view="settings"] { display: flex; flex-shrink: 0; }
+  .auth-form input { font-size: 16px; }
+}
