@@ -73,8 +73,11 @@ const assert = require('node:assert/strict');
     await page.waitForFunction(()=>document.getElementById('requestConfirmMessage').textContent.includes('denied'));
     assert.equal(submissions[1].all_seasons,true);
     await page.locator('#requestCancel').click();
-    await page.waitForFunction(()=>document.querySelector('#playbackList img').naturalWidth>0);
-    await page.waitForFunction(()=>document.querySelectorAll('#playbackList img')[1].hidden);
+    assert.equal(await page.locator('#dashboardView .playback-panel').count(),0);
+    await page.locator('#menuToggle').click();
+    await page.locator('[data-view="playback"]').click();
+    await page.waitForFunction(()=>document.querySelector('#playbackViewList img').naturalWidth>0);
+    await page.waitForFunction(()=>document.querySelectorAll('#playbackViewList img')[1].hidden);
     for(const width of [320,375,768,1440]){
       await page.setViewportSize({width,height:1000});
       await page.locator('#menuToggle').click();
