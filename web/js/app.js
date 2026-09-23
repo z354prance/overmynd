@@ -240,19 +240,21 @@ function renderPlayback() {
           : 0;
 
       return `
-        <div class="playback-row">
+        <article class="now-playing-card">
+          <div class="now-playing-content">
           ${playbackPoster(session)}
-          <div>
+          <div class="now-playing-details">
             <div class="item-title">${escapeHTML(title)}</div>
             <div class="item-meta">
               <span>${escapeHTML(subtitleParts.join(" · "))}</span>
               <span>${escapeHTML(pretty(session.state || "playing"))}</span>
             </div>
-            <div class="progress-track">
+          </div>
+          </div>
+            <div class="progress-track" role="progressbar" aria-label="Playback progress" ${duration > 0 ? `aria-valuenow="${Math.round(percent)}" aria-valuemin="0" aria-valuemax="100"` : 'aria-valuetext="Progress unavailable"'}>
               <div class="progress-bar" style="width:${percent.toFixed(1)}%"></div>
             </div>
-          </div>
-        </div>
+        </article>
       `;
     })
     .join("");

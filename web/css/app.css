@@ -1460,3 +1460,15 @@ button:disabled { cursor: not-allowed; opacity: .55; }
   .dashboard-brand { grid-column: 2; grid-row: 1; }
   .dashboard-brand img { width: 72px; height: 72px; }
 }
+
+/* Compact dashboard playback cards, with progress anchored below the details. */
+#playbackList { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 320px)); gap: 12px; padding: 16px; min-height: 0; }
+.now-playing-card { display: flex; flex-direction: column; min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel-soft); }
+.now-playing-content { display: flex; gap: 12px; flex: 1; min-width: 0; }
+.now-playing-details { min-width: 0; }
+.now-playing-card .playback-art { width: 44px; height: 66px; }
+.now-playing-card .item-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.now-playing-card .item-meta { overflow-wrap: anywhere; }
+.now-playing-card .progress-track { flex-shrink: 0; height: 4px; margin-top: 12px; }
+#playbackList > .empty-state { grid-column: 1 / -1; min-height: 0; padding: 16px; }
+@media (max-width: 600px) { #playbackList { grid-template-columns: minmax(0, 1fr); padding: 12px; } }
