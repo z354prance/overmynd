@@ -193,6 +193,72 @@ function renderPipeline() {
   }
 }
 
+function renderPlayback() {
+  $("playbackCount").textContent = state.playback.length;
+
+  if (!state.playback.length) {
+    $("playbackList").innerHTML =
+      '<div class="empty-state">Nothing is playing right now.</div>';
+    return;
+  }
+
+  $("playbackList").innerHTML = state.playback
+    .slice(0, 6)
+    .map((session) => {
+      const title =
+        session.media_type === "episode" && session.show_title
+          ? session.show_title
+          : session.media_title || "Unknown media";
+
+      const subtitleParts = [];
+
+      if (session.season_number && session.episode_number) {
+        subtitleParts.push(
+          `S${String(session.season_number).padStart(2, "0")}E${String(
+            session.episode_number
+          ).padStart(2, "0")}`
+        );
+      }
+
+      if (
+        session.media_type === "episode" &&
+        session.media_title &&
+        session.media_title !== title
+      ) {
+        subtitleParts.push(session.media_title);
+      }
+
+      if (session.username) {
+        subtitleParts.push(session.username);
+      }
+
+      const duration = Number(session.duration_ms || 0);
+      const progress = Number(session.progress_ms || 0);
+      const percent =
+        duration > 0
+          ? Math.max(0, Math.min(100, (progress / duration) * 100))
+          : 0;
+
+      return `
+        <article class="now-playing-card">
+          ${playbackPoster(session)}
+          <div class="now-playing-details">
+            <div class="item-title">${escapeHTML(title)}</div>
+            <div class="item-meta">
+              <span>${escapeHTML(subtitleParts.join(" · "))}</span>
+              <span>${escapeHTML(pretty(session.state || "playing"))}</span>
+            </div>
+          </div>
+            <div class="progress-track" role="progressbar" aria-label="Playback progress" ${duration > 0 ? `aria-valuenow="${Math.round(percent)}" aria-valuemin="0" aria-valuemax="100"` : 'aria-valuetext="Progress unavailable"'}>
+              <div class="progress-bar" style="width:${percent.toFixed(1)}%"></div>
+            </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+
 function formatPlaybackTime(milliseconds) {
   const totalSeconds = Math.max(0, Math.floor(Number(milliseconds || 0) / 1000));
   const hours = Math.floor(totalSeconds / 3600);
@@ -888,6 +954,7 @@ function renderProcessing() {
 
 function render() {
   renderSummary();
+  renderPlayback();
   renderPipeline();
 
   renderPlaybackView();
