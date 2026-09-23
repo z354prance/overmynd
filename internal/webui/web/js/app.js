@@ -117,7 +117,12 @@ function pipelineProgress(item) {
     if (paused) label = "Download paused / queued";
     if (records.length === 1 && records[0].time_left && !paused) detail += ` · ${records[0].time_left} remaining`;
   } else if (item.stage === "processing") {
-    const jobs = pipelineRecords(item, "processing", state.processing);
+    const reportedJobs = pipelineRecords(item, "processing", state.processing);
+    // Tdarr can briefly report both a library queue entry and its live worker.
+    const jobs = reportedJobs.filter(job => job.state !== "queued" || !reportedJobs.some(active =>
+      active.state === "processing" && active.source === job.source &&
+      active.source_service_id === job.source_service_id && active.title &&
+      active.title.toLowerCase() === (job.title || "").toLowerCase()));
     sources = jobs;
     paused = jobs.some((job) => ["held", "queued", "problem"].includes(job.state));
     if (jobs.length && jobs.every((job) => typeof job.progress === "number" && Number.isFinite(job.progress))) {

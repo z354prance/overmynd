@@ -410,3 +410,39 @@ func TestStandaloneRequestPreservesTitle(t *testing.T) {
 		t.Fatalf("TMDBID = %d, want 12345", got[0].TMDBID)
 	}
 }
+
+func TestTdarrReleaseFilenameExplainsPendingImport(t *testing.T) {
+	for _, state := range []models.ProcessingState{models.ProcessingStateProcessing, models.ProcessingStateQueued} {
+		input := Input{
+			Downloads:  []models.Download{{ID: "download", Title: "Saw.III.DC.2006.1080p.BluRay.H264.AAC", Status: "completed", TrackedDownload: "warning", MovieID: 3113}},
+			Processing: []models.ProcessingJob{{ID: "worker", Title: "Saw.III.DC.2006.1080p.BluRay.H264.AAC.mp4", State: state, Progress: 76.29}},
+		}
+		result := New().Build(input)
+		if len(result) != 1 || result[0].Stage != models.LifecycleStageProcessing || len(result[0].Problems) != 0 || len(result[0].References) != 2 {
+			t.Fatalf("unexpected merged lifecycle: %+v", result)
+		}
+		input.Processing = nil
+		result = New().Build(input)
+		if result[0].Stage != models.LifecycleStageImporting || len(result[0].Problems) != 1 {
+			t.Fatalf("import warning lost after processing ends: %+v", result)
+		}
+	}
+}
+
+func TestTdarrReleaseMatchingKeepsEpisodesSeparate(t *testing.T) {
+	result := New().Build(Input{
+		Downloads: []models.Download{{ID: "episode6", Title: "Fawlty.Towers.S02E06.Basil.the.Rat.1080p.BluRay.DD+.2.0.X265-Ralphy", Status: "completed", TrackedDownload: "warning"}},
+		Processing: []models.ProcessingJob{
+			{ID: "worker6", Title: "Fawlty.Towers.S02E06.Basil.the.Rat.1080p.BluRay.DD+.2.0.X265-Ralphy.mkv", State: models.ProcessingStateProcessing},
+			{ID: "worker3", Title: "Fawlty.Towers.S02E03.Waldorf.Salad.1080p.BluRay.DD+.2.0.X265-Ralphy.mkv", State: models.ProcessingStateProcessing},
+		},
+	})
+	if len(result) != 2 {
+		t.Fatalf("episodes incorrectly correlated: %+v", result)
+	}
+	for _, item := range result {
+		if item.Stage != models.LifecycleStageProcessing || len(item.Problems) != 0 {
+			t.Fatalf("incorrect processing state: %+v", item)
+		}
+	}
+}
