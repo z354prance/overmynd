@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Overmynd">
+  <defs>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".45" stop-color="#b9c0cc"/>
+      <stop offset="1" stop-color="#697383"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2.2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="64" cy="64" r="59" fill="#090b10" stroke="#303744" stroke-width="3"/>
+  <circle cx="64" cy="64" r="50" fill="none" stroke="#1597ff" stroke-opacity=".8" stroke-width="2" filter="url(#glow)"/>
+  <path d="M64 18v88M64 42c-19 0-30 11-30 27 0 10 5 18 13 23M64 42c19 0 30 11 30 27 0 10-5 18-13 23" fill="none" stroke="url(#metal)" stroke-width="7" stroke-linecap="round"/>
+  <path d="M64 66 49 79v18M64 66l15 13v18M49 79 38 91M79 79l11 12" fill="none" stroke="#bfc7d4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="38" cy="91" r="5" fill="#0b111a" stroke="#d8e0eb" stroke-width="3"/>
+  <circle cx="90" cy="91" r="5" fill="#0b111a" stroke="#d8e0eb" stroke-width="3"/>
+  <circle cx="49" cy="97" r="5" fill="#0b111a" stroke="#1597ff" stroke-width="3"/>
+  <circle cx="79" cy="97" r="5" fill="#0b111a" stroke="#1597ff" stroke-width="3"/>
+</svg>

@@ -20,11 +20,12 @@ const (
 type LifecycleProblem string
 
 const (
-	LifecycleProblemMissing       LifecycleProblem = "missing"
-	LifecycleProblemStalled       LifecycleProblem = "stalled"
-	LifecycleProblemFailed        LifecycleProblem = "failed"
-	LifecycleProblemHeld          LifecycleProblem = "held"
-	LifecycleProblemImportBlocked LifecycleProblem = "import_blocked"
+	LifecycleProblemMissing           LifecycleProblem = "missing"
+	LifecycleProblemStalled           LifecycleProblem = "stalled"
+	LifecycleProblemFailed            LifecycleProblem = "failed"
+	LifecycleProblemHealthCheckFailed LifecycleProblem = "tdarr_health_check_failed"
+	LifecycleProblemHeld              LifecycleProblem = "held"
+	LifecycleProblemImportBlocked     LifecycleProblem = "import_blocked"
 )
 
 // CorrelationStrength records how confidently two normalized records were

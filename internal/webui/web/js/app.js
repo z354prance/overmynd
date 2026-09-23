@@ -8,6 +8,9 @@ const state = {
   processingErrors: [],
   playback: [],
   services: [],
+  managedServices: [],
+  authenticated: false,
+  setupRequired: false,
   serviceErrors: [],
 };
 
@@ -57,7 +60,7 @@ function problemCount(lifecycles) {
 function renderSummary() {
   const lifecycles = state.activity;
 
-  $("missingCount").textContent = lifecycles.filter(
+  $("pendingCount").textContent = lifecycles.filter(
     (item) => Array.isArray(item.problems) && item.problems.includes("missing")
   ).length;
 
@@ -76,104 +79,127 @@ function renderSummary() {
   $("problemCount").textContent = problemCount(lifecycles);
 }
 
-function renderPipeline() {
-  const activeStages = new Set([
-    "downloading",
-    "downloaded",
-    "processing",
-    "importing",
-  ]);
-
-  const priority = {
-    importing: 0,
-    processing: 1,
-    downloading: 2,
-    downloaded: 3,
-  };
-
-  const activeItems = state.activity.filter((item) =>
-    activeStages.has(item.stage)
-  );
-
-  const items = [...activeItems]
-    .sort(
-      (a, b) =>
-        (priority[a.stage] ?? 99) - (priority[b.stage] ?? 99)
-    )
-    .slice(0, 12);
-
-  $("pipelineCount").textContent = activeItems.length;
-
-  if (!items.length) {
-    $("pipelineList").innerHTML =
-      '<div class="empty-state">Nothing is moving through the pipeline right now.</div>';
-    return;
-  }
-
-  $("pipelineList").innerHTML = items
-    .map((item) => {
-      const problems = Array.isArray(item.problems)
-        ? item.problems.filter((problem) => problem !== "missing")
-        : [];
-
-      return `
-        <div class="pipeline-row">
-          <div>
-            <div class="item-title">${escapeHTML(item.title || "Unknown media")}</div>
-            <div class="item-meta">
-              <span>${escapeHTML(mediaLabel(item))}</span>
-              ${
-                problems.length
-                  ? `<span>${escapeHTML(problems.map(pretty).join(", "))}</span>`
-                  : ""
-              }
-            </div>
-          </div>
-          <span class="stage">${escapeHTML(pretty(item.stage))}</span>
-        </div>
-      `;
-    })
-    .join("");
+// Match normalized records by their complete reference, never by title or ID alone.
+function pipelineRecords(item, type, records) {
+  return records.filter((record) => (item.references || []).some((ref) =>
+    ref.record_type === type && ref.source === record.source &&
+    Number(ref.source_service_id) === Number(record.source_service_id) &&
+    String(ref.record_id) === String(record.id)
+  ));
 }
 
-function renderProblems() {
-  const items = state.activity.filter(
-    (item) =>
-      Array.isArray(item.problems) &&
-      item.problems.some((problem) => problem !== "missing")
-  );
+function pipelineProgress(item) {
+  const problems = (item.problems || []).filter((problem) => problem !== "missing");
+  const stages = {
+    requested: "Requested", wanted: "Waiting for download", downloading: "Downloading",
+    downloaded: "Download complete", processing: "Processing", importing: "Importing",
+    available: "Ready to watch", playing: "Playing",
+  };
+  let label = stages[item.stage] || pretty(item.stage || "Waiting");
+  let percent = null;
+  let detail = "Progress not reported";
+  let sources = [];
+  let paused = false;
+  if (item.stage === "downloading") {
+    const downloads = pipelineRecords(item, "download", state.downloads);
+    // Prefer the download client's byte counts over an ARR copy of the same queue.
+    const clients = downloads.filter((d) => ["qbittorrent", "nzbget"].includes(d.source));
+    const records = clients.length ? clients : downloads;
+    sources = records;
+    const measured = records.filter((d) => Number.isFinite(Number(d.size)) && Number(d.size) > 0);
+    if (measured.length && measured.length === records.length) {
+      const total = measured.reduce((sum, d) => sum + Number(d.size), 0);
+      const remaining = measured.reduce((sum, d) => sum + Math.min(Number(d.size), Math.max(0, Number(d.size_left) || 0)), 0);
+      percent = 100 * (total - remaining) / total;
+      detail = `${formatBytes(total - remaining)} of ${formatBytes(total)}`;
+    }
+    paused = records.some((d) => /paused|queued/i.test(d.status || ""));
+    if (paused) label = "Download paused / queued";
+    if (records.length === 1 && records[0].time_left && !paused) detail += ` · ${records[0].time_left} remaining`;
+  } else if (item.stage === "processing") {
+    const reportedJobs = pipelineRecords(item, "processing", state.processing);
+    // Tdarr can briefly report both a library queue entry and its live worker.
+    const jobs = reportedJobs.filter(job => job.state !== "queued" || !reportedJobs.some(active =>
+      active.state === "processing" && active.source === job.source &&
+      active.source_service_id === job.source_service_id && active.title &&
+      active.title.toLowerCase() === (job.title || "").toLowerCase()));
+    sources = jobs;
+    paused = jobs.some((job) => ["held", "queued", "problem"].includes(job.state));
+    if (jobs.length && jobs.every((job) => typeof job.progress === "number" && Number.isFinite(job.progress))) {
+      percent = jobs.reduce((sum, job) => sum + Math.max(0, Math.min(100, job.progress)), 0) / jobs.length;
+      detail = jobs.length > 1 ? `Average across ${jobs.length} processing jobs` : "Current processing job";
+    }
+    if (jobs.length === 1) {
+      label = jobs[0].state === "queued" ? "Queued for processing" : jobs[0].state === "held" ? "Processing on hold" : label;
+      if (jobs[0].stage) detail = pretty(jobs[0].stage);
+      if (jobs[0].state === "problem" && jobs[0].stage === "health_check") {
+        label = "Health check error";
+        detail = /success/i.test(jobs[0].transcode || "") ? "Transcode succeeded; Tdarr reports a health check error" : "Tdarr reports a health check error";
+      }
+    }
+  } else if (["downloaded", "available", "playing"].includes(item.stage)) {
+    percent = 100;
+    detail = item.stage === "downloaded" ? "Waiting for the next stage" : "Media is available";
+  } else if (["requested", "wanted"].includes(item.stage)) {
+    detail = "Waiting for a download to start";
+  }
+  if (percent !== null) percent = Math.max(0, Math.min(100, percent));
+  const serviceNames = [...new Set(sources.map((source) =>
+    state.services.find((service) => Number(service.id) === Number(source.source_service_id))?.name || pretty(source.source)
+  ))];
+  return { label, percent, detail, problems, serviceNames, paused };
+}
 
-  $("problemsPanelCount").textContent = items.length;
+function pipelineCardMarkup(item) {
+  const progress = pipelineProgress(item);
+  const title = item.title || "Unknown media";
+  const waiting = progress.percent === null;
+  const steps = [
+    ["requested", "Requested"], ["downloading", "Download"],
+    ["processing", "Process"], ["importing", "Import"], ["available", "Ready"],
+  ];
+  const current = { wanted: "requested", downloaded: "downloading", playing: "available" }[item.stage] || item.stage;
+  return `
+    <div class="pipeline-card-heading">
+      <div><h3>${escapeHTML(title)}</h3><p class="item-meta">${escapeHTML(mediaLabel(item))}</p></div>
+      <span class="pipeline-stage">${escapeHTML(progress.label)}</span>
+    </div>
+    <div class="pipeline-progress-label"><span>${waiting ? "Awaiting progress" : "Current stage"}</span><strong>${waiting ? "—" : `${Math.round(progress.percent)}%`}</strong></div>
+    <div class="pipeline-progress${waiting ? " unmeasured" : ""}${progress.problems.length || progress.paused ? " paused" : ""}" role="progressbar" aria-label="${escapeHTML(title)}: ${escapeHTML(progress.label)}" aria-valuemin="0" aria-valuemax="100" ${waiting ? 'aria-valuetext="Progress not reported"' : `aria-valuenow="${Math.round(progress.percent)}"`}>
+      <div class="pipeline-progress-fill" style="width:${waiting ? 100 : progress.percent}%"></div>
+    </div>
+    <p class="pipeline-detail">${escapeHTML(progress.detail)}${progress.serviceNames.length ? ` · ${escapeHTML(progress.serviceNames.join(", "))}` : ""}</p>
+    <ol class="pipeline-steps" aria-label="Workflow stages">${steps.map(([stage, name]) => `<li${stage === current ? ' aria-current="step"' : ""}>${name}</li>`).join("")}</ol>
+    ${progress.problems.length ? `<p class="pipeline-problem">${escapeHTML(progress.problems.map(pretty).join(" · "))}</p>` : ""}
+  `;
+}
 
+function renderPipeline() {
+  const priority = { importing: 0, processing: 1, downloading: 2 };
+  // Pending requests and completed downloads stay off the active dashboard.
+  const items = state.activity.filter((item) => Object.hasOwn(priority, item.stage))
+    .sort((a, b) => priority[a.stage] - priority[b.stage] || String(a.title).localeCompare(String(b.title)));
+  $("pipelineCount").textContent = items.length;
+  const list = $("pipelineList");
   if (!items.length) {
-    $("problemList").innerHTML =
-      '<div class="empty-state">No active problems.</div>';
+    list.innerHTML = '<div class="empty-state">No active downloads, processing, or imports right now.</div>';
     return;
   }
-
-  $("problemList").innerHTML = items
-    .slice(0, 10)
-    .map((item) => {
-      const problems = item.problems.filter(
-        (problem) => problem !== "missing"
-      );
-
-      return `
-        <div class="problem-row">
-          <div>
-            <div class="item-title">${escapeHTML(item.title || "Unknown media")}</div>
-            <div class="item-meta">
-              <span>${escapeHTML(mediaLabel(item))}</span>
-              <span>${escapeHTML(pretty(item.stage))}</span>
-            </div>
-          </div>
-          <span class="problem-badge">${escapeHTML(
-            problems.map(pretty).join(", ")
-          )}</span>
-        </div>
-      `;
-    })
-    .join("");
+  list.querySelector(".empty-state")?.remove();
+  const existing = new Map([...list.children].map((card) => [card.dataset.lifecycleId, card]));
+  const keep = new Set(items.map((item) => String(item.id)));
+  for (const card of [...list.children]) {
+    if (!keep.has(card.dataset.lifecycleId)) card.remove();
+  }
+  for (const item of items) {
+    const id = String(item.id);
+    const card = existing.get(id) || document.createElement("article");
+    card.className = "pipeline-card";
+    card.dataset.lifecycleId = id;
+    const markup = pipelineCardMarkup(item);
+    if (card.innerHTML !== markup) card.innerHTML = markup;
+    list.append(card);
+  }
 }
 
 function renderPlayback() {
@@ -223,19 +249,19 @@ function renderPlayback() {
           : 0;
 
       return `
-        <div class="playback-row">
-          <div class="play-icon">▶</div>
-          <div>
+        <article class="now-playing-card">
+          ${playbackPoster(session)}
+          <div class="now-playing-details">
             <div class="item-title">${escapeHTML(title)}</div>
             <div class="item-meta">
               <span>${escapeHTML(subtitleParts.join(" · "))}</span>
               <span>${escapeHTML(pretty(session.state || "playing"))}</span>
             </div>
-            <div class="progress-track">
+          </div>
+            <div class="progress-track" role="progressbar" aria-label="Playback progress" ${duration > 0 ? `aria-valuenow="${Math.round(percent)}" aria-valuemin="0" aria-valuemax="100"` : 'aria-valuetext="Progress unavailable"'}>
               <div class="progress-bar" style="width:${percent.toFixed(1)}%"></div>
             </div>
-          </div>
-        </div>
+        </article>
       `;
     })
     .join("");
@@ -400,9 +426,7 @@ function renderPlaybackView() {
         technical.push(`${Number(session.bitrate).toLocaleString()} kbps`);
       }
 
-      const poster = session.poster_url
-        ? `<img class="playback-poster" src="${escapeHTML(session.poster_url)}" alt="" loading="lazy">`
-        : '<div class="playback-poster playback-poster-empty">▶</div>';
+      const poster = playbackPoster(session);
 
       const progressMarkup =
         duration > 0
@@ -477,7 +501,13 @@ function renderPlaybackView() {
 }
 
 function renderServices() {
-  const services = state.services;
+  $("serviceHealthPanel").hidden = !state.authenticated;
+  if (!state.authenticated) {
+    $("serviceList").replaceChildren();
+    $("serviceHealthSummary").textContent = "";
+    return;
+  }
+  const services = state.managedServices;
   const errorsByID = new Set(
     state.serviceErrors.map((error) => Number(error.service_id))
   );
@@ -933,9 +963,9 @@ function renderProcessing() {
 
 function render() {
   renderSummary();
-  renderPipeline();
-  renderProblems();
   renderPlayback();
+  renderPipeline();
+
   renderPlaybackView();
   renderServices();
   renderServiceManagement();
@@ -973,7 +1003,7 @@ async function refreshDashboard() {
       getJSON("/health"),
       getJSON("/api/v1/activity"),
       getJSON("/api/v1/playback"),
-      getJSON("/api/v1/services"),
+      getJSON("/api/v1/public/services"),
       getJSON("/api/v1/missing"),
       getJSON("/api/v1/downloads"),
       getJSON("/api/v1/processing"),
@@ -1013,6 +1043,12 @@ async function refreshDashboard() {
 }
 
 function setView(view) {
+  if ($("navigationDrawer").open) $("navigationDrawer").close();
+  if (view === "settings" && state.authenticated) loadRequestSettings();
+  if (view === "services" && !state.authenticated) view = "settings";
+  if (view === "services") {
+    refreshServiceManagement().catch((error) => showServiceMessage(error.message, "error"));
+  }
   const views = {
     dashboard: {
       element: "dashboardView",
@@ -1042,6 +1078,10 @@ function setView(view) {
       element: "playbackView",
       title: "Playback",
     },
+    settings: {
+      element: "settingsView",
+      title: "Settings",
+    },
   };
 
   if (!views[view]) {
@@ -1054,6 +1094,9 @@ function setView(view) {
 
   $(views[view].element).classList.add("active");
   $("pageTitle").textContent = views[view].title;
+  $("pageTitle").hidden = view === "dashboard";
+  $("dashboardBrand").hidden = view !== "dashboard";
+  $("pageHeader").classList.toggle("dashboard-topbar", view === "dashboard");
 
   document.querySelectorAll(".nav-item[data-view]").forEach((button) => {
     button.classList.toggle("active", button.dataset.view === view);
@@ -1082,6 +1125,68 @@ $("playbackSearch").addEventListener("input", renderPlaybackView);
 $("playbackState").addEventListener("change", renderPlaybackView);
 $("playbackMode").addEventListener("change", renderPlaybackView);
 
+$("logoutButton").addEventListener("click", async () => {
+  try {
+    await serviceAPIRequest("/api/v1/auth/logout", { method: "POST" });
+    applyAuth({ authenticated: false, setup_required: false });
+  } catch (error) {
+    $("authMessage").textContent = error.message;
+  }
+});
+
+function applyAuth(status) {
+  state.authenticated = Boolean(status.authenticated);
+  renderServices();
+  $("requestSettingsPanel").hidden = !state.authenticated;
+  if (state.authenticated) loadRequestSettings();
+  else $("requestSettingsForm").reset();
+  state.setupRequired = Boolean(status.setup_required);
+  $("settingsUsername").textContent = state.authenticated ? `Signed in as ${status.username}` : "Public read-only access";
+  $("logoutButton").hidden = !state.authenticated;
+  $("authForm").hidden = state.authenticated;
+  $("authSubmit").textContent = state.setupRequired ? "Create administrator" : "Sign in";
+  $("authPassword").autocomplete = state.setupRequired ? "new-password" : "current-password";
+  $("authPassword").minLength = state.setupRequired ? 12 : 1;
+  $("authPassword").value = "";
+  if (!state.authenticated) {
+    state.managedServices = [];
+    closeServiceEditor();
+    $("serviceForm").reset();
+    renderServiceManagement();
+    if ($("servicesView").classList.contains("active")) setView("settings");
+  }
+}
+
+async function refreshAuth() {
+  try {
+    applyAuth(await getJSON("/api/v1/auth/status"));
+  } catch {
+    applyAuth({});
+    $("authMessage").textContent = "Unable to check your session. Try again.";
+  }
+}
+
+$("authForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  $("authSubmit").disabled = true;
+  $("authMessage").textContent = "";
+  try {
+    const result = await serviceAPIRequest(`/api/v1/auth/${state.setupRequired ? "setup" : "login"}`, {
+      method: "POST",
+      body: JSON.stringify({ username: $("authUsername").value, password: $("authPassword").value }),
+    });
+    applyAuth(result);
+    setView("services");
+  } catch (error) {
+    $("authMessage").textContent = error.message;
+    await refreshAuth();
+  } finally {
+    $("authPassword").value = "";
+    $("authSubmit").disabled = false;
+  }
+});
+
+refreshAuth();
 refreshDashboard();
 setInterval(refreshDashboard, 10000);
 
@@ -1310,7 +1415,7 @@ function serviceDefaultName(type) {
 function renderServiceManagement() {
   const list = $("serviceManagementList");
 
-  if (!state.services.length) {
+  if (!state.managedServices.length) {
     list.innerHTML = `
       <div class="panel empty-state">
         No services configured. Add a service to get started.
@@ -1319,7 +1424,7 @@ function renderServiceManagement() {
     return;
   }
 
-  list.innerHTML = state.services
+  list.innerHTML = state.managedServices
     .map((service) => {
       const failed = state.serviceErrors.some(
         (error) => Number(error.service_id) === Number(service.id)
@@ -1501,7 +1606,7 @@ $("serviceManagementList").addEventListener("click", (event) => {
   }
 
   const serviceID = Number(button.dataset.serviceId);
-  const service = state.services.find(
+  const service = state.managedServices.find(
     (item) => Number(item.id) === serviceID
   );
 
@@ -1518,12 +1623,15 @@ $("serviceManagementList").addEventListener("click", (event) => {
 async function serviceAPIRequest(url, options = {}) {
   const response = await fetch(url, {
     ...options,
+    credentials: "same-origin",
     headers: {
+      "X-Overmynd-Request": "1",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(options.headers || {}),
     },
   });
 
+  if (response.status === 401) applyAuth({});
   if (!response.ok) {
     let message = `${response.status} ${response.statusText}`;
 
@@ -1550,18 +1658,11 @@ async function serviceAPIRequest(url, options = {}) {
 }
 
 async function refreshServiceManagement() {
-  const response = await fetch("/api/v1/services");
-
-  if (!response.ok) {
-    throw new Error(
-      `Unable to refresh services: ${response.status} ${response.statusText}`
-    );
-  }
-
-  const services = await response.json();
-  state.services = Array.isArray(services) ? services : [];
-
+  const services = await serviceAPIRequest("/api/v1/services");
+  if (!state.authenticated) return;
+  state.managedServices = Array.isArray(services) ? services : [];
   renderServices();
+
   renderServiceManagement();
 }
 
@@ -1780,7 +1881,7 @@ $("serviceManagementList").addEventListener("click", async (event) => {
   }
 
   const serviceID = Number(button.dataset.serviceId);
-  const service = state.services.find(
+  const service = state.managedServices.find(
     (item) => Number(item.id) === serviceID
   );
 
@@ -1796,3 +1897,148 @@ $("serviceManagementList").addEventListener("click", async (event) => {
 
   await deleteManagedService(service, button);
 });
+
+
+// Native modal navigation supplies focus trapping, Escape handling and backdrop.
+$("menuToggle").addEventListener("click", () => {
+  $("navigationDrawer").showModal();
+  $("menuToggle").setAttribute("aria-expanded", "true");
+});
+$("menuClose").addEventListener("click", () => $("navigationDrawer").close());
+$("navigationDrawer").addEventListener("close", () => {
+  $("menuToggle").setAttribute("aria-expanded", "false");
+  $("menuToggle").focus();
+});
+$("navigationDrawer").addEventListener("click", (event) => {
+  if (event.target !== $("navigationDrawer")) return;
+  const bounds = event.target.getBoundingClientRect();
+  if (event.clientX > bounds.right || event.clientY > bounds.bottom) event.target.close();
+});
+
+function playbackPoster(session) {
+  const src = typeof session.poster_url === "string" && session.poster_url.startsWith("/api/v1/playback/poster?") ? session.poster_url : "";
+  return `<div class="playback-art"><span class="poster-fallback" aria-label="Poster unavailable">▶</span>${src ? `<img src="${escapeHTML(src)}" alt="" loading="lazy" class="playback-poster">` : ""}</div>`;
+}
+document.addEventListener("error", (event) => {
+  if (event.target.matches?.(".playback-poster, .request-poster")) event.target.hidden = true;
+}, true);
+
+let mediaSearchResults = [];
+let selectedMediaRequest = null;
+let searchGeneration = 0;
+let mediaRequestsEnabled = false;
+let mediaRequestIdleMessage = "Checking request availability…";
+async function refreshRequestStatus() {
+  try {
+    const status = await getJSON("/api/v1/media-request/status");
+    mediaRequestsEnabled = status.enabled;
+    $("mediaSearchButton").disabled = !status.enabled;
+    mediaRequestIdleMessage = status.enabled ? "" : "Requests are not enabled. An administrator can configure Seerr under Settings.";
+    $("mediaRequestMessage").textContent = mediaRequestIdleMessage;
+  } catch {
+    mediaRequestsEnabled = false;
+    $("mediaSearchButton").disabled = true;
+    mediaRequestIdleMessage = "Unable to check Seerr. Refresh the page to try again.";
+    $("mediaRequestMessage").textContent = mediaRequestIdleMessage;
+  }
+}
+
+async function loadRequestSettings() {
+  try {
+    const [settings, integrations] = await Promise.all([
+      serviceAPIRequest("/api/v1/request-settings"), serviceAPIRequest("/api/v1/services"),
+    ]);
+    if (!state.authenticated) return;
+    $("requestServiceID").innerHTML = '<option value="">Select Seerr</option>' + integrations.filter(s => s.type === "seerr" && s.enabled).map(s => `<option value="${Number(s.id)}">${escapeHTML(s.name)}</option>`).join("");
+    $("requestsEnabled").checked = settings.enabled;
+    $("requestServiceID").value = settings.service_id || "";
+    $("requestUserID").value = settings.user_id || "";
+    requestSettingsRequired();
+  } catch (error) { $("requestSettingsMessage").textContent = error.message; }
+}
+function requestSettingsRequired() {
+  $("requestServiceID").required = $("requestsEnabled").checked;
+  $("requestUserID").required = $("requestsEnabled").checked;
+}
+$("requestsEnabled").addEventListener("change", requestSettingsRequired);
+$("requestSettingsForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  $("requestSettingsSave").disabled = true;
+  try {
+    await serviceAPIRequest("/api/v1/request-settings", { method:"PUT", body:JSON.stringify({
+      enabled:$("requestsEnabled").checked, service_id:Number($("requestServiceID").value), user_id:Number($("requestUserID").value),
+    }) });
+    $("requestSettingsMessage").textContent = "Saved. Requests will use this Seerr account and its approval permissions.";
+    await refreshRequestStatus();
+  } catch (error) { $("requestSettingsMessage").textContent = error.message; }
+  finally { $("requestSettingsSave").disabled = false; }
+});
+
+$("mediaSearchQuery").addEventListener("input", () => {
+  $("mediaSearchClear").hidden = !$("mediaSearchQuery").value && !$("mediaSearchResults").childElementCount;
+});
+$("mediaSearchClear").addEventListener("click", () => {
+  ++searchGeneration;
+  mediaSearchResults = [];
+  selectedMediaRequest = null;
+  $("mediaSearchQuery").value = "";
+  $("mediaSearchResults").replaceChildren();
+  $("mediaRequestMessage").textContent = mediaRequestIdleMessage;
+  $("mediaSearchButton").disabled = !mediaRequestsEnabled;
+  $("mediaSearchClear").hidden = true;
+  $("mediaSearchQuery").focus();
+});
+$("mediaSearchForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const generation = ++searchGeneration;
+  $("mediaSearchClear").hidden = false;
+  $("mediaSearchButton").disabled = true;
+  $("mediaRequestMessage").textContent = "Searching Seerr…";
+  $("mediaSearchResults").replaceChildren();
+  try {
+    const response = await serviceAPIRequest(`/api/v1/media-request/search?query=${encodeURIComponent($("mediaSearchQuery").value.trim())}`);
+    if (generation !== searchGeneration) return;
+    mediaSearchResults = response.results || [];
+    $("mediaSearchResults").innerHTML = mediaSearchResults.map((item,index) => {
+      const title = item.title || item.name || "Untitled";
+      const existing = [2,3,5].includes(item.mediaInfo?.status);
+      const availability = item.mediaInfo?.status === 5 ? "Available" : "Already requested";
+      const poster = /^\/[A-Za-z0-9_.-]+$/.test(item.posterPath || "") ? `https://image.tmdb.org/t/p/w185${item.posterPath}` : "";
+      return `<article class="request-result"><div class="request-art">${poster ? `<img class="request-poster" src="${escapeHTML(poster)}" alt="" loading="lazy">` : ""}</div><div class="request-result-content"><h3>${escapeHTML(title)}</h3><p>${item.mediaType === "tv" ? "TV show" : "Movie"} · ${escapeHTML((item.releaseDate || item.firstAirDate || "").slice(0,4))}</p><p class="request-overview">${escapeHTML(item.overview || "No description available.")}</p><button class="service-primary-button" type="button" data-request-index="${index}" ${existing ? "disabled" : ""}>${existing ? availability : "Request"}</button></div></article>`;
+    }).join("");
+    $("mediaRequestMessage").textContent = mediaSearchResults.length ? `${mediaSearchResults.length} results. Select a title to confirm your request.` : "No movies or TV shows found. Try another title.";
+  } catch (error) { if (generation === searchGeneration) $("mediaRequestMessage").textContent = error.message; }
+  finally { if (generation === searchGeneration) $("mediaSearchButton").disabled = !mediaRequestsEnabled; }
+});
+$("mediaSearchResults").addEventListener("click", event => {
+  const button = event.target.closest("[data-request-index]");
+  if (!button || button.disabled) return;
+  selectedMediaRequest = { item:mediaSearchResults[Number(button.dataset.requestIndex)], button };
+  const item = selectedMediaRequest.item;
+  $("requestConfirmTitle").textContent = `Request ${item.title || item.name}?`;
+  $("requestConfirmDescription").textContent = item.mediaType === "tv" ? "This requests all seasons through Seerr." : "This sends a movie request to Seerr.";
+  $("requestSeasonsLabel").hidden = item.mediaType !== "tv";
+  $("requestAllSeasons").checked = false;
+  $("requestConfirmMessage").textContent = "";
+  $("mediaRequestDialog").showModal();
+});
+$("requestCancel").addEventListener("click", () => $("mediaRequestDialog").close());
+$("requestConfirm").addEventListener("click", async () => {
+  if (!selectedMediaRequest) return;
+  const {item,button} = selectedMediaRequest;
+  if (item.mediaType === "tv" && !$("requestAllSeasons").checked) {
+    $("requestConfirmMessage").textContent = "Confirm all seasons before sending this request.";
+    return;
+  }
+  $("requestConfirm").disabled = true;
+  $("requestCancel").disabled = true;
+  try {
+    const result = await serviceAPIRequest("/api/v1/media-request", { method:"POST", body:JSON.stringify({ media_id:item.id, media_type:item.mediaType, all_seasons:item.mediaType === "tv" }) });
+    button.disabled = true; button.textContent = "Requested";
+    $("mediaRequestMessage").textContent = result.status === 1 ? "Request sent. Waiting for approval in Seerr." : "Request accepted by Seerr.";
+    $("mediaRequestDialog").close();
+  } catch (error) { $("requestConfirmMessage").textContent = error.message; }
+  finally { $("requestConfirm").disabled = false; $("requestCancel").disabled = false; }
+});
+$("mediaRequestDialog").addEventListener("cancel", event => { if ($("requestConfirm").disabled) event.preventDefault(); });
+refreshRequestStatus();

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -13,9 +14,11 @@ import (
 )
 
 type API struct {
-	services *services.Manager
-	registry *integrations.Registry
-	auth     *auth.Manager
+	services       *services.Manager
+	registry       *integrations.Registry
+	auth           *auth.Manager
+	posterKey      [32]byte
+	requestLimiter publicRequestLimiter
 }
 
 func NewRouter(
@@ -30,6 +33,9 @@ func NewRouter(
 	}
 
 	mux := http.NewServeMux()
+	if _, err := rand.Read(api.posterKey[:]); err != nil {
+		panic(err)
+	}
 
 	// Public application and observability endpoints.
 	mux.HandleFunc("GET /health", health)
@@ -39,7 +45,15 @@ func NewRouter(
 	mux.HandleFunc("GET /api/v1/requests", api.requests)
 	mux.HandleFunc("GET /api/v1/downloads", api.downloads)
 	mux.HandleFunc("GET /api/v1/playback", api.playback)
+	mux.HandleFunc("GET /api/v1/playback/poster", api.playbackPoster)
+	// Deliberately public, opt-in requests run as the configured Seerr user.
+	mux.HandleFunc("GET /api/v1/media-request/status", api.mediaRequestStatus)
+	mux.HandleFunc("GET /api/v1/media-request/search", api.searchMedia)
+	mux.HandleFunc("POST /api/v1/media-request", api.createMediaRequest)
+	mux.HandleFunc("GET /api/v1/request-settings", api.requireAdmin(api.getRequestSettings))
+	mux.HandleFunc("PUT /api/v1/request-settings", api.requireAdmin(api.saveRequestSettings))
 	mux.HandleFunc("GET /api/v1/processing", api.processing)
+	mux.HandleFunc("GET /api/v1/public/services", api.listPublicServices)
 
 	// Authentication endpoints.
 	mux.HandleFunc("GET /api/v1/auth/status", api.authStatus)
@@ -90,7 +104,7 @@ func NewRouter(
 
 	mux.Handle("/", http.FileServerFS(webFS))
 
-	return mux
+	return protectRequests(mux)
 }
 
 func health(w http.ResponseWriter, _ *http.Request) {

@@ -1,0 +1,40 @@
+name: Test
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+      - run: go test -race ./...
+      - run: go vet ./...
+      - run: go build ./...
+      - name: Verify embedded and development assets match
+        run: diff -r web internal/webui/web
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-save --package-lock=false playwright@1.62.1
+      - run: npx playwright install --with-deps chromium
+      - name: Browser authentication and responsive checks
+        run: |
+          go build -o /tmp/overmynd ./cmd/overmynd
+          OVERMYND_ADDR=127.0.0.1:18080 OVERMYND_CONFIG_DIR=$(mktemp -d) /tmp/overmynd >/tmp/overmynd.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18080/health; then break; fi
+            sleep 1
+          done
+          node scripts/auth-ui-test.cjs
+          node scripts/pipeline-ui-test.cjs
+          node scripts/requests-ui-test.cjs
+      - name: Build Unraid container
+        run: docker build -t overmynd:ci .
