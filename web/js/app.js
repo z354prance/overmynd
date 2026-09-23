@@ -132,6 +132,10 @@ function pipelineProgress(item) {
     if (jobs.length === 1) {
       label = jobs[0].state === "queued" ? "Queued for processing" : jobs[0].state === "held" ? "Processing on hold" : label;
       if (jobs[0].stage) detail = pretty(jobs[0].stage);
+      if (jobs[0].state === "problem" && jobs[0].stage === "health_check") {
+        label = "Health check error";
+        detail = /success/i.test(jobs[0].transcode || "") ? "Transcode succeeded; Tdarr reports a health check error" : "Tdarr reports a health check error";
+      }
     }
   } else if (["downloaded", "available", "playing"].includes(item.stage)) {
     percent = 100;

@@ -184,7 +184,11 @@ func flatten(input Input) []record {
 			problems = append(problems, models.LifecycleProblemHeld)
 		}
 		if item.State == models.ProcessingStateProblem {
-			problems = append(problems, models.LifecycleProblemFailed)
+			if item.Source == models.ServiceType("tdarr") && item.Stage == "health_check" {
+				problems = append(problems, models.LifecycleProblemHealthCheckFailed)
+			} else {
+				problems = append(problems, models.LifecycleProblemFailed)
+			}
 		}
 
 		records = append(records, record{

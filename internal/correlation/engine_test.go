@@ -446,3 +446,14 @@ func TestTdarrReleaseMatchingKeepsEpisodesSeparate(t *testing.T) {
 		}
 	}
 }
+
+func TestSuccessfulTranscodeWithHealthErrorIsNotGenericFailure(t *testing.T) {
+	result := New().Build(Input{Processing: []models.ProcessingJob{{
+		ID: "health-error", Source: models.ServiceType("tdarr"),
+		Title: "Fawlty.Towers.S02E03.Waldorf.Salad.mkv", State: models.ProcessingStateProblem,
+		Stage: "health_check", HealthCheck: "Error", Transcode: "Transcode success",
+	}}})
+	if len(result) != 1 || len(result[0].Problems) != 1 || result[0].Problems[0] != models.LifecycleProblemHealthCheckFailed {
+		t.Fatalf("expected specific health check issue: %+v", result)
+	}
+}
