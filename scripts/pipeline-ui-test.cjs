@@ -70,11 +70,11 @@ const assert = require('node:assert/strict');
     await page.evaluate(() => refreshDashboard());
     assert.equal(await page.locator('.pipeline-card').count(),0);
     assert.equal(await page.locator('#pipelineList .pipeline-steps li').filter({hasText:/^Import$/}).count(),0);
-    recent = Array.from({length:5},(_,i)=>({id:`ready-${i}`,title:`Finished ${i}`,kind:'movie',added_at:'2026-09-30T12:00:00Z'}));
+    recent = Array.from({length:6},(_,i)=>({id:`ready-${i}`,title:`Finished ${i}`,kind:'movie',added_at:'2026-09-30T12:00:00Z'}));
     await page.evaluate(()=>refreshRecentlyAdded());
-    assert.equal(await page.locator('#recentlyAddedList .pipeline-card').count(),5);
-    assert.equal(await page.locator('#recentlyAddedList [aria-valuenow="100"]').count(),5);
-    assert.equal(await page.locator('#recentlyAddedList .pipeline-steps li').count(),20);
+    assert.equal(await page.locator('#recentlyAddedList .pipeline-card').count(),6);
+    assert.equal(await page.locator('#recentlyAddedList [aria-valuenow="100"]').count(),6);
+    assert.equal(await page.locator('#recentlyAddedList .pipeline-steps li').count(),24);
     assert.equal(await page.locator('#recentlyAddedList [aria-current="step"]').first().textContent(),'Ready');
     assert.equal(await page.locator('#pipelineList .pipeline-card').count(),0);
     for (const width of [320,768,1440]) {

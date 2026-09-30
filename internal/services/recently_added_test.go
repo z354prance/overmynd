@@ -11,13 +11,21 @@ import (
 
 func TestRecentAdditionsSortedLimitedAndPrivate(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Authorization") != "Bearer secret" || r.URL.Path != "/api/v2/public/recently-added" || r.URL.Query().Get("pageSize") != "5" {
+		if r.URL.Path == "/api/v2/public/media/episode-id" {
+			json.NewEncoder(w).Encode(map[string]string{"title": "Episode", "show_media_id": "show-id"})
+			return
+		}
+		if r.URL.Path == "/api/v2/public/media/show-id" {
+			json.NewEncoder(w).Encode(map[string]string{"title": "Fawlty Towers"})
+			return
+		}
+		if r.Header.Get("Authorization") != "Bearer secret" || r.URL.Path != "/api/v2/public/recently-added" || r.URL.Query().Get("pageSize") != "6" {
 			t.Errorf("unexpected request %s", r.URL)
 		}
 		kind := r.URL.Query().Get("media_type")
 		data := []map[string]any{}
-		for i := 1; i <= 5; i++ {
-			data = append(data, map[string]any{"id": kind + string(rune('0'+i)), "server_id": "server", "title": kind, "added_at": "2026-09-30T12:00:0" + string(rune('0'+i)) + "Z", "removed_at": nil, "private_token": "secret"})
+		for i := 1; i <= 6; i++ {
+			data = append(data, map[string]any{"id": kind + string(rune('0'+i)), "server_id": "server", "title": kind, "media_id": "episode-id", "added_at": "2026-09-30T12:00:0" + string(rune('0'+i)) + "Z", "removed_at": nil, "private_token": "secret"})
 		}
 		json.NewEncoder(w).Encode(map[string]any{"data": data})
 	}))
@@ -31,10 +39,16 @@ func TestRecentAdditionsSortedLimitedAndPrivate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Items) != 5 || len(result.Errors) != 0 || !result.Configured {
+	if len(result.Items) != 6 || len(result.Errors) != 0 || !result.Configured {
 		t.Fatalf("unexpected result %+v", result)
 	}
 	for i, item := range result.Items {
+		if item.Kind == "episode" && item.ShowTitle != "Fawlty Towers" {
+			t.Fatalf("missing show title: %+v", item)
+		}
+		if item.Kind == "movie" && item.ShowTitle != "" {
+			t.Fatal("movie has show title")
+		}
 		if item.Stage != "available" {
 			t.Fatal(item)
 		}

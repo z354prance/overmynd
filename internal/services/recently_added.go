@@ -5,17 +5,21 @@ import (
 	"fmt"
 	"github.com/z354prance/overmynd/internal/integrations/tracearr"
 	"github.com/z354prance/overmynd/internal/models"
+	"net/url"
 	"sort"
 	"time"
 )
 
 type RecentlyAddedItem struct {
-	ID      string    `json:"id"`
-	Title   string    `json:"title"`
-	Kind    string    `json:"kind"`
-	Year    int       `json:"year,omitempty"`
-	AddedAt time.Time `json:"added_at"`
-	Stage   string    `json:"stage"`
+	ShowTitle string `json:"show_title,omitempty"`
+	mediaID   string
+	serviceID int64
+	ID        string    `json:"id"`
+	Title     string    `json:"title"`
+	Kind      string    `json:"kind"`
+	Year      int       `json:"year,omitempty"`
+	AddedAt   time.Time `json:"added_at"`
+	Stage     string    `json:"stage"`
 }
 type RecentlyAddedResult struct {
 	Items      []RecentlyAddedItem `json:"items"`
@@ -45,6 +49,7 @@ func (m *Manager) RecentlyAdded(ctx context.Context) (RecentlyAddedResult, error
 			var page struct {
 				Data []struct {
 					ID        string     `json:"id"`
+					MediaID   string     `json:"media_id"`
 					ServerID  string     `json:"server_id"`
 					RatingKey string     `json:"rating_key"`
 					Title     string     `json:"title"`
@@ -53,7 +58,7 @@ func (m *Manager) RecentlyAdded(ctx context.Context) (RecentlyAddedResult, error
 					RemovedAt *time.Time `json:"removed_at"`
 				} `json:"data"`
 			}
-			err := tracearr.NewClient().GetJSON(ctx, service.BaseURL, "recently-added?pageSize=5&media_type="+kind, key, &page)
+			err := tracearr.NewClient().GetJSON(ctx, service.BaseURL, "recently-added?pageSize=6&media_type="+kind, key, &page)
 			if err != nil {
 				result.Errors = append(result.Errors, "Recently added is unavailable from Tracearr. Check that its version supports the recently-added public API and library sync is enabled.")
 				break
@@ -70,7 +75,7 @@ func (m *Manager) RecentlyAdded(ctx context.Context) (RecentlyAddedResult, error
 					continue
 				}
 				seen[identity] = true
-				result.Items = append(result.Items, RecentlyAddedItem{ID: identity, Title: item.Title, Kind: kind, Year: item.Year, AddedAt: item.AddedAt, Stage: "available"})
+				result.Items = append(result.Items, RecentlyAddedItem{mediaID: item.MediaID, serviceID: service.ID, ID: identity, Title: item.Title, Kind: kind, Year: item.Year, AddedAt: item.AddedAt, Stage: "available"})
 			}
 		}
 	}
@@ -80,8 +85,50 @@ func (m *Manager) RecentlyAdded(ctx context.Context) (RecentlyAddedResult, error
 		}
 		return result.Items[i].AddedAt.After(result.Items[j].AddedAt)
 	})
-	if len(result.Items) > 5 {
-		result.Items = result.Items[:5]
+	if len(result.Items) > 6 {
+		result.Items = result.Items[:6]
+	}
+	// Resolve episode -> show from canonical media IDs, never guess from episode titles.
+	enrichCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	type detail struct {
+		Title  string `json:"title"`
+		ShowID string `json:"show_media_id"`
+	}
+	cache := map[string]detail{}
+	for i := range result.Items {
+		item := &result.Items[i]
+		if item.Kind != "episode" || item.mediaID == "" {
+			continue
+		}
+		service, err := m.Get(item.serviceID)
+		if err != nil {
+			continue
+		}
+		key, err := m.Credential(item.serviceID)
+		if err != nil {
+			continue
+		}
+		fetch := func(id string) (detail, error) {
+			cacheKey := fmt.Sprintf("%d:%s", item.serviceID, id)
+			if value, ok := cache[cacheKey]; ok {
+				return value, nil
+			}
+			var value detail
+			err := tracearr.NewClient().GetJSON(enrichCtx, service.BaseURL, "media/"+url.PathEscape(id), key, &value)
+			if err == nil {
+				cache[cacheKey] = value
+			}
+			return value, err
+		}
+		episode, err := fetch(item.mediaID)
+		if err != nil || episode.ShowID == "" {
+			continue
+		}
+		show, err := fetch(episode.ShowID)
+		if err == nil {
+			item.ShowTitle = show.Title
+		}
 	}
 	return result, nil
 }
