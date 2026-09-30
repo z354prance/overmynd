@@ -26,15 +26,15 @@ type seasonEpisode struct {
 }
 
 func countSeasonProgress(episodes []seasonEpisode, queued map[int64]bool) map[int]SeasonProgress {
-	active := map[int]bool{}
+	active := false
 	for _, ep := range episodes {
 		if queued[ep.ID] {
-			active[ep.Season] = true
+			active = true
 		}
 	}
 	counts := map[int]SeasonProgress{}
 	for _, ep := range episodes {
-		if !active[ep.Season] || !ep.Monitored {
+		if !active || !ep.Monitored {
 			continue
 		}
 		count := counts[ep.Season]
