@@ -177,11 +177,15 @@ function pipelineCardMarkup(item) {
   `;
 }
 
+function isSeriesProgress(item) {
+  return item.kind === "series" && !item.episode_number;
+}
+
 function renderPipeline() {
   const priority = { importing: 0, processing: 1, downloading: 2 };
   // Pending requests and completed downloads stay off the active dashboard.
   const items = state.activity.filter((item) => Object.hasOwn(priority, item.stage))
-    .sort((a, b) => priority[a.stage] - priority[b.stage] || String(a.title).localeCompare(String(b.title)));
+    .sort((a, b) => Number(isSeriesProgress(b)) - Number(isSeriesProgress(a)) || priority[a.stage] - priority[b.stage] || String(a.title).localeCompare(String(b.title)));
   $("pipelineCount").textContent = items.length;
   const list = $("pipelineList");
   if (!items.length) {
@@ -198,6 +202,7 @@ function renderPipeline() {
     const id = String(item.id);
     const card = existing.get(id) || document.createElement("article");
     card.className = "pipeline-card";
+    card.classList.toggle("series-progress-card", isSeriesProgress(item));
     card.dataset.lifecycleId = id;
     const markup = pipelineCardMarkup(item);
     if (card.innerHTML !== markup) card.innerHTML = markup;
