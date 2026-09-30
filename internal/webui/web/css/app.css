@@ -1471,3 +1471,16 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .now-playing-card .progress-track { flex-shrink: 0; height: 4px; margin-top: 12px; }
 #playbackList > .empty-state { grid-column: 1 / -1; min-height: 0; padding: 16px; }
 @media (max-width: 480px) { #playbackList { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px; gap: 10px; } }
+
+/* Fixed-size active cards keep long release names from stretching the grid. */
+#pipelineList { grid-template-columns: repeat(auto-fill, minmax(0, 260px)); gap: 12px; padding: 12px; }
+#pipelineList .pipeline-card { height: 252px; padding: 12px; display: flex; flex-direction: column; }
+#pipelineList .pipeline-card-heading { flex-direction: column; gap: 6px; min-height: 100px; }
+#pipelineList .pipeline-card-heading > div { width: 100%; }
+#pipelineList h3 { font-size: 13px; line-height: 1.35; height: 35px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+#pipelineList .item-meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#pipelineList .pipeline-detail { height: 32px; min-height: 32px; margin: 8px 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+#pipelineList .pipeline-steps { margin-top: auto; }
+#pipelineList .pipeline-problem { margin: 6px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; }
+#pipelineList .pipeline-progress { flex-shrink: 0; }
+@media (max-width: 360px) { #pipelineList { grid-template-columns: minmax(0, 1fr); } }

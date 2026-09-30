@@ -89,10 +89,10 @@ function pipelineRecords(item, type, records) {
 }
 
 function pipelineProgress(item) {
-  const problems = (item.problems || []).filter((problem) => problem !== "missing");
+  const problems = (item.problems || []).filter((problem) => problem !== "missing" && problem !== "import_blocked");
   const stages = {
     requested: "Requested", wanted: "Waiting for download", downloading: "Downloading",
-    downloaded: "Download complete", processing: "Processing", importing: "Importing",
+    downloaded: "Download complete", processing: "Processing", importing: "Waiting",
     available: "Ready to watch", playing: "Playing",
   };
   let label = stages[item.stage] || pretty(item.stage || "Waiting");
@@ -137,6 +137,9 @@ function pipelineProgress(item) {
         detail = /success/i.test(jobs[0].transcode || "") ? "Transcode succeeded; Tdarr reports a health check error" : "Tdarr reports a health check error";
       }
     }
+  } else if (item.stage === "importing") {
+    detail = "Download complete; awaiting the next step.";
+    paused = true;
   } else if (["downloaded", "available", "playing"].includes(item.stage)) {
     percent = 100;
     detail = item.stage === "downloaded" ? "Waiting for the next stage" : "Media is available";
@@ -161,7 +164,7 @@ function pipelineCardMarkup(item) {
   const current = { wanted: "requested", downloaded: "downloading", importing: "processing", playing: "available" }[item.stage] || item.stage;
   return `
     <div class="pipeline-card-heading">
-      <div><h3>${escapeHTML(title)}</h3><p class="item-meta">${escapeHTML(mediaLabel(item))}</p></div>
+      <div><h3 title="${escapeHTML(title)}">${escapeHTML(title)}</h3><p class="item-meta">${escapeHTML(mediaLabel(item))}</p></div>
       <span class="pipeline-stage">${escapeHTML(progress.label)}</span>
     </div>
     <div class="pipeline-progress-label"><span>${waiting ? "Awaiting progress" : "Current stage"}</span><strong>${waiting ? "—" : `${Math.round(progress.percent)}%`}</strong></div>
@@ -2004,7 +2007,7 @@ $("mediaSearchForm").addEventListener("submit", async event => {
       const existing = [2,3,5].includes(item.mediaInfo?.status);
       const availability = item.mediaInfo?.status === 5 ? "Available" : "Already requested";
       const poster = /^\/[A-Za-z0-9_.-]+$/.test(item.posterPath || "") ? `https://image.tmdb.org/t/p/w185${item.posterPath}` : "";
-      return `<article class="request-result"><div class="request-art">${poster ? `<img class="request-poster" src="${escapeHTML(poster)}" alt="" loading="lazy">` : ""}</div><div class="request-result-content"><h3>${escapeHTML(title)}</h3><p>${item.mediaType === "tv" ? "TV show" : "Movie"} · ${escapeHTML((item.releaseDate || item.firstAirDate || "").slice(0,4))}</p><p class="request-overview">${escapeHTML(item.overview || "No description available.")}</p><button class="service-primary-button" type="button" data-request-index="${index}" ${existing ? "disabled" : ""}>${existing ? availability : "Request"}</button></div></article>`;
+      return `<article class="request-result"><div class="request-art">${poster ? `<img class="request-poster" src="${escapeHTML(poster)}" alt="" loading="lazy">` : ""}</div><div class="request-result-content"><h3 title="${escapeHTML(title)}">${escapeHTML(title)}</h3><p>${item.mediaType === "tv" ? "TV show" : "Movie"} · ${escapeHTML((item.releaseDate || item.firstAirDate || "").slice(0,4))}</p><p class="request-overview">${escapeHTML(item.overview || "No description available.")}</p><button class="service-primary-button" type="button" data-request-index="${index}" ${existing ? "disabled" : ""}>${existing ? availability : "Request"}</button></div></article>`;
     }).join("");
     $("mediaRequestMessage").textContent = mediaSearchResults.length ? `${mediaSearchResults.length} results. Select a title to confirm your request.` : "No movies or TV shows found. Try another title.";
   } catch (error) { if (generation === searchGeneration) $("mediaRequestMessage").textContent = error.message; }
