@@ -1380,7 +1380,7 @@ h2 {
 .pipeline-progress.paused .pipeline-progress-fill { background: #e0ad65; }
 .pipeline-progress.unmeasured.paused .pipeline-progress-fill { background: repeating-linear-gradient(110deg, #e0ad65 0 7px, transparent 7px 14px); }
 .pipeline-detail { min-height: 28px; margin: 10px 0 14px; color: var(--muted); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
-.pipeline-steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.pipeline-steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
 .pipeline-steps li { border-top: 2px solid var(--border); padding-top: 7px; color: var(--muted-2); font-size: 9px; text-align: center; }
 .pipeline-steps [aria-current="step"] { color: #d4b2ff; border-color: #a78bfa; }
 .pipeline-problem { color: #ffb1b9; font-size: 11px; margin: 14px 0 0; }

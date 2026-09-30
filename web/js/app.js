@@ -156,9 +156,9 @@ function pipelineCardMarkup(item) {
   const waiting = progress.percent === null;
   const steps = [
     ["requested", "Requested"], ["downloading", "Download"],
-    ["processing", "Process"], ["importing", "Import"], ["available", "Ready"],
+    ["processing", "Process"], ["available", "Ready"],
   ];
-  const current = { wanted: "requested", downloaded: "downloading", playing: "available" }[item.stage] || item.stage;
+  const current = { wanted: "requested", downloaded: "downloading", importing: "processing", playing: "available" }[item.stage] || item.stage;
   return `
     <div class="pipeline-card-heading">
       <div><h3>${escapeHTML(title)}</h3><p class="item-meta">${escapeHTML(mediaLabel(item))}</p></div>
@@ -2042,3 +2042,21 @@ $("requestConfirm").addEventListener("click", async () => {
 });
 $("mediaRequestDialog").addEventListener("cancel", event => { if ($("requestConfirm").disabled) event.preventDefault(); });
 refreshRequestStatus();
+
+let recentRefreshPending = false;
+async function refreshRecentlyAdded() {
+  if (recentRefreshPending) return;
+  recentRefreshPending = true;
+  try {
+    const result = await getJSON("/api/v1/recently-added");
+    const items = Array.isArray(result.items) ? result.items.slice(0, 5) : [];
+    $("recentlyAddedCount").textContent = items.length;
+    $("recentlyAddedStatus").textContent = result.errors?.length ? result.errors.join(" ") : result.configured === false ? "Enable Tracearr to show confirmed library additions." : "";
+    $("recentlyAddedList").innerHTML = items.length ? items.map(item => `<article class="pipeline-card">${pipelineCardMarkup({...item,stage:"available",problems:[],references:[]})}<p class="item-meta">Added ${escapeHTML(new Date(item.added_at).toLocaleString())}</p></article>`).join("") : '<div class="empty-state">No confirmed recent additions.</div>';
+  } catch {
+    $("recentlyAddedStatus").textContent = "Unable to refresh recent additions. Retrying automatically.";
+    $("recentlyAddedList").querySelector(".empty-state")?.replaceChildren(document.createTextNode("Recent additions unavailable."));
+  } finally { recentRefreshPending = false; }
+}
+refreshRecentlyAdded();
+setInterval(refreshRecentlyAdded, 30000);

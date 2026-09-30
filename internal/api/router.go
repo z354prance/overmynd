@@ -42,6 +42,7 @@ func NewRouter(
 	mux.HandleFunc("GET /api/v1/status", status)
 	mux.HandleFunc("GET /api/v1/missing", api.missing)
 	mux.HandleFunc("GET /api/v1/activity", api.activity)
+	mux.HandleFunc("GET /api/v1/recently-added", api.recentlyAdded)
 	mux.HandleFunc("GET /api/v1/requests", api.requests)
 	mux.HandleFunc("GET /api/v1/downloads", api.downloads)
 	mux.HandleFunc("GET /api/v1/playback", api.playback)

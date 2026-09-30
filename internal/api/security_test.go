@@ -66,7 +66,7 @@ func TestOriginProtectionAllowsSameOriginAndCLI(t *testing.T) {
 
 func TestPublicReadsRemainPublic(t *testing.T) {
 	handler, _ := testRouter(t)
-	for _, path := range []string{"/health", "/api/v1/status", "/api/v1/public/services", "/api/v1/activity", "/api/v1/downloads", "/api/v1/processing", "/api/v1/playback", "/api/v1/missing", "/api/v1/requests"} {
+	for _, path := range []string{"/health", "/api/v1/status", "/api/v1/public/services", "/api/v1/activity", "/api/v1/downloads", "/api/v1/processing", "/api/v1/playback", "/api/v1/missing", "/api/v1/requests", "/api/v1/recently-added"} {
 		r := httptest.NewRequest("GET", path, nil)
 		r.Header.Set("Sec-Fetch-Site", "cross-site")
 		w := httptest.NewRecorder()

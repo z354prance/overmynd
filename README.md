@@ -77,3 +77,9 @@ route accepts only signed Tracearr image paths and never forwards API credential
 ## Unraid management
 
 Use the [Unraid template and installation instructions](unraid/README.md) to manage the container through Unraid with the existing configuration directory and port pre-filled. The template uses the locally built image.
+
+### Recently Added
+
+The dashboard reuses the progress-card layout for the five newest confirmed movie or episode additions, marked Ready at 100%. It reads the existing Tracearr integration's `/api/v2/public/recently-added` feed every 30 seconds, combining movie and episode results by the library's added date. It needs a Tracearr version supporting that endpoint and library sync enabled. No extra credentials or public write access are introduced.
+
+Disappearing download or Tdarr jobs are not treated as proof of success. Recently Added reflects Tracearr's library confirmation and can lag until its next library sync; it is a library-backed list rather than a persistent history of Overmynd's active cards. Missing/unsupported feeds show an explanatory message without interrupting other dashboard sections. Import is omitted from the progress step indicator; import warnings remain available as diagnostic information.

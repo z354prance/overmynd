@@ -14,6 +14,7 @@ const assert = require('node:assert/strict');
       { id: 'process', title: 'Planet Earth', stage: 'processing', references: [reference('processing','tdarr',3,'job')] },
       { id: 'unknown', title: '<img src=x onerror=alert(1)>', stage: 'importing', problems: ['import_blocked'], references: [] },
     ];
+    let recent = [];
     let downloads = [
       { id:'same-id', source:'qbittorrent', source_service_id:1, title:'Arrival', size:1000, size_left:750, status:'downloading' },
       { id:'same-id', source:'qbittorrent', source_service_id:2, size:1000, size_left:0 },
@@ -22,7 +23,7 @@ const assert = require('node:assert/strict');
     await page.route('**/api/v1/**', route => {
       const path = new URL(route.request().url()).pathname;
       const payloads = {
-        '/api/v1/activity': {lifecycles:items}, '/api/v1/downloads':{downloads},
+        '/api/v1/recently-added': {items:recent,configured:true,errors:[]}, '/api/v1/activity': {lifecycles:items}, '/api/v1/downloads':{downloads},
         '/api/v1/processing':{jobs}, '/api/v1/missing':{items:[]},
         '/api/v1/playback':{sessions:[]}, '/api/v1/public/services':[],
         '/api/v1/auth/status':{authenticated:false,setup_required:false},
@@ -68,6 +69,18 @@ const assert = require('node:assert/strict');
     items.splice(0,items.length);
     await page.evaluate(() => refreshDashboard());
     assert.equal(await page.locator('.pipeline-card').count(),0);
+    assert.equal(await page.locator('#pipelineList .pipeline-steps li').filter({hasText:/^Import$/}).count(),0);
+    recent = Array.from({length:5},(_,i)=>({id:`ready-${i}`,title:`Finished ${i}`,kind:'movie',added_at:'2026-09-30T12:00:00Z'}));
+    await page.evaluate(()=>refreshRecentlyAdded());
+    assert.equal(await page.locator('#recentlyAddedList .pipeline-card').count(),5);
+    assert.equal(await page.locator('#recentlyAddedList [aria-valuenow="100"]').count(),5);
+    assert.equal(await page.locator('#recentlyAddedList .pipeline-steps li').count(),20);
+    assert.equal(await page.locator('#recentlyAddedList [aria-current="step"]').first().textContent(),'Ready');
+    assert.equal(await page.locator('#pipelineList .pipeline-card').count(),0);
+    for (const width of [320,768,1440]) {
+      await page.setViewportSize({width,height:1000});
+      assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    }
     assert.deepEqual(errors,[]);
     console.log('PASS: lifecycle cards, measured/unknown progress, stage changes, source isolation, escaping, responsive layout');
   } finally { await browser.close(); }
