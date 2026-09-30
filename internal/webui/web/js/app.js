@@ -178,13 +178,33 @@ function pipelineCardMarkup(item) {
 }
 
 function isSeriesProgress(item) {
-  return item.kind === "series" && !item.episode_number;
+  if (item.kind === "series" && !item.episode_number) return true;
+  if (!["series", "episode"].includes(item.kind)) return false;
+  // An aggregate can inherit an episode's metadata during correlation.
+  // Count distinct downloader records, not ARR mirrors of the same transfer.
+  const bySource = new Map();
+  for (const record of pipelineRecords(item, "download", state.downloads)) {
+    if (!["nzbget", "qbittorrent"].includes(record.source)) continue;
+    const key = `${record.source}:${record.source_service_id}`;
+    if (!bySource.has(key)) bySource.set(key, new Set());
+    bySource.get(key).add(String(record.id));
+  }
+  return [...bySource.values()].some(ids => ids.size > 1);
+}
+
+function visiblePipelineItem(item) {
+  if (!["importing", "processing", "downloading"].includes(item.stage)) return false;
+  if (isSeriesProgress(item) || item.stage !== "downloading") return true;
+  const downloads = pipelineRecords(item, "download", state.downloads);
+  const clients = downloads.filter(d => ["nzbget", "qbittorrent"].includes(d.source));
+  const records = clients.length ? clients : downloads;
+  return !records.length || !records.every(d => /paused|queued|pending|delay|waiting/i.test(d.status || ""));
 }
 
 function renderPipeline() {
   const priority = { importing: 0, processing: 1, downloading: 2 };
   // Pending requests and completed downloads stay off the active dashboard.
-  const items = state.activity.filter((item) => Object.hasOwn(priority, item.stage))
+  const items = state.activity.filter(visiblePipelineItem)
     .sort((a, b) => Number(isSeriesProgress(b)) - Number(isSeriesProgress(a)) || priority[a.stage] - priority[b.stage] || String(a.title).localeCompare(String(b.title)));
   $("pipelineCount").textContent = items.length;
   const list = $("pipelineList");

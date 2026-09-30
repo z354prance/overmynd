@@ -73,6 +73,20 @@ const assert = require('node:assert/strict');
     await page.evaluate(()=>refreshDashboard());
     assert.equal(await page.locator('#pipelineList > article').first().getAttribute('data-lifecycle-id'),'series');
     items.splice(items.findIndex(item=>item.id==='series'),2);
+    const extraStart=items.length;
+    for(let i=0;i<99;i++) {
+      downloads.push({id:`pending-${i}`,source:'nzbget',source_service_id:4,status:'queued',size:1000,size_left:1000});
+      items.push({id:`pending-${i}`,title:`Pending episode ${i}`,kind:'episode',stage:'downloading',references:[reference('download','nzbget',4,`pending-${i}`)]});
+    }
+    items.push({id:'aggregate',title:'24',kind:'episode',episode_number:12,stage:'downloading',references:[reference('download','nzbget',4,'pending-0'),reference('download','nzbget',4,'pending-1')]});
+    await page.evaluate(()=>refreshDashboard());
+    assert.equal(await page.locator('#pipelineList > article').first().getAttribute('data-lifecycle-id'),'aggregate');
+    assert.equal(await page.locator('#pipelineList > article').count(),4);
+    downloads.find(d=>d.id==='pending-2').status='downloading';
+    await page.evaluate(()=>refreshDashboard());
+    assert.equal(await card('pending-2').count(),1);
+    assert.equal(await card('pending-3').count(),0);
+    items.splice(extraStart);
     items.splice(0,4);
     await page.evaluate(() => refreshDashboard());
     assert.equal(await page.locator('.pipeline-card').count(),0);
