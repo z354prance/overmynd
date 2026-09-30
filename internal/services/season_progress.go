@@ -10,11 +10,13 @@ import (
 )
 
 type SeasonProgress struct {
-	ID       string `json:"id"`
-	Title    string `json:"title"`
-	Season   int    `json:"season_number"`
-	Imported int    `json:"imported"`
-	Total    int    `json:"total"`
+	ShowID    string `json:"show_id"`
+	ShowTitle string `json:"show_title"`
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	Season    int    `json:"season_number"`
+	Imported  int    `json:"imported"`
+	Total     int    `json:"total"`
 }
 type seasonEpisode struct {
 	ID        int64 `json:"id"`
@@ -95,6 +97,8 @@ func (m *Manager) seasonProgress(ctx context.Context, downloads []models.Downloa
 		}
 		for season, count := range countSeasonProgress(episodes, queued) {
 			count.ID = fmt.Sprintf("sonarr-season:%d:%d:%d", group.service, group.series, season)
+			count.ShowID = fmt.Sprintf("sonarr-show:%d:%d", group.service, group.series)
+			count.ShowTitle = series.Title
 			count.Title = fmt.Sprintf("%s — Season %d", series.Title, season)
 			result = append(result, count)
 		}

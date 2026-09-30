@@ -1484,3 +1484,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 #pipelineList .pipeline-problem { margin: 6px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; }
 #pipelineList .pipeline-progress { flex-shrink: 0; }
 @media (max-width: 360px) { #pipelineList { grid-template-columns: minmax(0, 1fr); } }
+
+#pipelineList .series-progress-card .pipeline-card-heading { min-height: 54px; }
+.show-season-list { flex: 1; min-height: 0; overflow-y: auto; margin: 4px 0 10px; font-size: 11px; color: var(--muted); }
+.show-season-list > div { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; }
+.show-season-list > div > span:last-child { white-space: nowrap; }

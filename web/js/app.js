@@ -207,12 +207,31 @@ function visiblePipelineItem(item) {
   return !records.length || !records.every(d => /paused|queued|pending|delay|waiting/i.test(d.status || ""));
 }
 
+function showProgressCards(seasons) {
+  const shows = new Map();
+  for (const season of seasons) {
+    const id = season.show_id || season.id;
+    if (!shows.has(id)) shows.set(id, {id, title:season.show_title || season.title, kind:"series", seasonProgress:true, imported:0, total:0, seasons:[], references:[]});
+    const show = shows.get(id);
+    show.imported += Number(season.imported) || 0;
+    show.total += Number(season.total) || 0;
+    show.seasons.push(season);
+  }
+  return [...shows.values()].map(show => ({...show,stage:show.total > 0 && show.imported === show.total ? "available" : "processing"})).sort((a,b)=>a.title.localeCompare(b.title)||a.id.localeCompare(b.id));
+}
+function showProgressMarkup(show) {
+  const percent = show.total > 0 ? Math.max(0,Math.min(100,100*show.imported/show.total)) : 0;
+  return `<div class="pipeline-card-heading"><div><h3 title="${escapeHTML(show.title)}">${escapeHTML(show.title)}</h3><p class="item-meta">Series import progress · Sonarr</p></div></div>
+    <div class="show-season-list" tabindex="0" aria-label="Season import counts">${[...show.seasons].sort((a,b)=>a.season_number-b.season_number).map(s=>`<div><span>Season ${Number(s.season_number)}</span><span>${Number(s.imported)} / ${Number(s.total)} imported</span></div>`).join("")}</div>
+    <div class="pipeline-progress-label"><span>${show.imported} / ${show.total} imported</span><strong>${Math.round(percent)}%</strong></div>
+    <div class="pipeline-progress" role="progressbar" aria-label="${escapeHTML(show.title)} import progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(percent)}"><div class="pipeline-progress-fill" style="width:${percent}%"></div></div>`;
+}
 function renderPipeline() {
   const priority = { importing: 0, processing: 1, downloading: 2 };
   // Pending requests and completed downloads stay off the active dashboard.
   const items = state.activity.filter(item => !isSeriesProgress(item) && visiblePipelineItem(item))
     .sort((a, b) => Number(isSeriesProgress(b)) - Number(isSeriesProgress(a)) || priority[a.stage] - priority[b.stage] || String(a.title).localeCompare(String(b.title)));
-  items.unshift(...state.seasons.map(season => ({...season,kind:"series",seasonProgress:true,stage:season.total > 0 && season.imported === season.total ? "available" : "processing",references:[]})));
+  items.unshift(...showProgressCards(state.seasons));
   $("pipelineCount").textContent = items.length;
   const list = $("pipelineList");
   if (!items.length) {
@@ -231,7 +250,7 @@ function renderPipeline() {
     card.className = "pipeline-card";
     card.classList.toggle("series-progress-card", isSeriesProgress(item));
     card.dataset.lifecycleId = id;
-    const markup = pipelineCardMarkup(item);
+    const markup = item.seasonProgress ? showProgressMarkup(item) : pipelineCardMarkup(item);
     if (card.innerHTML !== markup) card.innerHTML = markup;
     list.append(card);
   }
