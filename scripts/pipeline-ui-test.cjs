@@ -15,6 +15,7 @@ const assert = require('node:assert/strict');
       { id: 'unknown', title: '<img src=x onerror=alert(1)>', stage: 'importing', problems: ['import_blocked'], references: [] },
     ];
     let recent = [];
+    let seasons = [];
     let downloads = [
       { id:'same-id', source:'qbittorrent', source_service_id:1, title:'Arrival', size:1000, size_left:750, status:'downloading' },
       { id:'same-id', source:'qbittorrent', source_service_id:2, size:1000, size_left:0 },
@@ -23,7 +24,7 @@ const assert = require('node:assert/strict');
     await page.route('**/api/v1/**', route => {
       const path = new URL(route.request().url()).pathname;
       const payloads = {
-        '/api/v1/recently-added': {items:recent,configured:true,errors:[]}, '/api/v1/activity': {lifecycles:items}, '/api/v1/downloads':{downloads},
+        '/api/v1/recently-added': {items:recent,configured:true,errors:[]}, '/api/v1/activity': {lifecycles:items,seasons}, '/api/v1/downloads':{downloads},
         '/api/v1/processing':{jobs}, '/api/v1/missing':{items:[]},
         '/api/v1/playback':{sessions:[]}, '/api/v1/public/services':[],
         '/api/v1/auth/status':{authenticated:false,setup_required:false},
@@ -65,6 +66,7 @@ const assert = require('node:assert/strict');
     for(let i=0;i<12;i++) items.push({id:`extra-${i}`,title:`Queued item ${i}`,stage:'wanted',references:[]});
     await page.evaluate(() => refreshDashboard());
     assert.equal(await page.locator('.pipeline-card').count(),3);
+    seasons=[{id:'series',title:'Zulu Series — Season 1',total:24,imported:6}];
     items.push({id:'series',title:'Zulu Series',kind:'series',stage:'downloading',references:[]});
     items.push({id:'episode',title:'A single episode',kind:'series',episode_number:2,stage:'importing',references:[]});
     await page.evaluate(()=>refreshDashboard());
@@ -72,20 +74,25 @@ const assert = require('node:assert/strict');
     assert.equal(await page.locator('#pipelineList .series-progress-card').count(),1);
     await page.evaluate(()=>refreshDashboard());
     assert.equal(await page.locator('#pipelineList > article').first().getAttribute('data-lifecycle-id'),'series');
+    assert.equal(await card('series').locator('[role=progressbar]').getAttribute('aria-valuenow'),'25');
+    assert((await card('series').textContent()).includes('6 of 24 monitored episodes imported'));
+    seasons=[];
     items.splice(items.findIndex(item=>item.id==='series'),2);
     const extraStart=items.length;
     for(let i=0;i<99;i++) {
       downloads.push({id:`pending-${i}`,source:'nzbget',source_service_id:4,status:'queued',size:1000,size_left:1000});
       items.push({id:`pending-${i}`,title:`Pending episode ${i}`,kind:'episode',stage:'downloading',references:[reference('download','nzbget',4,`pending-${i}`)]});
     }
+    seasons=[{id:'sonarr-season',title:'24 — Season 1',total:24,imported:12}];
     items.push({id:'aggregate',title:'24',kind:'episode',episode_number:12,stage:'downloading',references:[reference('download','nzbget',4,'pending-0'),reference('download','nzbget',4,'pending-1')]});
     await page.evaluate(()=>refreshDashboard());
-    assert.equal(await page.locator('#pipelineList > article').first().getAttribute('data-lifecycle-id'),'aggregate');
+    assert.equal(await page.locator('#pipelineList > article').first().getAttribute('data-lifecycle-id'),'sonarr-season');
     assert.equal(await page.locator('#pipelineList > article').count(),4);
     downloads.find(d=>d.id==='pending-2').status='downloading';
     await page.evaluate(()=>refreshDashboard());
     assert.equal(await card('pending-2').count(),1);
     assert.equal(await card('pending-3').count(),0);
+    seasons=[];
     items.splice(extraStart);
     items.splice(0,4);
     await page.evaluate(() => refreshDashboard());

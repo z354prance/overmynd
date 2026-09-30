@@ -1,5 +1,6 @@
 const state = {
   activity: [],
+  seasons: [],
   missing: [],
   missingErrors: [],
   downloads: [],
@@ -89,6 +90,11 @@ function pipelineRecords(item, type, records) {
 }
 
 function pipelineProgress(item) {
+  if (item.seasonProgress) {
+    const total = Number(item.total) || 0;
+    const imported = Math.min(total, Math.max(0, Number(item.imported) || 0));
+    return {label: imported === total && total > 0 ? "Ready to watch" : "Season progress",percent: total > 0 ? imported / total * 100 : null,detail:`${imported} of ${total} monitored episodes imported`,problems:[],serviceNames:["Sonarr"],paused:false};
+  }
   const problems = (item.problems || []).filter((problem) => problem !== "missing" && problem !== "import_blocked");
   const stages = {
     requested: "Requested", wanted: "Waiting for download", downloading: "Downloading",
@@ -204,8 +210,9 @@ function visiblePipelineItem(item) {
 function renderPipeline() {
   const priority = { importing: 0, processing: 1, downloading: 2 };
   // Pending requests and completed downloads stay off the active dashboard.
-  const items = state.activity.filter(visiblePipelineItem)
+  const items = state.activity.filter(item => !isSeriesProgress(item) && visiblePipelineItem(item))
     .sort((a, b) => Number(isSeriesProgress(b)) - Number(isSeriesProgress(a)) || priority[a.stage] - priority[b.stage] || String(a.title).localeCompare(String(b.title)));
+  items.unshift(...state.seasons.map(season => ({...season,kind:"series",seasonProgress:true,stage:season.total > 0 && season.imported === season.total ? "available" : "processing",references:[]})));
   $("pipelineCount").textContent = items.length;
   const list = $("pipelineList");
   if (!items.length) {
@@ -1038,6 +1045,7 @@ async function refreshDashboard() {
     ]);
 
     state.activity = activity.lifecycles || [];
+    state.seasons = activity.seasons || [];
     state.playback = playback.sessions || [];
     state.services = services.services || services || [];
     state.missing = missing.items || [];

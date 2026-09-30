@@ -9,6 +9,7 @@ import (
 )
 
 type ActivityResult struct {
+	Seasons    []SeasonProgress        `json:"seasons"`
 	Lifecycles []models.MediaLifecycle `json:"lifecycles"`
 	Errors     []ServiceError          `json:"errors"`
 }
@@ -51,6 +52,10 @@ func (m *Manager) Activity(
 		return ActivityResult{}, err
 	}
 	result.Errors = append(result.Errors, playback.Errors...)
+
+	seasons, seasonErrors := m.seasonProgress(ctx, downloads.Downloads)
+	result.Seasons = seasons
+	result.Errors = append(result.Errors, seasonErrors...)
 
 	engine := correlation.New()
 
