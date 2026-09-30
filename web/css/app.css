@@ -1489,3 +1489,6 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .show-season-list { flex: 1; min-height: 0; overflow-y: auto; margin: 4px 0 10px; font-size: 11px; color: var(--muted); }
 .show-season-list > div { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; }
 .show-season-list > div > span:last-child { white-space: nowrap; }
+
+.recent-episodes { font-size: 12px; color: var(--muted); margin-top: 8px; }
+.recent-episodes ul { max-height: 120px; overflow-y: auto; padding-left: 18px; }

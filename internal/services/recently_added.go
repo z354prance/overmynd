@@ -11,7 +11,9 @@ import (
 )
 
 type RecentlyAddedItem struct {
-	ShowTitle string `json:"show_title,omitempty"`
+	ShowTitle string   `json:"show_title,omitempty"`
+	ShowID    string   `json:"show_id,omitempty"`
+	Episodes  []string `json:"episodes,omitempty"`
 	mediaID   string
 	serviceID int64
 	ID        string    `json:"id"`
@@ -50,6 +52,7 @@ func (m *Manager) RecentlyAdded(ctx context.Context) (RecentlyAddedResult, error
 				Data []struct {
 					ID        string     `json:"id"`
 					MediaID   string     `json:"media_id"`
+					ShowKey   string     `json:"grandparent_rating_key"`
 					ServerID  string     `json:"server_id"`
 					RatingKey string     `json:"rating_key"`
 					Title     string     `json:"title"`
@@ -58,7 +61,7 @@ func (m *Manager) RecentlyAdded(ctx context.Context) (RecentlyAddedResult, error
 					RemovedAt *time.Time `json:"removed_at"`
 				} `json:"data"`
 			}
-			err := tracearr.NewClient().GetJSON(ctx, service.BaseURL, "recently-added?pageSize=6&media_type="+kind, key, &page)
+			err := tracearr.NewClient().GetJSON(ctx, service.BaseURL, "recently-added?pageSize=100&media_type="+kind, key, &page)
 			if err != nil {
 				result.Errors = append(result.Errors, "Recently added is unavailable from Tracearr. Check that its version supports the recently-added public API and library sync is enabled.")
 				break
@@ -75,7 +78,12 @@ func (m *Manager) RecentlyAdded(ctx context.Context) (RecentlyAddedResult, error
 					continue
 				}
 				seen[identity] = true
-				result.Items = append(result.Items, RecentlyAddedItem{mediaID: item.MediaID, serviceID: service.ID, ID: identity, Title: item.Title, Kind: kind, Year: item.Year, AddedAt: item.AddedAt, Stage: "available"})
+				result.Items = append(result.Items, RecentlyAddedItem{ShowID: func() string {
+					if kind == "episode" && item.ShowKey != "" {
+						return fmt.Sprintf("%d:%s:%s", service.ID, item.ServerID, item.ShowKey)
+					}
+					return ""
+				}(), mediaID: item.MediaID, serviceID: service.ID, ID: identity, Title: item.Title, Kind: kind, Year: item.Year, AddedAt: item.AddedAt, Stage: "available"})
 			}
 		}
 	}
@@ -85,6 +93,7 @@ func (m *Manager) RecentlyAdded(ctx context.Context) (RecentlyAddedResult, error
 		}
 		return result.Items[i].AddedAt.After(result.Items[j].AddedAt)
 	})
+	result.Items = groupRecentShows(result.Items)
 	if len(result.Items) > 6 {
 		result.Items = result.Items[:6]
 	}
@@ -98,7 +107,7 @@ func (m *Manager) RecentlyAdded(ctx context.Context) (RecentlyAddedResult, error
 	cache := map[string]detail{}
 	for i := range result.Items {
 		item := &result.Items[i]
-		if item.Kind != "episode" || item.mediaID == "" {
+		if (item.Kind != "episode" && item.Kind != "series") || item.mediaID == "" {
 			continue
 		}
 		service, err := m.Get(item.serviceID)
@@ -128,7 +137,33 @@ func (m *Manager) RecentlyAdded(ctx context.Context) (RecentlyAddedResult, error
 		show, err := fetch(episode.ShowID)
 		if err == nil {
 			item.ShowTitle = show.Title
+			if item.Kind == "series" {
+				item.Title = show.Title
+			}
 		}
 	}
 	return result, nil
+}
+
+// Input is newest first. Group by service/server/show identity, never by title.
+func groupRecentShows(items []RecentlyAddedItem) []RecentlyAddedItem {
+	result := []RecentlyAddedItem{}
+	groups := map[string]int{}
+	for _, item := range items {
+		if item.Kind != "episode" || item.ShowID == "" {
+			result = append(result, item)
+			continue
+		}
+		if index, ok := groups[item.ShowID]; ok {
+			result[index].Episodes = append(result[index].Episodes, item.Title)
+			continue
+		}
+		groups[item.ShowID] = len(result)
+		item.Episodes = []string{item.Title}
+		item.Kind = "series"
+		item.ID = "recent-show:" + item.ShowID
+		item.Title = "Recently added episodes"
+		result = append(result, item)
+	}
+	return result
 }

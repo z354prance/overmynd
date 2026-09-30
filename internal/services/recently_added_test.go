@@ -19,7 +19,7 @@ func TestRecentAdditionsSortedLimitedAndPrivate(t *testing.T) {
 			json.NewEncoder(w).Encode(map[string]string{"title": "Fawlty Towers"})
 			return
 		}
-		if r.Header.Get("Authorization") != "Bearer secret" || r.URL.Path != "/api/v2/public/recently-added" || r.URL.Query().Get("pageSize") != "6" {
+		if r.Header.Get("Authorization") != "Bearer secret" || r.URL.Path != "/api/v2/public/recently-added" || r.URL.Query().Get("pageSize") != "100" {
 			t.Errorf("unexpected request %s", r.URL)
 		}
 		kind := r.URL.Query().Get("media_type")
@@ -72,5 +72,13 @@ func TestRecentAdditionsUnavailable(t *testing.T) {
 	result, err = m.RecentlyAdded(context.Background())
 	if err != nil || !result.Configured || len(result.Errors) != 1 || len(result.Items) != 0 {
 		t.Fatal(result, err)
+	}
+}
+
+func TestGroupRecentShows(t *testing.T) {
+	items := []RecentlyAddedItem{{ID: "e1", Kind: "episode", Title: "First", ShowID: "server:show1"}, {ID: "m", Kind: "movie", Title: "Movie"}, {ID: "e2", Kind: "episode", Title: "Second", ShowID: "server:show1"}, {ID: "e3", Kind: "episode", Title: "First", ShowID: "server:show2"}}
+	got := groupRecentShows(items)
+	if len(got) != 3 || got[0].Kind != "series" || len(got[0].Episodes) != 2 || got[1].Kind != "movie" || len(got[2].Episodes) != 1 {
+		t.Fatal(got)
 	}
 }

@@ -2107,7 +2107,7 @@ async function refreshRecentlyAdded() {
     const items = Array.isArray(result.items) ? result.items.slice(0, 6) : [];
     $("recentlyAddedCount").textContent = items.length;
     $("recentlyAddedStatus").textContent = result.errors?.length ? result.errors.join(" ") : result.configured === false ? "Enable Tracearr to show confirmed library additions." : "";
-    $("recentlyAddedList").innerHTML = items.length ? items.map(item => `<article class="pipeline-card">${pipelineCardMarkup({...item,title:item.show_title ? `${item.show_title} — ${item.title}` : item.title,stage:"available",problems:[],references:[]})}<p class="item-meta">Added ${escapeHTML(new Date(item.added_at).toLocaleString())}</p></article>`).join("") : '<div class="empty-state">No confirmed recent additions.</div>';
+    $("recentlyAddedList").innerHTML = items.length ? items.map(item => `<article class="pipeline-card">${pipelineCardMarkup({...item,title:item.kind === "series" ? item.title : item.show_title ? `${item.show_title} — ${item.title}` : item.title,stage:"available",problems:[],references:[]})}${item.episodes?.length ? `<details class="recent-episodes"><summary>${item.episodes.length} recently added episode${item.episodes.length === 1 ? "" : "s"}</summary><ul>${item.episodes.map(title=>`<li>${escapeHTML(title)}</li>`).join("")}</ul></details>` : ""}<p class="item-meta">Added ${escapeHTML(new Date(item.added_at).toLocaleString())}</p></article>`).join("") : '<div class="empty-state">No confirmed recent additions.</div>';
   } catch {
     $("recentlyAddedStatus").textContent = "Unable to refresh recent additions. Retrying automatically.";
     $("recentlyAddedList").querySelector(".empty-state")?.replaceChildren(document.createTextNode("Recent additions unavailable."));
