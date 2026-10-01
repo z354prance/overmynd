@@ -47,45 +47,77 @@ func (m *Manager) RecentlyAdded(ctx context.Context) (RecentlyAddedResult, error
 			result.Errors = append(result.Errors, "Unable to read Tracearr configuration")
 			continue
 		}
+		feedCtx, cancelFeed := context.WithTimeout(ctx, 15*time.Second)
+		errorCount := len(result.Errors)
 		for _, kind := range []string{"movie", "episode"} {
-			var page struct {
-				Data []struct {
-					ID        string     `json:"id"`
-					MediaID   string     `json:"media_id"`
-					ShowKey   string     `json:"grandparent_rating_key"`
-					ServerID  string     `json:"server_id"`
-					RatingKey string     `json:"rating_key"`
-					Title     string     `json:"title"`
-					Year      int        `json:"year"`
-					AddedAt   time.Time  `json:"added_at"`
-					RemovedAt *time.Time `json:"removed_at"`
-				} `json:"data"`
+			cursor := ""
+			cursors := map[string]bool{}
+			distinct := map[string]bool{}
+			for pageNumber := 0; pageNumber < 20; pageNumber++ {
+				var page struct {
+					Data []struct {
+						ID        string     `json:"id"`
+						MediaID   string     `json:"media_id"`
+						ShowKey   string     `json:"grandparent_rating_key"`
+						ServerID  string     `json:"server_id"`
+						RatingKey string     `json:"rating_key"`
+						Title     string     `json:"title"`
+						Year      int        `json:"year"`
+						AddedAt   time.Time  `json:"added_at"`
+						RemovedAt *time.Time `json:"removed_at"`
+					} `json:"data"`
+					Meta struct {
+						NextCursor string `json:"nextCursor"`
+					} `json:"meta"`
+				}
+				path := "recently-added?pageSize=100&media_type=" + kind
+				if cursor != "" {
+					path += "&cursor=" + url.QueryEscape(cursor)
+				}
+				err := tracearr.NewClient().GetJSON(feedCtx, service.BaseURL, path, key, &page)
+				if err != nil {
+					result.Errors = append(result.Errors, "Recently added is unavailable from Tracearr. Check that its version supports the recently-added public API and library sync is enabled.")
+					break
+				}
+				for _, item := range page.Data {
+					if item.ID == "" || item.AddedAt.IsZero() || item.RemovedAt != nil {
+						continue
+					}
+					identity := item.ServerID + ":" + item.RatingKey
+					if item.RatingKey == "" {
+						identity = fmt.Sprintf("%d:%s", service.ID, item.ID)
+					}
+					if seen[identity] {
+						continue
+					}
+					seen[identity] = true
+					group := identity
+					if kind == "episode" && item.ShowKey != "" {
+						group = item.ServerID + ":" + item.ShowKey
+					}
+					distinct[group] = true
+					result.Items = append(result.Items, RecentlyAddedItem{ShowID: func() string {
+						if kind == "episode" && item.ShowKey != "" {
+							return fmt.Sprintf("%d:%s:%s", service.ID, item.ServerID, item.ShowKey)
+						}
+						return ""
+					}(), mediaID: item.MediaID, serviceID: service.ID, ID: identity, Title: item.Title, Kind: kind, Year: item.Year, AddedAt: item.AddedAt, Stage: "available"})
+				}
+				if len(distinct) >= 6 || page.Meta.NextCursor == "" {
+					break
+				}
+				if pageNumber == 19 || cursors[page.Meta.NextCursor] {
+					result.Errors = append(result.Errors, "Recently added reached its history limit; some older shows may be missing.")
+					break
+				}
+				cursor = page.Meta.NextCursor
+				cursors[cursor] = true
 			}
-			err := tracearr.NewClient().GetJSON(ctx, service.BaseURL, "recently-added?pageSize=100&media_type="+kind, key, &page)
-			if err != nil {
-				result.Errors = append(result.Errors, "Recently added is unavailable from Tracearr. Check that its version supports the recently-added public API and library sync is enabled.")
+			if len(result.Errors) > errorCount {
 				break
 			}
-			for _, item := range page.Data {
-				if item.ID == "" || item.AddedAt.IsZero() || item.RemovedAt != nil {
-					continue
-				}
-				identity := item.ServerID + ":" + item.RatingKey
-				if item.RatingKey == "" {
-					identity = fmt.Sprintf("%d:%s", service.ID, item.ID)
-				}
-				if seen[identity] {
-					continue
-				}
-				seen[identity] = true
-				result.Items = append(result.Items, RecentlyAddedItem{ShowID: func() string {
-					if kind == "episode" && item.ShowKey != "" {
-						return fmt.Sprintf("%d:%s:%s", service.ID, item.ServerID, item.ShowKey)
-					}
-					return ""
-				}(), mediaID: item.MediaID, serviceID: service.ID, ID: identity, Title: item.Title, Kind: kind, Year: item.Year, AddedAt: item.AddedAt, Stage: "available"})
-			}
 		}
+		cancelFeed()
 	}
 	sort.Slice(result.Items, func(i, j int) bool {
 		if result.Items[i].AddedAt.Equal(result.Items[j].AddedAt) {
