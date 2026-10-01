@@ -226,10 +226,29 @@ function showProgressMarkup(show) {
     <div class="pipeline-progress-label"><span>${show.imported} / ${show.total} imported</span><strong>${Math.round(percent)}%</strong></div>
     <div class="pipeline-progress" role="progressbar" aria-label="${escapeHTML(show.title)} import progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(percent)}"><div class="pipeline-progress-fill" style="width:${percent}%"></div></div>`;
 }
+function individualProgressCards(item) {
+  const jobs = pipelineRecords(item, "processing", state.processing);
+  const downloads = pipelineRecords(item, "download", state.downloads);
+  const clients = downloads.filter(d => ["nzbget", "qbittorrent"].includes(d.source));
+  const transfers = clients.length ? clients : downloads;
+  if (jobs.length + transfers.length <= 1) return [item];
+  const card = (record, type, stage) => ({
+    id: `task:${type}:${record.source}:${record.source_service_id}:${record.id}`,
+    title: record.title || item.title, stage,
+    problems: type === "processing" && record.state === "problem" ? [record.stage === "health_check" ? "tdarr_health_check_failed" : "failed"] : [],
+    references: [{record_type:type,source:record.source,source_service_id:record.source_service_id,record_id:record.id}],
+  });
+  const activeJobs = jobs.filter(job => job.state !== "queued" || !jobs.some(active => active.state === "processing" && active.source === job.source && active.source_service_id === job.source_service_id && active.title && active.title === job.title));
+  return [
+    ...activeJobs.map(job=>card(job,"processing","processing")),
+    ...transfers.filter(d=> !jobs.length || (!/completed|finished|seeding/i.test(d.status || "") && !(Number(d.size)>0 && Number(d.size_left)===0)))
+      .map(d=>card(d,"download",/completed/i.test(d.status || "") ? "importing" : "downloading")),
+  ];
+}
 function renderPipeline() {
   const priority = { importing: 0, processing: 1, downloading: 2 };
   // Pending requests and completed downloads stay off the active dashboard.
-  const items = state.activity.filter(item => !isSeriesProgress(item) && visiblePipelineItem(item))
+  const items = state.activity.flatMap(individualProgressCards).filter(item => !isSeriesProgress(item) && visiblePipelineItem(item))
     .sort((a, b) => Number(isSeriesProgress(b)) - Number(isSeriesProgress(a)) || priority[a.stage] - priority[b.stage] || String(a.title).localeCompare(String(b.title)));
   items.unshift(...showProgressCards(state.seasons));
   $("pipelineCount").textContent = items.length;
