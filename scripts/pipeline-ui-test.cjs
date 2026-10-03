@@ -124,6 +124,21 @@ const assert = require('node:assert/strict');
     const values=await page.locator('#pipelineList [role=progressbar]').evaluateAll(nodes=>nodes.map(n=>Number(n.getAttribute('aria-valuenow'))).sort((a,b)=>a-b));
     assert.deepEqual(values,[20,30,80,90]);
     assert(!(await page.locator('#pipelineList').textContent()).includes('Average across'));
+    downloads.push({id:'stale',title:'Show S01E01',source:'sonarr',source_service_id:5,status:'downloading',size:100,size_left:20});
+    // ARR-only fixture: both the stale mirror and a different release share a lifecycle.
+    downloads.push({id:'upgrade',title:'Show S01E01.1080p.OtherRelease',source:'sonarr',source_service_id:5,status:'downloading',size:100,size_left:20});
+    items[0].references = [...jobs.map(j=>reference('processing',j.source,j.source_service_id,j.id)),...downloads.filter(d=>d.source==='sonarr').map(d=>reference('download',d.source,d.source_service_id,d.id))];
+    jobs[0].title='Show S01E01.mkv';
+    await page.evaluate(()=>refreshDashboard());
+    assert.equal(await page.locator('[data-lifecycle-id="task:download:sonarr:5:stale"]').count(),0);
+    assert.equal(await page.locator('[data-lifecycle-id="task:download:sonarr:5:upgrade"]').count(),1);
+    jobs[0].state='queued';
+    await page.evaluate(()=>refreshDashboard());
+    assert.equal(await page.locator('[data-lifecycle-id="task:download:sonarr:5:stale"]').count(),1);
+    jobs[0].state='problem';
+    await page.evaluate(()=>refreshDashboard());
+    assert.equal(await page.locator('[data-lifecycle-id="task:download:sonarr:5:stale"]').count(),1);
+
     items.length=0;
     await page.evaluate(()=>refreshDashboard());
     recent = Array.from({length:6},(_,i)=>({id:`ready-${i}`,title:i % 2 ? 'A much longer show title that needs two lines' : `Finished ${i}`,kind:i % 2 ? 'series' : 'movie',episodes:i % 2 ? ['Episode one', 'Episode two', 'Episode three'] : [],added_at:'2026-09-30T12:00:00Z'}));

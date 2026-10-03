@@ -206,6 +206,15 @@ function showProgressMarkup(show) {
     <div class="pipeline-progress-label"><span>${show.imported} / ${show.total} imported</span><strong>${Math.round(percent)}%</strong></div>
     <div class="pipeline-progress" role="progressbar" aria-label="${escapeHTML(show.title)} import progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(percent)}"><div class="pipeline-progress-fill" style="width:${percent}%"></div></div>`;
 }
+// Only retire an ARR queue mirror for the same release in this lifecycle.
+// Keep real downloader records, other releases, and queued/failed Tdarr jobs visible.
+function processingSupersedesDownload(download, jobs) {
+  if (!["sonarr", "radarr"].includes(download.source) || state.processingErrors.length) return false;
+  const release = title => String(title || "").trim().replace(/\.(mkv|mp4|avi|m4v|ts|webm)$/i, "");
+  const title = release(download.title);
+  if (!/(?:s\d{1,3}e\d{1,3}|\b(?:720|1080|2160)p\b)/i.test(title)) return false;
+  return jobs.some(job => job.source === "tdarr" && job.state === "processing" && release(job.title) === title);
+}
 function individualProgressCards(item) {
   const jobs = pipelineRecords(item, "processing", state.processing);
   const downloads = pipelineRecords(item, "download", state.downloads);
@@ -221,7 +230,7 @@ function individualProgressCards(item) {
   const activeJobs = jobs.filter(job => job.state !== "queued" || !jobs.some(active => active.state === "processing" && active.source === job.source && active.source_service_id === job.source_service_id && active.title && active.title === job.title));
   return [
     ...activeJobs.map(job=>card(job,"processing","processing")),
-    ...transfers.filter(d=> !jobs.length || (!/completed|finished|seeding/i.test(d.status || "") && !(Number(d.size)>0 && Number(d.size_left)===0)))
+    ...transfers.filter(d=> !processingSupersedesDownload(d, activeJobs)).filter(d=> !jobs.length || (!/completed|finished|seeding/i.test(d.status || "") && !(Number(d.size)>0 && Number(d.size_left)===0)))
       .map(d=>card(d,"download",/completed/i.test(d.status || "") ? "importing" : "downloading")),
   ];
 }
