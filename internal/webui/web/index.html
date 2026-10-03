@@ -9,70 +9,11 @@
 </head>
 <body>
   <div class="app-shell">
-    <dialog class="sidebar" id="navigationDrawer" aria-label="Navigation">
-      <button id="menuClose" class="drawer-close" type="button" aria-label="Close navigation">&times;</button>
-      <div class="brand">
-        <span class="brand-mark"><img src="/overmynd-icon.svg" alt="" aria-hidden="true"></span>
-        <span class="brand-name">OVERMYND</span>
-      </div>
 
-      <nav class="nav" aria-label="Primary navigation">
-        <button class="nav-item active" type="button" data-view="dashboard">
-          <span class="nav-icon">⌂</span>
-          <span>Dashboard</span>
-        </button>
-
-        <button class="nav-item" type="button" data-view="activity">
-          <span class="nav-icon">◉</span>
-          <span>Activity</span>
-        </button>
-        <button class="nav-item" type="button" data-view="missing">
-          <span class="nav-icon">○</span>
-          <span>Missing</span>
-        </button>
-
-
-        <button class="nav-item" type="button" data-view="downloads">
-          <span class="nav-icon">↓</span>
-          <span>Downloads</span>
-        </button>
-
-        <button class="nav-item" type="button" data-view="processing">
-          <span class="nav-icon">◇</span>
-          <span>Processing</span>
-        </button>
-
-        <button class="nav-item" type="button" data-view="playback">
-          <span class="nav-icon">▶</span>
-          <span>Playback</span>
-        </button>
-
-        <div class="nav-spacer"></div>
-
-        <button class="nav-item" type="button" data-view="services">
-          <span class="nav-icon">⚙</span>
-          <span>Services</span>
-        </button>
-
-        <button class="nav-item" type="button" data-view="settings">
-          <span class="nav-icon">⋯</span>
-          <span>Settings</span>
-        </button>
-      </nav>
-
-      <div class="sidebar-status">
-        <span class="status-dot" id="sidebarHealthDot"></span>
-        <div>
-          <strong id="sidebarHealth">Checking</strong>
-          <span>Overmynd</span>
-        </div>
-      </div>
-    </dialog>
 
     <main class="main">
       <header class="topbar dashboard-topbar" id="pageHeader">
         <div class="topbar-heading">
-          <button id="menuToggle" class="menu-toggle" type="button" aria-controls="navigationDrawer" aria-expanded="false" aria-label="Open navigation">&#9776;</button>
         <h1 id="pageTitle" hidden>Dashboard</h1></div><div class="dashboard-brand" id="dashboardBrand"><h1>OVERMYND</h1><img src="/overmynd-icon.svg" alt="" width="88" height="88"></div>
 
         <div class="topbar-meta">
@@ -529,6 +470,11 @@
         </section>
       </div>
 
+      <footer class="dashboard-footer"><nav aria-label="Dashboard and administration">
+        <button class="nav-item active" type="button" data-view="dashboard">Dashboard</button>
+        <button class="nav-item" type="button" data-view="services">Services</button>
+        <button class="nav-item" type="button" data-view="settings">Settings</button>
+      </nav><span><span class="status-dot" id="sidebarHealthDot"></span> <span id="sidebarHealth">Checking</span></span></footer>
     </main>
   </div>
 

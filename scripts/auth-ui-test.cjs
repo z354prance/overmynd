@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
   try {
     const context = await browser.newContext();
     const page = await context.newPage();
-    const navigate = async view => { await page.locator('#menuToggle').click(); await page.locator(`[data-view="${view}"]`).click(); };
+    const navigate = async view => { await page.locator(`[data-view="${view}"]`).click(); };
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(process.env.OVERMYND_TEST_URL || 'http://127.0.0.1:18080');

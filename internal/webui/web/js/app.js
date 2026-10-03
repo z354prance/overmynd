@@ -274,7 +274,6 @@ function renderPlayback() {
   }
 
   $("playbackList").innerHTML = state.playback
-    .slice(0, 6)
     .map((session) => {
       const title =
         session.media_type === "episode" && session.show_title
@@ -311,7 +310,7 @@ function renderPlayback() {
           : 0;
 
       return `
-        <article class="now-playing-card">
+        <article class="now-playing-card media-${mediaCardType({kind:session.media_type})}">
           ${playbackPoster(session)}
           <div class="now-playing-details">
             <div class="item-title">${escapeHTML(title)}</div>
@@ -319,6 +318,14 @@ function renderPlayback() {
               <span>${escapeHTML(subtitleParts.join(" · "))}</span>
               <span>${escapeHTML(pretty(session.state || "playing"))}</span>
             </div>
+            <dl class="playback-facts">${[
+              ["Year",session.year], ["User",session.username], ["Device",session.device], ["Player",session.player], ["Product",session.product], ["Platform",session.platform],
+              ["Server",session.server_name], ["Server type",session.server_type], ["Playback",session.is_transcode ? "Transcoding" : session.video_decision || session.audio_decision ? "Direct / copy" : ""],
+              ["Video",session.video_decision], ["Audio",session.audio_decision], ["Bitrate",session.bitrate ? `${(session.bitrate/1000000).toFixed(1)} Mbps` : ""],
+              ["Artist",session.artist_name], ["Album",session.album_name], ["Track",session.track_number], ["Genres",session.genres?.join(", ")],
+              ["Started",session.started_at ? new Date(session.started_at).toLocaleString() : ""]
+            ].filter(([,value])=>value).map(([label,value])=>`<div><dt>${label}</dt><dd>${escapeHTML(value)}</dd></div>`).join("")}</dl>
+            <div class="playback-time">${escapeHTML(formatPlaybackTime(progress))} / ${duration > 0 ? escapeHTML(formatPlaybackTime(duration)) : "Live / unknown"}</div>
           </div>
             <div class="progress-track" role="progressbar" aria-label="Playback progress" ${duration > 0 ? `aria-valuenow="${Math.round(percent)}" aria-valuemin="0" aria-valuemax="100"` : 'aria-valuetext="Progress unavailable"'}>
               <div class="progress-bar" style="width:${percent.toFixed(1)}%"></div>
@@ -1105,7 +1112,7 @@ async function refreshDashboard() {
 }
 
 function setView(view) {
-  if ($("navigationDrawer").open) $("navigationDrawer").close();
+  if (!["dashboard", "services", "settings"].includes(view)) return;
   if (view === "settings" && state.authenticated) loadRequestSettings();
   if (view === "services" && !state.authenticated) view = "settings";
   if (view === "services") {
@@ -1960,22 +1967,6 @@ $("serviceManagementList").addEventListener("click", async (event) => {
   await deleteManagedService(service, button);
 });
 
-
-// Native modal navigation supplies focus trapping, Escape handling and backdrop.
-$("menuToggle").addEventListener("click", () => {
-  $("navigationDrawer").showModal();
-  $("menuToggle").setAttribute("aria-expanded", "true");
-});
-$("menuClose").addEventListener("click", () => $("navigationDrawer").close());
-$("navigationDrawer").addEventListener("close", () => {
-  $("menuToggle").setAttribute("aria-expanded", "false");
-  $("menuToggle").focus();
-});
-$("navigationDrawer").addEventListener("click", (event) => {
-  if (event.target !== $("navigationDrawer")) return;
-  const bounds = event.target.getBoundingClientRect();
-  if (event.clientX > bounds.right || event.clientY > bounds.bottom) event.target.close();
-});
 
 function playbackPoster(session) {
   const src = typeof session.poster_url === "string" && session.poster_url.startsWith("/api/v1/playback/poster?") ? session.poster_url : "";
