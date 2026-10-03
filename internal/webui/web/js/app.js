@@ -159,6 +159,16 @@ function pipelineProgress(item) {
   return { label, percent, detail, problems, serviceNames, paused };
 }
 
+function mediaCardType(item) {
+  if (["series", "episode"].includes(item.kind)) return "show";
+  if (item.kind === "movie") return "movie";
+  return "manual";
+}
+function mediaCardBadge(item) {
+  const type = mediaCardType(item);
+  const paths = {show:'<rect x="3" y="5" width="18" height="13" rx="2"/><path d="M8 22h8M12 18v4M8 1l4 4 4-4"/>',movie:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 3v18M17 3v18M3 8h4M3 16h4M17 8h4M17 16h4"/>',manual:'<path d="M12 3v4m0 10v4M3 12h4m10 0h4M6 6l3 3m6 6 3 3M6 18l3-3m6-6 3-3"/><circle cx="12" cy="12" r="5"/>'};
+  return `<span class="media-card-type"><svg viewBox="0 0 24 24" aria-hidden="true">${paths[type]}</svg>${type === "show" ? "Show" : type === "movie" ? "Movie" : "Manual / other"}</span>`;
+}
 function pipelineCardMarkup(item) {
   const progress = pipelineProgress(item);
   const title = item.title || "Unknown media";
@@ -170,7 +180,7 @@ function pipelineCardMarkup(item) {
   const current = { wanted: "requested", downloaded: "downloading", importing: "processing", playing: "available" }[item.stage] || item.stage;
   return `
     <div class="pipeline-card-heading">
-      <div><h3 title="${escapeHTML(title)}">${escapeHTML(title)}</h3><p class="item-meta">${escapeHTML(mediaLabel(item))}</p></div>
+      <div>${mediaCardBadge(item)}<h3 title="${escapeHTML(title)}">${escapeHTML(title)}</h3><p class="item-meta">${escapeHTML(mediaLabel(item))}</p></div>
       <span class="pipeline-stage">${escapeHTML(progress.label)}</span>
     </div>
     <div class="pipeline-progress-label"><span>${waiting ? "Awaiting progress" : "Current stage"}</span><strong>${waiting ? "—" : `${Math.round(progress.percent)}%`}</strong></div>
@@ -221,7 +231,7 @@ function showProgressCards(seasons) {
 }
 function showProgressMarkup(show) {
   const percent = show.total > 0 ? Math.max(0,Math.min(100,100*show.imported/show.total)) : 0;
-  return `<div class="pipeline-card-heading"><div><h3 title="${escapeHTML(show.title)}">${escapeHTML(show.title)}</h3><p class="item-meta">Series import progress · Sonarr</p></div></div>
+  return `<div class="pipeline-card-heading"><div>${mediaCardBadge(show)}<h3 title="${escapeHTML(show.title)}">${escapeHTML(show.title)}</h3><p class="item-meta">Series import progress · Sonarr</p></div></div>
     <div class="show-season-list" tabindex="0" aria-label="Season import counts">${[...show.seasons].sort((a,b)=>a.season_number-b.season_number).map(s=>`<div><span>Season ${Number(s.season_number)}</span><span>${Number(s.imported)} / ${Number(s.total)} imported</span></div>`).join("")}</div>
     <div class="pipeline-progress-label"><span>${show.imported} / ${show.total} imported</span><strong>${Math.round(percent)}%</strong></div>
     <div class="pipeline-progress" role="progressbar" aria-label="${escapeHTML(show.title)} import progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(percent)}"><div class="pipeline-progress-fill" style="width:${percent}%"></div></div>`;
@@ -234,7 +244,7 @@ function individualProgressCards(item) {
   if (jobs.length + transfers.length <= 1) return [item];
   const card = (record, type, stage) => ({
     id: `task:${type}:${record.source}:${record.source_service_id}:${record.id}`,
-    title: record.title || item.title, stage,
+    title: record.title || item.title, kind: record.kind || item.kind, stage,
     problems: type === "processing" && record.state === "problem" ? [record.stage === "health_check" ? "tdarr_health_check_failed" : "failed"] : [],
     references: [{record_type:type,source:record.source,source_service_id:record.source_service_id,record_id:record.id}],
   });
@@ -266,7 +276,7 @@ function renderPipeline() {
   for (const item of items) {
     const id = String(item.id);
     const card = existing.get(id) || document.createElement("article");
-    card.className = "pipeline-card";
+    card.className = `pipeline-card media-${mediaCardType(item)}`;
     card.classList.toggle("series-progress-card", isSeriesProgress(item));
     card.dataset.lifecycleId = id;
     const markup = item.seasonProgress ? showProgressMarkup(item) : pipelineCardMarkup(item);
@@ -2126,7 +2136,7 @@ async function refreshRecentlyAdded() {
     const items = Array.isArray(result.items) ? result.items.slice(0, 6) : [];
     $("recentlyAddedCount").textContent = items.length;
     $("recentlyAddedStatus").textContent = result.errors?.length ? result.errors.join(" ") : result.configured === false ? "Enable Tracearr to show confirmed library additions." : "";
-    $("recentlyAddedList").innerHTML = items.length ? items.map(item => `<article class="pipeline-card">${pipelineCardMarkup({...item,title:item.kind === "series" ? item.title : item.show_title ? `${item.show_title} — ${item.title}` : item.title,stage:"available",problems:[],references:[]})}${item.episodes?.length ? `<details class="recent-episodes"><summary>${item.episodes.length} recently added episode${item.episodes.length === 1 ? "" : "s"}</summary><ul>${item.episodes.map(title=>`<li>${escapeHTML(title)}</li>`).join("")}</ul></details>` : ""}<p class="item-meta">Added ${escapeHTML(new Date(item.added_at).toLocaleString())}</p></article>`).join("") : '<div class="empty-state">No confirmed recent additions.</div>';
+    $("recentlyAddedList").innerHTML = items.length ? items.map(item => `<article class="pipeline-card media-${mediaCardType(item)}">${pipelineCardMarkup({...item,title:item.kind === "series" ? item.title : item.show_title ? `${item.show_title} — ${item.title}` : item.title,stage:"available",problems:[],references:[]})}${item.episodes?.length ? `<details class="recent-episodes"><summary>${item.episodes.length} recently added episode${item.episodes.length === 1 ? "" : "s"}</summary><ul>${item.episodes.map(title=>`<li>${escapeHTML(title)}</li>`).join("")}</ul></details>` : ""}<p class="item-meta">Added ${escapeHTML(new Date(item.added_at).toLocaleString())}</p></article>`).join("") : '<div class="empty-state">No confirmed recent additions.</div>';
   } catch {
     $("recentlyAddedStatus").textContent = "Unable to refresh recent additions. Retrying automatically.";
     $("recentlyAddedList").querySelector(".empty-state")?.replaceChildren(document.createTextNode("Recent additions unavailable."));

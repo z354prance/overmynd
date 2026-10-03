@@ -1492,3 +1492,20 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 
 .recent-episodes { font-size: 12px; color: var(--muted); margin-top: 8px; }
 .recent-episodes ul { max-height: 120px; overflow-y: auto; padding-left: 18px; }
+
+/* Media identity stays consistent across activity and confirmed additions. */
+.pipeline-card { --media-accent: #b9bec5; background: #11151d; border-left: 4px solid var(--media-accent); }
+.pipeline-card.media-show { --media-accent: #21dfa0; }
+.pipeline-card.media-movie { --media-accent: #ffbf38; }
+.media-card-type { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; color: var(--media-accent); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.3px; }
+.media-card-type svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; flex-shrink: 0; }
+.pipeline-card .pipeline-progress-fill { background: var(--media-accent); }
+.pipeline-card .pipeline-progress.unmeasured .pipeline-progress-fill { background: repeating-linear-gradient(110deg, var(--media-accent) 0 7px, transparent 7px 14px); }
+.pipeline-card .pipeline-stage { background: color-mix(in srgb, var(--media-accent) 12%, transparent); color: var(--media-accent); }
+.pipeline-card .pipeline-progress-label strong { color: var(--media-accent); }
+.pipeline-card .pipeline-steps [aria-current="step"] { color: var(--media-accent); border-color: var(--media-accent); }
+#pipelineList .pipeline-card-heading { min-height: 113px; }
+#pipelineList .series-progress-card .pipeline-card-heading { min-height: 73px; }
+
+#pipelineList .pipeline-progress-label { margin-top: 8px; }
+#pipelineList .pipeline-detail { min-height: 22px; margin: 6px 0 8px; }
