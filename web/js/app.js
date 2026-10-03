@@ -273,6 +273,7 @@ function renderPlayback() {
     return;
   }
 
+  const expanded = new Set([...$("playbackList").querySelectorAll("details[open]")].map(el => el.dataset.session));
   $("playbackList").innerHTML = state.playback
     .map((session) => {
       const title =
@@ -318,13 +319,13 @@ function renderPlayback() {
               <span>${escapeHTML(subtitleParts.join(" · "))}</span>
               <span>${escapeHTML(pretty(session.state || "playing"))}</span>
             </div>
-            <dl class="playback-facts">${[
-              ["Year",session.year], ["User",session.username], ["Device",session.device], ["Player",session.player], ["Product",session.product], ["Platform",session.platform],
+            <details class="playback-extra" data-session="${escapeHTML(`${session.source_service_id}:${session.id}`)}" ${expanded.has(`${session.source_service_id}:${session.id}`) ? "open" : ""}><summary>Details</summary><dl class="playback-facts">${[
+              ["Year",session.year], ["Device",session.device], ["Player",session.player], ["Product",session.product], ["Platform",session.platform],
               ["Server",session.server_name], ["Server type",session.server_type], ["Playback",session.is_transcode ? "Transcoding" : session.video_decision || session.audio_decision ? "Direct / copy" : ""],
               ["Video",session.video_decision], ["Audio",session.audio_decision], ["Bitrate",session.bitrate ? `${(session.bitrate/1000000).toFixed(1)} Mbps` : ""],
               ["Artist",session.artist_name], ["Album",session.album_name], ["Track",session.track_number], ["Genres",session.genres?.join(", ")],
               ["Started",session.started_at ? new Date(session.started_at).toLocaleString() : ""]
-            ].filter(([,value])=>value).map(([label,value])=>`<div><dt>${label}</dt><dd>${escapeHTML(value)}</dd></div>`).join("")}</dl>
+            ].filter(([,value])=>value).map(([label,value])=>`<div><dt>${label}</dt><dd>${escapeHTML(value)}</dd></div>`).join("")}</dl></details>
             <div class="playback-time">${escapeHTML(formatPlaybackTime(progress))} / ${duration > 0 ? escapeHTML(formatPlaybackTime(duration)) : "Live / unknown"}</div>
           </div>
             <div class="progress-track" role="progressbar" aria-label="Playback progress" ${duration > 0 ? `aria-valuenow="${Math.round(percent)}" aria-valuemin="0" aria-valuemax="100"` : 'aria-valuetext="Progress unavailable"'}>
