@@ -50,36 +50,6 @@ function mediaLabel(item) {
   return parts.join(" · ");
 }
 
-function problemCount(lifecycles) {
-  return lifecycles.filter(
-    (item) =>
-      Array.isArray(item.problems) &&
-      item.problems.some((problem) => problem !== "missing")
-  ).length;
-}
-
-function renderSummary() {
-  const lifecycles = state.activity;
-
-  $("pendingCount").textContent = lifecycles.filter(
-    (item) => Array.isArray(item.problems) && item.problems.includes("missing")
-  ).length;
-
-  $("downloadingCount").textContent = lifecycles.filter(
-    (item) =>
-      item.stage === "downloading" ||
-      item.stage === "downloaded"
-  ).length;
-
-  $("processingCount").textContent = lifecycles.filter(
-    (item) =>
-      item.stage === "processing" ||
-      item.stage === "importing"
-  ).length;
-
-  $("problemCount").textContent = problemCount(lifecycles);
-}
-
 // Match normalized records by their complete reference, never by title or ID alone.
 function pipelineRecords(item, type, records) {
   return records.filter((record) => (item.references || []).some((ref) =>
@@ -1045,7 +1015,6 @@ function renderProcessing() {
 }
 
 function render() {
-  renderSummary();
   renderPlayback();
   renderPipeline();
 
