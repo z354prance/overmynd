@@ -46,7 +46,7 @@ const assert = require('node:assert/strict');
     assert(!(await card('unknown').textContent()).includes('Import Blocked'));
     assert((await card('unknown').textContent()).includes('awaiting the next step'));
     const sizes=await page.locator('#pipelineList .pipeline-card').evaluateAll(cards=>cards.map(c=>({width:c.getBoundingClientRect().width,height:c.getBoundingClientRect().height})));
-    assert(sizes.every(s=>s.width===sizes[0].width && s.height>252 && s.width<=180));
+    assert(sizes.every(s=>s.width===sizes[0].width && s.height===280 && s.width<=180));
     assert(!(await page.locator('#pipelineList').textContent()).includes('\uFFFD'));
     await page.evaluate(() => { window.originalCard = document.querySelector('[data-lifecycle-id="download"]'); });
     downloads[0].size_left = 200;
