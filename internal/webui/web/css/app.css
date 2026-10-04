@@ -1693,3 +1693,14 @@ body:has(#servicesView.active) .dashboard-footer .nav-item[data-view="dashboard"
 
 .dashboard-footer [data-view="settings"] { order:1; } .dashboard-footer [data-view="services"] { order:2; }
 #pipelineList .empty-state { grid-column:1 / -1; }
+/* Consistent session cards, even with long titles or expanded details. */
+#playbackList .now-playing-card { height:460px; }
+#playbackList .playback-art { height:250px; aspect-ratio:auto; flex-shrink:0; }
+#playbackList .now-playing-details { flex:1; min-height:0; overflow-y:auto; scrollbar-gutter:stable; padding-right:3px; }
+#playbackList .progress-track { flex-shrink:0; margin-top:8px; }
+#pipelineList .pipeline-card { height:460px; }
+#pipelineList .progress-art { height:250px; aspect-ratio:auto; flex-shrink:0; }
+#pipelineList .pipeline-card-heading { height:88px; min-height:88px; overflow-y:auto; flex-shrink:0; }
+#pipelineList .pipeline-detail { min-height:0; max-height:42px; overflow-y:auto; flex-shrink:1; }
+#pipelineList .pipeline-problem { max-height:28px; overflow-y:auto; flex-shrink:1; }
+#pipelineList .pipeline-progress-label, #pipelineList .pipeline-progress { flex-shrink:0; }
