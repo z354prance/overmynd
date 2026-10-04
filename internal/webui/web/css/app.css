@@ -1661,3 +1661,35 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 #recentlyAddedList .now-playing-details > .item-meta { display:none; }
 #recentlyAddedList .now-playing-details { display:flex; flex-direction:column; gap:6px; }
 #recentlyAddedList .now-playing-details .item-title { order:-1; min-height:30px; }
+
+/* Scrollable viewing grid alongside six compact recent additions. */
+#dashboardView .dashboard-grid { grid-template-columns:minmax(0,3fr) minmax(0,2fr); }
+#playbackList { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); align-items:start; max-height:720px; overflow-y:auto; scrollbar-gutter:stable; overscroll-behavior:contain; }
+#playbackList .now-playing-card { display:flex; flex-direction:column; border:1px solid var(--media-accent); }
+#playbackList .playback-art { width:100%; height:auto; aspect-ratio:2/3; }
+#playbackList .now-playing-details { width:100%; padding-top:8px; }
+#playbackList .progress-track { width:100%; margin-top:auto; }
+#playbackList .playback-time { margin-bottom:8px; }
+#playbackList .empty-state { grid-column:1 / -1; }
+#recentlyAddedList { grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+#recentlyAddedList .media-card-type { display:none; }
+#recentlyAddedList .recent-poster-card { min-width:0; }
+#pipelineList { display:grid; grid-template-columns:repeat(auto-fill,minmax(0,180px)); align-items:stretch; gap:12px; }
+#pipelineList .pipeline-card { display:flex; flex-direction:column; gap:0; border:1px solid var(--media-accent); }
+#pipelineList .progress-art { width:100%; height:auto; aspect-ratio:2/3; margin-bottom:10px; }
+#pipelineList .pipeline-card-heading { min-height:100px; }
+#pipelineList .pipeline-detail { margin:8px 0; min-height:32px; }
+#pipelineList .pipeline-progress-label { order:5; margin-top:auto; }
+#pipelineList .pipeline-progress { order:6; width:100%; margin-top:8px; }
+#pipelineList .pipeline-problem { order:4; }
+#pipelineList .progress-art-placeholder > span { font-size:10px; }
+.dashboard-footer { justify-content:flex-end; }
+.dashboard-footer > span { display:none; }
+.dashboard-footer .nav-item { border:0; background:transparent; padding:8px 12px; }
+.dashboard-footer .nav-item[data-view="dashboard"] { display:none; }
+body:has(#servicesView.active) .dashboard-footer .nav-item[data-view="dashboard"], body:has(#settingsView.active) .dashboard-footer .nav-item[data-view="dashboard"] { display:block; }
+@media(max-width:1100px) { #dashboardView .dashboard-grid { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:559px) { #playbackList { grid-template-columns:repeat(2,minmax(0,1fr)); max-height:640px; } .dashboard-footer { align-items:flex-end; } }
+
+.dashboard-footer [data-view="settings"] { order:1; } .dashboard-footer [data-view="services"] { order:2; }
+#pipelineList .empty-state { grid-column:1 / -1; }

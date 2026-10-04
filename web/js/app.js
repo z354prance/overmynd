@@ -276,7 +276,7 @@ function renderPipeline() {
 }
 
 function renderPlayback() {
-  $("playbackCount").textContent = state.playback.length;
+  $("playbackCount").textContent = `${state.playback.length} playing`;
 
   if (!state.playback.length) {
     $("playbackList").innerHTML =
@@ -2122,7 +2122,7 @@ async function refreshRecentlyAdded() {
     const items = Array.isArray(result.items) ? result.items.slice(0, 6) : [];
     $("recentlyAddedCount").textContent = items.length;
     $("recentlyAddedStatus").textContent = result.errors?.length ? result.errors.join(" ") : result.configured === false ? "Enable Tracearr to show confirmed library additions." : "";
-    $("recentlyAddedList").innerHTML = items.length ? items.map(item => `<article class="now-playing-card recent-poster-card media-${mediaCardType(item)}">${playbackPoster(item)}<div class="now-playing-details">${mediaCardBadge(item)}<div class="item-title" title="${escapeHTML(item.show_title || item.title)}">${escapeHTML(item.show_title || item.title)}</div><p class="item-meta">${escapeHTML(mediaLabel(item))}</p></div>${item.episodes?.length ? `<details class="recent-episodes"><summary>${item.episodes.length} recently added episode${item.episodes.length === 1 ? "" : "s"}</summary><ul>${item.episodes.map(title=>`<li>${escapeHTML(title)}</li>`).join("")}</ul></details>` : ""}<p class="item-meta">${escapeHTML(new Date(item.added_at).toLocaleDateString())}</p></article>`).join("") : '<div class="empty-state">No confirmed recent additions.</div>';
+    $("recentlyAddedList").innerHTML = items.length ? items.map(item => `<article class="now-playing-card recent-poster-card media-${mediaCardType(item)}">${playbackPoster(item)}<div class="now-playing-details"><div class="item-title" title="${escapeHTML(item.show_title || item.title)}">${escapeHTML(item.show_title || item.title)}</div><p class="item-meta">${escapeHTML(mediaLabel(item))}</p></div>${item.episodes?.length ? `<details class="recent-episodes"><summary>${item.episodes.length} recently added episode${item.episodes.length === 1 ? "" : "s"}</summary><ul>${item.episodes.map(title=>`<li>${escapeHTML(title)}</li>`).join("")}</ul></details>` : ""}<p class="item-meta">${escapeHTML(new Date(item.added_at).toLocaleDateString())}</p></article>`).join("") : '<div class="empty-state">No confirmed recent additions.</div>';
   } catch {
     $("recentlyAddedStatus").textContent = "Unable to refresh recent additions. Retrying automatically.";
     $("recentlyAddedList").querySelector(".empty-state")?.replaceChildren(document.createTextNode("Recent additions unavailable."));
@@ -2133,3 +2133,12 @@ setInterval(refreshRecentlyAdded, 30000);
 $("closeSearchResults").addEventListener("click",()=>$("searchResultsPanel").close());
 $("openMediaRequest").addEventListener("click",()=>{if (!$("searchResultsPanel").open) $("searchResultsPanel").showModal(); $("mediaSearchQuery").focus();});
 document.addEventListener("keydown",event=>{if(event.key==="Escape" && !$("mediaRequestDialog").open) $("searchResultsPanel").close();});
+
+// Require both ends of a pointer gesture on the backdrop, not a drag from inside.
+for (const id of ["searchResultsPanel", "mediaRequestDialog"]) {
+ const dialog = $(id);
+ let startedOutside = false;
+ const outside = event => { const r=dialog.getBoundingClientRect(); return event.target === dialog && (event.clientX<r.left || event.clientX>r.right || event.clientY<r.top || event.clientY>r.bottom); };
+ dialog.addEventListener("pointerdown",event=>{startedOutside=outside(event);});
+ dialog.addEventListener("click",event=>{if(startedOutside && outside(event)) dialog.close(); startedOutside=false;});
+}

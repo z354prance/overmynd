@@ -49,6 +49,9 @@ const assert = require('node:assert/strict');
     assert.equal(await page.locator('#navigationDrawer').count(),0);
     assert.equal(await page.locator('#requestSettingsPanel').isVisible(),false);
     await page.locator('#openMediaRequest').click();
+    await page.mouse.click(2,2);
+    assert(!(await page.locator('#searchResultsPanel').isVisible()));
+    await page.locator('#openMediaRequest').click();
     await page.locator('#mediaSearchQuery').fill('Arrival');
     await page.locator('#mediaSearchButton').click();
     await page.waitForFunction(()=>document.querySelectorAll('.request-result').length===3);
@@ -78,13 +81,13 @@ const assert = require('node:assert/strict');
     await page.locator('#closeSearchResults').click();
     assert.equal(await page.locator('#dashboardView .playback-panel').count(),1);
     await page.waitForFunction(()=>document.querySelectorAll('#playbackList .now-playing-card').length===2);
-    assert(await page.locator('#playbackList .now-playing-card').first().evaluate(card=>{const art=card.querySelector('.playback-art').getBoundingClientRect();const info=card.querySelector('.now-playing-details').getBoundingClientRect();const bar=card.querySelector('.progress-track').getBoundingClientRect();return info.left>=art.right && bar.left>=art.right;}));
+    assert(await page.locator('#playbackList .now-playing-card').first().evaluate(card=>{const art=card.querySelector('.playback-art').getBoundingClientRect();const info=card.querySelector('.now-playing-details').getBoundingClientRect();const bar=card.querySelector('.progress-track').getBoundingClientRect();return info.top>=art.bottom && bar.top>=info.bottom;}));
     await page.waitForFunction(()=>document.querySelector('#playbackList img').naturalWidth>0);
     await page.waitForFunction(()=>document.querySelectorAll('#playbackList img')[1].hidden);
     for(const width of [320,375,768,1440]){
       await page.setViewportSize({width,height:1000});
-        for(const view of ['dashboard','services','settings']) assert(await page.locator(`[data-view="${view}"]`).isVisible());
-      await page.locator('[data-view="dashboard"]').click();
+        for(const view of ['services','settings']) assert(await page.locator(`[data-view="${view}"]`).isVisible());
+      await page.evaluate(()=>setView('dashboard'));
       assert.equal(await page.locator('#navigationDrawer').count(),0);
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`overflow at ${width}`);
     }
