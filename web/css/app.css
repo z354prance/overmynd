@@ -1814,3 +1814,85 @@ body:has(#servicesView.active) .dashboard-footer .nav-item[data-view="dashboard"
 #pipelineList .progress-art .playback-poster { width:100%; height:100%; object-fit:contain; }
 #pipelineList .progress-art-placeholder > span { display:none; }
 #pipelineList .progress-art-placeholder .media-card-type { font-size:0; }
+
+/* Horizontal media dashboard: category edge, neutral content, purple progress. */
+:root { --show-accent:#409cff; --movie-accent:#d4af37; --manual-accent:#acb4c0; --media-progress:#663399; }
+.pipeline-card.media-show, .now-playing-card.media-show { --media-accent:var(--show-accent); }
+.pipeline-card.media-movie, .now-playing-card.media-movie { --media-accent:var(--movie-accent); }
+.pipeline-card.media-manual, .now-playing-card.media-manual { --media-accent:var(--manual-accent); }
+#dashboardView .dashboard-grid { grid-template-columns:minmax(0,1.6fr) minmax(0,1fr); align-items:start; }
+#dashboardView .dashboard-grid > .playback-panel,
+#dashboardView .dashboard-grid > [aria-labelledby="recentlyAddedHeading"] { height:auto; display:block; }
+#playbackList, #recentlyAddedList { padding:10px; gap:8px; grid-auto-rows:auto; flex:none; max-height:430px; align-content:start; scrollbar-gutter:auto; }
+#playbackList { grid-template-columns:repeat(2,minmax(0,1fr)); }
+#recentlyAddedList { grid-template-columns:minmax(0,1fr); max-height:none; overflow:visible; }
+#playbackList .now-playing-card, #recentlyAddedList .recent-poster-card,
+#pipelineList .pipeline-card, #seriesOverviewList .pipeline-card { border:1px solid var(--border); border-left:3px solid var(--media-accent); border-radius:9px; background:var(--panel-soft); text-align:left; }
+#playbackList .now-playing-card:hover, #recentlyAddedList .recent-poster-card:hover,
+#pipelineList .pipeline-card:hover, #seriesOverviewList .pipeline-card:hover { background:#1b242e; }
+#playbackList .now-playing-card { width:100%; height:100px; display:grid; grid-template-columns:38px minmax(0,1fr); grid-template-rows:72px 4px; gap:5px 9px; padding:8px; }
+#playbackList .playback-art { grid-column:1; grid-row:1; width:38px; height:57px; border:0; align-self:center; }
+#playbackList .now-playing-details { grid-column:2; grid-row:1; overflow:hidden; padding:0; scrollbar-gutter:auto; }
+#playbackList .item-title { font-size:13px; line-height:18px; height:18px; min-height:0; }
+#playbackList .item-meta { font-size:11px; line-height:17px; margin:0; }
+#playbackList .playback-extra { font-size:11px; line-height:18px; margin:0; float:none; }
+#playbackList .playback-time { font-size:11px; line-height:17px; margin:0; }
+#playbackList .progress-track { grid-column:2; grid-row:2; margin:0; height:4px; }
+#recentlyAddedList .recent-poster-card { height:62px; padding:7px 8px; display:grid; grid-template-columns:30px minmax(0,1fr) auto; grid-template-rows:21px 23px; gap:1px 8px; }
+#recentlyAddedList .playback-art { width:30px; height:45px; grid-column:1; grid-row:1 / 3; border:0; }
+#recentlyAddedList .now-playing-details { grid-column:2 / 4; grid-row:1; min-height:0; padding:0; }
+#recentlyAddedList .now-playing-details .item-title { font-size:13px; line-height:20px; height:20px; }
+#recentlyAddedList .recent-episodes { grid-column:2; grid-row:2; font-size:11px; line-height:20px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#recentlyAddedList .recent-poster-card > .item-meta:last-child { grid-column:3; grid-row:2; font-size:11px; line-height:20px; height:20px; padding:0; }
+#playbackList .playback-poster, #recentlyAddedList .playback-poster, #pipelineList .playback-poster, #seriesOverviewList .playback-poster { width:100%; height:100%; object-fit:contain; }
+.progress-columns { display:block; padding:14px; }
+.progress-columns.has-series { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.6fr); gap:18px; align-items:start; }
+#pipelineList, #seriesOverviewList { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; padding:0; }
+#pipelineList .pipeline-card { width:100%; height:112px; display:grid; grid-template-columns:36px minmax(0,1fr) 48px; grid-template-rows:36px 30px 12px 4px; gap:4px 9px; padding:8px; align-content:start; }
+#pipelineList .pipeline-card > * { margin:0; min-width:0; order:initial; }
+#pipelineList .progress-art { grid-column:1; grid-row:1 / 3; width:36px; height:54px; align-self:center; justify-self:start; }
+#pipelineList .pipeline-card-heading { grid-column:2; grid-row:1; display:block; height:36px; min-height:0; overflow:hidden; }
+#pipelineList .pipeline-card-heading > div { width:100%; }
+#pipelineList h3 { height:18px; font-size:13px; line-height:18px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#pipelineList .pipeline-card-heading .item-meta { display:none; }
+#pipelineList .pipeline-stage { height:18px; max-width:100%; font-size:11px; line-height:18px; color:var(--muted); background:none; padding:0; }
+#pipelineList .pipeline-detail { grid-column:2; grid-row:2; height:30px; min-height:0; max-height:none; font-size:11px; line-height:15px; display:block; }
+#pipelineList .pipeline-detail > span:first-child { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#pipelineList .pipeline-extra { grid-column:3; grid-row:2; font-size:11px; line-height:18px; }
+#pipelineList .pipeline-progress-label { grid-column:3; grid-row:1; height:auto; margin:0; display:flex; align-items:center; justify-content:flex-end; }
+#pipelineList .pipeline-progress-label strong { font-size:15px; color:var(--text); }
+#pipelineList .pipeline-problem { grid-column:2 / 4; grid-row:3; height:12px; font-size:10px; line-height:12px; overflow:hidden; }
+#pipelineList .pipeline-progress { grid-column:2 / 4; grid-row:4; width:100%; height:4px; margin:0; }
+#seriesOverviewList .pipeline-card { display:grid; grid-template-columns:36px minmax(0,1fr); grid-template-rows:36px 18px 4px 18px; gap:5px 9px; padding:8px; height:110px; }
+#seriesOverviewList .progress-art { grid-column:1; grid-row:1 / 3; width:36px; height:54px; margin:0; }
+#seriesOverviewList .pipeline-card-heading { grid-column:2; grid-row:1; min-height:0; height:36px; overflow:hidden; }
+#seriesOverviewList h3 { font-size:13px; line-height:18px; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#seriesOverviewList .item-meta { font-size:11px; line-height:18px; margin:0; }
+#seriesOverviewList .pipeline-progress-label { grid-column:2; grid-row:2; display:flex; flex-direction:row; justify-content:space-between; margin:0; }
+#seriesOverviewList .pipeline-progress-label span { font-size:11px; }
+#seriesOverviewList .pipeline-progress-label strong { color:var(--text); }
+#seriesOverviewList .pipeline-progress { grid-column:2; grid-row:3; margin:0; height:4px; }
+#seriesOverviewList .season-breakdown { grid-column:2; grid-row:4; font-size:11px; margin:0; }
+#dashboardView .progress-bar, #dashboardView .pipeline-progress-fill { background:var(--media-progress); }
+#dashboardView .pipeline-progress.unmeasured .pipeline-progress-fill { background:repeating-linear-gradient(110deg,var(--media-progress) 0 7px,transparent 7px 14px); }
+#cardDetailsDialog { position:fixed; inset:auto; margin:0; width:min(390px,calc(100vw - 24px)); max-height:440px; padding:18px; z-index:100; border-color:#536071; box-shadow:0 14px 45px #0009; }
+#cardDetailsContent .show-season-list { max-height:none; overflow:visible; }
+#cardDetailsContent .show-season-list > div { display:flex; justify-content:space-between; gap:16px; padding:8px 0; }
+#cardDetailsContent .playback-facts { font-size:13px; }
+#dashboardView summary { cursor:pointer; }
+@media(max-width:1000px) { #dashboardView .dashboard-grid { grid-template-columns:minmax(0,1fr); } #dashboardView .dashboard-grid > .playback-panel { grid-column:1; grid-row:1; } #dashboardView .dashboard-grid > [aria-labelledby="recentlyAddedHeading"] { grid-column:1; grid-row:2; } #dashboardView .dashboard-grid > .pipeline-panel { grid-column:1; grid-row:3; } }
+@media(min-width:1001px) { #dashboardView .dashboard-grid > .playback-panel { grid-column:1; grid-row:1; } #dashboardView .dashboard-grid > [aria-labelledby="recentlyAddedHeading"] { grid-column:2; grid-row:1; } #dashboardView .dashboard-grid > .pipeline-panel { grid-column:1 / -1; grid-row:2; } }
+@media(max-width:700px) { .progress-columns.has-series { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:540px) { #playbackList { grid-template-columns:minmax(0,1fr); } #recentlyAddedList .recent-poster-card { grid-template-columns:30px minmax(0,1fr); height:78px; grid-template-rows:20px 19px 17px; } #recentlyAddedList .recent-poster-card > .item-meta:last-child { grid-column:2; grid-row:3; } #recentlyAddedList .now-playing-details { grid-column:2; } }
+
+#donatePopover { position:fixed; inset:auto; margin:0; width:260px; max-width:calc(100vw - 24px); padding:18px; background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:12px; box-shadow:0 14px 45px #0009; }
+#donatePopover h2 { font-size:16px; margin:0 0 8px; }
+#donatePopover p { font-size:12px; color:var(--muted); }
+#donatePopover a { display:flex; justify-content:space-between; padding:10px; margin-top:8px; border:1px solid var(--border); border-radius:7px; color:var(--text); text-decoration:none; }
+#donatePopover a:hover { background:var(--panel-soft); }
+#pageHeader.dashboard-topbar { flex-wrap:wrap; gap:12px; }
+#pageHeader .topbar-meta { flex-wrap:wrap; gap:8px; }
+
+#pipelineList .pipeline-stage { display:block; }
+
+#pipelineList .progress-art-placeholder > .media-card-type { display:flex; margin:0; }

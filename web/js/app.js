@@ -145,9 +145,17 @@ function progressPoster(item) {
  const src=typeof item.poster_url === "string" && item.poster_url.startsWith("/api/v1/playback/poster?") ? item.poster_url : "";
  return `<div class="progress-art"><div class="progress-art-placeholder">${icon}<span>Artwork unavailable</span></div>${src ? `<img class="playback-poster" src="${escapeHTML(src)}" alt="" loading="lazy">` : ""}</div>`;
 }
+function cleanMediaTitle(item) {
+  const title = item.title || "Unknown media";
+  const episode = title.match(/^(.+?)[ ._-]+(S\d{1,3}E\d{1,3})(?:[ ._-]|$)/i);
+  if (episode) return episode[1].replace(/[._]+/g, " ").trim() + " - " + episode[2].toUpperCase();
+  const movie = title.match(/^(.+?)[ ._-]+(?:19|20)\d{2}[ ._-]+.*(?:720p|1080p|2160p|bluray|web|hdtv)/i);
+  return movie ? movie[1].replace(/[._]+/g, " ").trim() : title;
+}
+
 function pipelineCardMarkup(item) {
   const progress = pipelineProgress(item);
-  const title = item.title || "Unknown media";
+  const title = cleanMediaTitle(item);
   const waiting = progress.percent === null;
   const steps = [
     ["requested", "Requested"], ["downloading", "Download"],
@@ -164,6 +172,10 @@ function pipelineCardMarkup(item) {
       <div class="pipeline-progress-fill" style="width:${waiting ? 100 : progress.percent}%"></div>
     </div>
     <p class="pipeline-detail" title="${escapeHTML([progress.detail, ...progress.serviceNames].join(" - "))}"><span>${escapeHTML(progress.detail)}</span>${progress.serviceNames.length ? `<span class="pipeline-source">${escapeHTML(progress.serviceNames.join(", "))}</span>` : ""}</p>
+    <details class="pipeline-extra"><summary>Details</summary><dl class="playback-facts">${[
+      ["Title", item.title || title], ["Stage", progress.label], ["Progress", waiting ? "Not reported" : `${Math.round(progress.percent)}%`],
+      ["Transfer / processing", progress.detail], ["Source", progress.serviceNames.join(", ")], ["Attention", progress.problems.map(pretty).join(", ")]
+    ].filter(([,value]) => value).map(([label,value]) => `<div><dt>${label}</dt><dd>${escapeHTML(value)}</dd></div>`).join("")}</dl></details>
     <ol class="pipeline-steps" aria-label="Workflow stages">${steps.map(([stage, name]) => `<li${stage === current ? ' aria-current="step"' : ""}>${name}</li>`).join("")}</ol>
     ${progress.problems.length ? `<p class="pipeline-problem">${escapeHTML(progress.problems.map(pretty).join(" · "))}</p>` : ""}
   `;
@@ -322,7 +334,7 @@ function renderPlayback() {
           : 0;
 
       return `
-        <article class="now-playing-card media-${mediaCardType({kind:session.media_type})}">
+        <article class="now-playing-card media-${mediaCardType({kind:session.media_type})}" data-detail-key="playback:${escapeHTML(`${session.source_service_id}:${session.id}`)}">
           ${playbackPoster(session)}
           <div class="now-playing-details">
             <div class="item-title">${escapeHTML(title)}</div>
@@ -2122,7 +2134,7 @@ async function refreshRecentlyAdded() {
     const items = Array.isArray(result.items) ? result.items.slice(0, 6) : [];
     $("recentlyAddedCount").textContent = items.length;
     $("recentlyAddedStatus").textContent = result.errors?.length ? result.errors.join(" ") : result.configured === false ? "Enable Tracearr to show confirmed library additions." : "";
-    $("recentlyAddedList").innerHTML = items.length ? items.map(item => `<article class="now-playing-card recent-poster-card media-${mediaCardType(item)}">${playbackPoster(item)}<div class="now-playing-details"><div class="item-title" title="${escapeHTML(item.show_title || item.title)}">${escapeHTML(item.show_title || item.title)}</div><p class="item-meta">${escapeHTML(mediaLabel(item))}</p></div>${item.episodes?.length ? `<details class="recent-episodes"><summary>${item.episodes.length} recently added episode${item.episodes.length === 1 ? "" : "s"}</summary><ul>${item.episodes.map(title=>`<li>${escapeHTML(title)}</li>`).join("")}</ul></details>` : ""}<p class="item-meta">${escapeHTML(new Date(item.added_at).toLocaleDateString())}</p></article>`).join("") : '<div class="empty-state">No confirmed recent additions.</div>';
+    $("recentlyAddedList").innerHTML = items.length ? items.map(item => `<article class="now-playing-card recent-poster-card media-${mediaCardType(item)}" data-detail-key="recent:${escapeHTML(item.id || item.title)}">${playbackPoster(item)}<div class="now-playing-details"><div class="item-title" title="${escapeHTML(item.show_title || item.title)}">${escapeHTML(item.show_title || item.title)}</div><p class="item-meta">${escapeHTML(mediaLabel(item))}</p></div>${item.episodes?.length ? `<details class="recent-episodes"><summary>${item.episodes.length} recently added episode${item.episodes.length === 1 ? "" : "s"}</summary><ul>${item.episodes.map(title=>`<li>${escapeHTML(title)}</li>`).join("")}</ul></details>` : `<details class="recent-episodes"><summary>Details</summary><dl class="playback-facts"><div><dt>Title</dt><dd>${escapeHTML(item.title)}</dd></div><div><dt>Added</dt><dd>${escapeHTML(new Date(item.added_at).toLocaleString())}</dd></div></dl></details>`}<p class="item-meta">${escapeHTML(new Date(item.added_at).toLocaleDateString())}</p></article>`).join("") : '<div class="empty-state">No confirmed recent additions.</div>';
   } catch {
     $("recentlyAddedStatus").textContent = "Unable to refresh recent additions. Retrying automatically.";
     $("recentlyAddedList").querySelector(".empty-state")?.replaceChildren(document.createTextNode("Recent additions unavailable."));
@@ -2143,25 +2155,71 @@ for (const id of ["searchResultsPanel", "mediaRequestDialog"]) {
  dialog.addEventListener("click",event=>{if(startedOutside && outside(event)) dialog.close(); startedOutside=false;});
 }
 
-// Keep compact cards unchanged while their details are read in a modal.
-document.addEventListener("click", event => {
-  const summary = event.target.closest("#playbackList details > summary, #recentlyAddedList details > summary");
-  if (!summary) return;
-  event.preventDefault();
-  const details = summary.parentElement;
-  const card = details.closest("article");
-  $("cardDetailsTitle").textContent = card.querySelector(".item-title")?.textContent || "Details";
-  const content = $("cardDetailsContent");
-  content.replaceChildren(...Array.from(details.children).filter(child => child !== summary).map(child => child.cloneNode(true)));
-  const dialog = $("cardDetailsDialog");
-  if (!dialog.open) dialog.showModal();
-});
-$("closeCardDetails").addEventListener("click", () => $("cardDetailsDialog").close());
-{
-  const dialog = $("cardDetailsDialog");
-  let startedOutside = false;
-  const outside = event => { const rect = dialog.getBoundingClientRect(); return event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom; };
-  dialog.addEventListener("pointerdown", event => { startedOutside = outside(event); });
-  dialog.addEventListener("click", event => { if (startedOutside && outside(event)) dialog.close(); startedOutside = false; });
-  dialog.addEventListener("close", () => $("cardDetailsContent").replaceChildren());
+// Details stay attached to their media card; requests retain their modal flow.
+let detailsAnchor = null;
+let detailsIdentity = null;
+function resolveDetailsAnchor() {
+  if (detailsAnchor?.isConnected) return detailsAnchor;
+  if (!detailsIdentity) return null;
+  return document.querySelector(`[${detailsIdentity.attribute}="${CSS.escape(detailsIdentity.value)}"]`);
 }
+function positionCardDetails() {
+  const dialog = $("cardDetailsDialog");
+  if (!dialog.open) return;
+  const anchor = resolveDetailsAnchor();
+  if (!anchor) { dialog.close(); return; }
+  detailsAnchor = anchor;
+  const a = anchor.getBoundingClientRect();
+  if (a.bottom < 0 || a.top > innerHeight) { dialog.close(); return; }
+  const width = dialog.getBoundingClientRect().width;
+  const above = a.top - 12;
+  const below = innerHeight - a.bottom - 12;
+  const preferredHeight = Math.min(dialog.scrollHeight + 2, 440);
+  const useAbove = above >= preferredHeight || above > below;
+  const room = Math.max(120, useAbove ? above - 8 : below - 8);
+  dialog.style.maxHeight = `${Math.min(innerHeight - 24, room, 440)}px`;
+  const height = dialog.getBoundingClientRect().height;
+  dialog.style.left = `${Math.max(12, Math.min(a.left + (a.width - width) / 2, innerWidth - width - 12))}px`;
+  dialog.style.top = `${Math.max(12, Math.min(useAbove ? a.top - height - 10 : a.bottom + 10, innerHeight - height - 12))}px`;
+}
+function closeCardDetails(restoreFocus = false) {
+  const anchor = resolveDetailsAnchor();
+  $("cardDetailsDialog").close();
+  if (restoreFocus) anchor?.querySelector("summary")?.focus({preventScroll:true});
+}
+document.addEventListener("click", event => {
+  const card = event.target.closest("#playbackList article, #recentlyAddedList article, #pipelineList article, #seriesOverviewList article");
+  if (!card || event.target.closest("a, button, input")) return;
+  const details = card.querySelector("details");
+  if (!details) return;
+  event.preventDefault();
+  const summary = details.querySelector("summary");
+  detailsAnchor = card;
+  detailsIdentity = card.hasAttribute("data-detail-key") ? {attribute:"data-detail-key",value:card.dataset.detailKey} : {attribute:"data-lifecycle-id",value:card.dataset.lifecycleId};
+  $("cardDetailsTitle").textContent = card.querySelector(".item-title, h3")?.textContent || "Details";
+  $("cardDetailsContent").replaceChildren(...Array.from(details.children).filter(child => child !== summary).map(child => child.cloneNode(true)));
+  const dialog = $("cardDetailsDialog");
+  dialog.style.maxHeight = "440px";
+  if (!dialog.open) dialog.show();
+  positionCardDetails();
+  $("closeCardDetails").focus({preventScroll:true});
+});
+$("closeCardDetails").addEventListener("click", () => closeCardDetails(true));
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && $("cardDetailsDialog").open) { event.preventDefault(); closeCardDetails(true); }
+});
+document.addEventListener("pointerdown", event => {
+  if ($("cardDetailsDialog").open && !$("cardDetailsDialog").contains(event.target) && !resolveDetailsAnchor()?.contains(event.target)) closeCardDetails();
+});
+window.addEventListener("resize", positionCardDetails);
+document.addEventListener("scroll", event => { if (!$("cardDetailsDialog").contains(event.target)) positionCardDetails(); }, true);
+new MutationObserver(() => { if ($("cardDetailsDialog").open) positionCardDetails(); }).observe($("dashboardView"), {childList:true,subtree:true});
+$("cardDetailsDialog").addEventListener("close", () => $("cardDetailsContent").replaceChildren());
+
+function positionDonations() {
+  const rect = $("openDonate").getBoundingClientRect();
+  $("donatePopover").style.left = `${Math.max(12, Math.min(rect.right - 260, innerWidth - 272))}px`;
+  $("donatePopover").style.top = `${rect.bottom + 8}px`;
+}
+$("donatePopover").addEventListener("beforetoggle", positionDonations);
+window.addEventListener("resize", positionDonations);

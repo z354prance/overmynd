@@ -17,6 +17,7 @@
         <h1 id="pageTitle" hidden>Dashboard</h1></div><div class="dashboard-brand" id="dashboardBrand"><h1>OVERMYND</h1><img src="/overmynd-icon.svg" alt="" width="88" height="88"></div>
 
         <div class="topbar-meta"><button id="openMediaRequest" type="button" class="service-secondary-button">Request media</button>
+          <button id="openDonate" type="button" class="service-secondary-button" popovertarget="donatePopover">Donate</button>
           <span id="lastUpdated">Waiting for data</span>
           <span class="live-indicator">
             <span class="status-dot"></span>
@@ -494,6 +495,12 @@
     <header><h2 id="cardDetailsTitle">Details</h2><button id="closeCardDetails" type="button" class="service-secondary-button">Close</button></header>
     <div id="cardDetailsContent"></div>
   </dialog>
+<div id="donatePopover" popover="auto" aria-labelledby="donateHeading">
+    <h2 id="donateHeading">Support XIVIX</h2>
+    <p>Thank you for your support.</p>
+    <a href="https://paypal.me/z354prance" target="_blank" rel="noopener noreferrer">PayPal <span aria-hidden="true">&#8599;</span></a>
+    <a href="https://cash.app/$PayLuffie" target="_blank" rel="noopener noreferrer">Cash App <span aria-hidden="true">&#8599;</span></a>
+  </div>
 <script src="/js/app.js"></script>
 
 </body>
