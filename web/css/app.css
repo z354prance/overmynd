@@ -1736,3 +1736,10 @@ body:has(#servicesView.active) .dashboard-footer .nav-item[data-view="dashboard"
 /* Reserve room for the scrollbar before choosing the number of columns. */
 @container (max-width:393px) { #recentlyAddedList { grid-template-columns:repeat(2,110px); } }
 @container (max-width:271px) { #recentlyAddedList { grid-template-columns:110px; } }
+/* Matching top panels keep the next section directly beneath both. */
+#dashboardView .dashboard-grid > .playback-panel,
+#dashboardView .dashboard-grid > [aria-labelledby="recentlyAddedHeading"] { height:450px; display:flex; flex-direction:column; min-width:0; }
+#dashboardView .playback-panel > .panel-header,
+#dashboardView [aria-labelledby="recentlyAddedHeading"] > .panel-header { flex-shrink:0; }
+#recentlyAddedStatus:empty { display:none; }
+#playbackList, #recentlyAddedList { flex:1; min-height:0; max-height:none; overflow-y:auto; align-content:start; justify-content:start; padding:12px; gap:10px; }
