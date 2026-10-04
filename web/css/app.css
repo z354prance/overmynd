@@ -1757,3 +1757,22 @@ body:has(#servicesView.active) .dashboard-footer .nav-item[data-view="dashboard"
 #playbackList .now-playing-details { grid-column:2; grid-row:1; padding-top:0; min-height:0; overflow-y:auto; }
 #playbackList .progress-track { grid-column:1 / -1; grid-row:2; margin:0; }
 @media(max-width:559px) { #playbackList { grid-template-columns:minmax(0,1fr); } }
+
+/* Compact rows keep all six recent additions visible at once. */
+#dashboardView .dashboard-grid > .playback-panel,
+#dashboardView .dashboard-grid > [aria-labelledby="recentlyAddedHeading"] { height:480px; }
+#playbackList, #recentlyAddedList { padding:8px; gap:5px; grid-auto-rows:58px; }
+#recentlyAddedList .recent-poster-card { height:58px; padding:5px; grid-template-columns:30px minmax(0,1fr); grid-template-rows:14px 14px 14px; gap:1px 8px; }
+#recentlyAddedList .playback-art { width:30px; height:45px; }
+#recentlyAddedList .now-playing-details .item-title { min-height:0; height:14px; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; display:block; }
+#recentlyAddedList .recent-poster-card > .item-meta:last-child { height:14px; line-height:14px; }
+#recentlyAddedList .recent-episodes { line-height:14px; }
+#playbackList .now-playing-card { height:58px; padding:5px; grid-template-columns:30px minmax(0,1fr); grid-template-rows:42px 3px; gap:2px 8px; }
+#playbackList .playback-art { width:28px; height:42px; }
+#playbackList .now-playing-details { display:block; scrollbar-gutter:auto; }
+#playbackList .item-title { min-height:0; height:14px; font-size:11px; line-height:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+#playbackList .item-meta { display:block; margin:0; font-size:9px; line-height:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#playbackList .item-meta span + span { display:none; }
+#playbackList .playback-extra { float:right; margin:0; font-size:9px; line-height:14px; }
+#playbackList .playback-extra[open] { float:none; }
+#playbackList .playback-time { margin:0; font-size:9px; line-height:14px; }

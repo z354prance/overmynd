@@ -163,13 +163,13 @@ const assert = require('node:assert/strict');
       await page.setViewportSize({width,height:1000});
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
       const boxes=await page.locator('#recentlyAddedList .recent-poster-card').evaluateAll(cards=>cards.map(c=>({w:c.offsetWidth,h:c.offsetHeight,top:c.offsetTop})));
-      assert(boxes.every(b=>b.w===boxes[0].w && b.h===116));
+      assert(boxes.every(b=>b.w===boxes[0].w && b.h===58));
       const panelWidth=await page.locator('[aria-labelledby="recentlyAddedHeading"]').evaluate(el=>el.clientWidth);
       assert.equal(boxes.filter(b=>b.top===boxes[0].top).length,1);
       await page.locator('#recentlyAddedList details').first().evaluate(el=>el.open=true);
-      assert.equal(await page.locator('#recentlyAddedList .recent-poster-card').nth(1).evaluate(el=>el.offsetHeight),116);
+      assert.equal(await page.locator('#recentlyAddedList .recent-poster-card').nth(1).evaluate(el=>el.offsetHeight),58);
       assert(await page.locator('#recentlyAddedList').evaluate(el=>el.clientHeight<=560 && getComputedStyle(el).overflowY==='auto'));
-      if(panelWidth<=393) assert(await page.locator('#recentlyAddedList').evaluate(el=>el.scrollHeight>el.clientHeight));
+      assert(await page.locator('#recentlyAddedList').evaluate(el=>el.scrollHeight<=el.clientHeight));
     }
     assert.deepEqual(errors,[]);
     console.log('PASS: lifecycle cards, measured/unknown progress, stage changes, source isolation, escaping, responsive layout');
