@@ -67,7 +67,9 @@ type LifecycleReference struct {
 // It deliberately references normalized source records rather than copying
 // every service-specific field into the lifecycle.
 type MediaLifecycle struct {
-	ID string `json:"id"`
+	PosterURL       string `json:"poster_url,omitempty"`
+	PosterServiceID int64  `json:"-"`
+	ID              string `json:"id"`
 
 	Kind  MediaKind `json:"kind,omitempty"`
 	Title string    `json:"title,omitempty"`

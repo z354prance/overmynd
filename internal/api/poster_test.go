@@ -88,3 +88,49 @@ func TestPlaybackArtworkProxy(t *testing.T) {
 		}
 	}
 }
+
+func TestARRArtworkProxy(t *testing.T) {
+	png, _ := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jxQAAAABJRU5ErkJggg==")
+	calls := 0
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if r.URL.Path != "/MediaCover/42/poster.jpg" || r.Header.Get("X-Api-Key") != "secret" {
+			t.Error("invalid authenticated artwork request")
+		}
+		w.Write(png)
+	}))
+	defer upstream.Close()
+	db, err := database.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err = db.Migrate(); err != nil {
+		t.Fatal(err)
+	}
+	manager := services.NewManager(db)
+	service, err := manager.Create(services.Input{Type: models.ServiceSonarr, Name: "Sonarr", Enabled: true, BaseURL: upstream.URL, Credential: "secret"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := &API{services: manager}
+	url := a.posterURL(service.ID, "/MediaCover/42/poster.jpg")
+	handler := http.HandlerFunc(a.playbackPoster)
+	w := request(t, handler, "", "GET", url, "")
+	if w.Code != 200 {
+		t.Fatal(w.Code)
+	}
+	w = request(t, handler, "", "GET", url+"tampered", "")
+	if w.Code != 404 || calls != 1 {
+		t.Fatal("tampered poster accepted")
+	}
+	for _, path := range []string{"/MediaCover/../config.xml", "/MediaCover/42/poster.jpg?apikey=secret", "/MediaCover/42/poster.jpg/other"} {
+		if a.posterURL(service.ID, path) != "" {
+			t.Fatal("unsafe path", path)
+		}
+	}
+	w = request(t, handler, "", "GET", a.posterURL(service.ID, "/api/v1/images/proxy?server=x"), "")
+	if w.Code != 404 || calls != 1 {
+		t.Fatal("cross-service path accepted")
+	}
+}

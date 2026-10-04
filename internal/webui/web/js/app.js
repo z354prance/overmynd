@@ -139,6 +139,12 @@ function mediaCardBadge(item) {
   const paths = {show:'<rect x="3" y="5" width="18" height="13" rx="2"/><path d="M8 22h8M12 18v4M8 1l4 4 4-4"/>',movie:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 3v18M17 3v18M3 8h4M3 16h4M17 8h4M17 16h4"/>',manual:'<path d="M12 3v4m0 10v4M3 12h4m10 0h4M6 6l3 3m6 6 3 3M6 18l3-3m6-6 3-3"/><circle cx="12" cy="12" r="5"/>'};
   return `<span class="media-card-type"><svg viewBox="0 0 24 24" aria-hidden="true">${paths[type]}</svg>${type === "show" ? "Show" : type === "movie" ? "Movie" : "Manual / other"}</span>`;
 }
+function progressPoster(item) {
+ const type=mediaCardType(item);
+ const icon=type === "manual" ? '<img src="/overmynd-icon.svg" alt="" class="manual-placeholder">' : mediaCardBadge(item);
+ const src=typeof item.poster_url === "string" && item.poster_url.startsWith("/api/v1/playback/poster?") ? item.poster_url : "";
+ return `<div class="progress-art"><div class="progress-art-placeholder">${icon}<span>Artwork unavailable</span></div>${src ? `<img class="playback-poster" src="${escapeHTML(src)}" alt="" loading="lazy">` : ""}</div>`;
+}
 function pipelineCardMarkup(item) {
   const progress = pipelineProgress(item);
   const title = item.title || "Unknown media";
@@ -191,7 +197,7 @@ function showProgressCards(seasons) {
   const shows = new Map();
   for (const season of seasons) {
     const id = season.show_id || season.id;
-    if (!shows.has(id)) shows.set(id, {id, title:season.show_title || season.title, kind:"series", seasonProgress:true, imported:0, total:0, seasons:[], references:[]});
+    if (!shows.has(id)) shows.set(id, {id, title:season.show_title || season.title, kind:"series", poster_url:season.poster_url, seasonProgress:true, imported:0, total:0, seasons:[], references:[]});
     const show = shows.get(id);
     show.imported += Number(season.imported) || 0;
     show.total += Number(season.total) || 0;
@@ -202,7 +208,7 @@ function showProgressCards(seasons) {
 function showProgressMarkup(show) {
   const percent = show.total > 0 ? Math.max(0,Math.min(100,100*show.imported/show.total)) : 0;
   return `<div class="pipeline-card-heading"><div>${mediaCardBadge(show)}<h3 title="${escapeHTML(show.title)}">${escapeHTML(show.title)}</h3><p class="item-meta">Series import progress · Sonarr</p></div></div>
-    <div class="show-season-list" tabindex="0" aria-label="Season import counts">${[...show.seasons].sort((a,b)=>a.season_number-b.season_number).map(s=>`<div><span>Season ${Number(s.season_number)}</span><span>${Number(s.imported)} / ${Number(s.total)} imported</span></div>`).join("")}</div>
+    <details class="season-breakdown" data-show="${escapeHTML(show.id)}"><summary>Season breakdown</summary><div class="show-season-list" tabindex="0" aria-label="Season import counts">${[...show.seasons].sort((a,b)=>a.season_number-b.season_number).map(s=>`<div><span>Season ${Number(s.season_number)}</span><span>${Number(s.imported)} / ${Number(s.total)} imported</span></div>`).join("")}</div></details>
     <div class="pipeline-progress-label"><span>${show.imported} / ${show.total} imported</span><strong>${Math.round(percent)}%</strong></div>
     <div class="pipeline-progress" role="progressbar" aria-label="${escapeHTML(show.title)} import progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(percent)}"><div class="pipeline-progress-fill" style="width:${percent}%"></div></div>`;
 }
@@ -223,7 +229,7 @@ function individualProgressCards(item) {
   if (jobs.length + transfers.length <= 1) return [item];
   const card = (record, type, stage) => ({
     id: `task:${type}:${record.source}:${record.source_service_id}:${record.id}`,
-    title: record.title || item.title, kind: record.kind || item.kind, stage,
+    title: record.title || item.title, kind: record.kind || item.kind, poster_url:item.poster_url, stage,
     problems: type === "processing" && record.state === "problem" ? [record.stage === "health_check" ? "tdarr_health_check_failed" : "failed"] : [],
     references: [{record_type:type,source:record.source,source_service_id:record.source_service_id,record_id:record.id}],
   });
@@ -239,8 +245,13 @@ function renderPipeline() {
   // Pending requests and completed downloads stay off the active dashboard.
   const items = state.activity.flatMap(individualProgressCards).filter(item => !isSeriesProgress(item) && visiblePipelineItem(item))
     .sort((a, b) => Number(isSeriesProgress(b)) - Number(isSeriesProgress(a)) || priority[a.stage] - priority[b.stage] || String(a.title).localeCompare(String(b.title)));
-  items.unshift(...showProgressCards(state.seasons));
-  $("pipelineCount").textContent = items.length;
+  const shows = showProgressCards(state.seasons);
+  $("seriesOverview").hidden = !shows.length;
+  $("progressColumns").classList.toggle("has-series", !!shows.length);
+  const opened = new Set([...$("seriesOverviewList").querySelectorAll("details[open]")].map(el=>el.dataset.show));
+  $("seriesOverviewList").innerHTML = shows.map(show=>`<article class="pipeline-card series-progress-card media-show" data-lifecycle-id="${escapeHTML(show.id)}">${progressPoster(show)}${showProgressMarkup(show)}</article>`).join("");
+  $("seriesOverviewList").querySelectorAll("details").forEach(el=>el.open=opened.has(el.dataset.show));
+  $("pipelineCount").textContent = items.length + shows.length;
   const list = $("pipelineList");
   if (!items.length) {
     list.innerHTML = '<div class="empty-state">No active downloads, processing, or imports right now.</div>';
@@ -258,7 +269,7 @@ function renderPipeline() {
     card.className = `pipeline-card media-${mediaCardType(item)}`;
     card.classList.toggle("series-progress-card", isSeriesProgress(item));
     card.dataset.lifecycleId = id;
-    const markup = item.seasonProgress ? showProgressMarkup(item) : pipelineCardMarkup(item);
+    const markup = progressPoster(item) + pipelineCardMarkup(item);
     if (card.innerHTML !== markup) card.innerHTML = markup;
     list.append(card);
   }
@@ -1113,6 +1124,7 @@ async function refreshDashboard() {
 }
 
 function setView(view) {
+ $("searchResultsPanel").close();
   if (!["dashboard", "services", "settings"].includes(view)) return;
   if (view === "settings" && state.authenticated) loadRequestSettings();
   if (view === "services" && !state.authenticated) view = "settings";
@@ -2032,6 +2044,8 @@ $("mediaSearchQuery").addEventListener("input", () => {
   $("mediaSearchClear").hidden = !$("mediaSearchQuery").value && !$("mediaSearchResults").childElementCount;
 });
 $("mediaSearchClear").addEventListener("click", () => {
+ $("searchResultsPanel").close();
+ $("showSearchResults").hidden=true;
   ++searchGeneration;
   mediaSearchResults = [];
   selectedMediaRequest = null;
@@ -2053,6 +2067,8 @@ $("mediaSearchForm").addEventListener("submit", async event => {
     const response = await serviceAPIRequest(`/api/v1/media-request/search?query=${encodeURIComponent($("mediaSearchQuery").value.trim())}`);
     if (generation !== searchGeneration) return;
     mediaSearchResults = response.results || [];
+    $("showSearchResults").hidden=false;
+    if (!$("searchResultsPanel").open) $("searchResultsPanel").show();
     $("mediaSearchResults").innerHTML = mediaSearchResults.map((item,index) => {
       const title = item.title || item.name || "Untitled";
       const existing = [2,3,5].includes(item.mediaInfo?.status);
@@ -2060,6 +2076,7 @@ $("mediaSearchForm").addEventListener("submit", async event => {
       const poster = /^\/[A-Za-z0-9_.-]+$/.test(item.posterPath || "") ? `https://image.tmdb.org/t/p/w185${item.posterPath}` : "";
       return `<article class="request-result"><div class="request-art">${poster ? `<img class="request-poster" src="${escapeHTML(poster)}" alt="" loading="lazy">` : ""}</div><div class="request-result-content"><h3 title="${escapeHTML(title)}">${escapeHTML(title)}</h3><p>${item.mediaType === "tv" ? "TV show" : "Movie"} · ${escapeHTML((item.releaseDate || item.firstAirDate || "").slice(0,4))}</p><p class="request-overview">${escapeHTML(item.overview || "No description available.")}</p><button class="service-primary-button" type="button" data-request-index="${index}" ${existing ? "disabled" : ""}>${existing ? availability : "Request"}</button></div></article>`;
     }).join("");
+    if (!mediaSearchResults.length) $("mediaSearchResults").innerHTML = '<p class="empty-state">No movies or TV shows found. Try another title.</p>';
     $("mediaRequestMessage").textContent = mediaSearchResults.length ? `${mediaSearchResults.length} results. Select a title to confirm your request.` : "No movies or TV shows found. Try another title.";
   } catch (error) { if (generation === searchGeneration) $("mediaRequestMessage").textContent = error.message; }
   finally { if (generation === searchGeneration) $("mediaSearchButton").disabled = !mediaRequestsEnabled; }
@@ -2114,3 +2131,6 @@ async function refreshRecentlyAdded() {
 }
 refreshRecentlyAdded();
 setInterval(refreshRecentlyAdded, 30000);
+$("closeSearchResults").addEventListener("click",()=>$("searchResultsPanel").close());
+$("showSearchResults").addEventListener("click",()=>{if (!$("searchResultsPanel").open) $("searchResultsPanel").show();});
+document.addEventListener("keydown",event=>{if(event.key==="Escape" && !$("mediaRequestDialog").open) $("searchResultsPanel").close();});

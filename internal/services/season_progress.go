@@ -10,13 +10,15 @@ import (
 )
 
 type SeasonProgress struct {
-	ShowID    string `json:"show_id"`
-	ShowTitle string `json:"show_title"`
-	ID        string `json:"id"`
-	Title     string `json:"title"`
-	Season    int    `json:"season_number"`
-	Imported  int    `json:"imported"`
-	Total     int    `json:"total"`
+	PosterURL       string `json:"poster_url,omitempty"`
+	PosterServiceID int64  `json:"-"`
+	ShowID          string `json:"show_id"`
+	ShowTitle       string `json:"show_title"`
+	ID              string `json:"id"`
+	Title           string `json:"title"`
+	Season          int    `json:"season_number"`
+	Imported        int    `json:"imported"`
+	Total           int    `json:"total"`
 }
 type seasonEpisode struct {
 	ID        int64 `json:"id"`
@@ -99,6 +101,8 @@ func (m *Manager) seasonProgress(ctx context.Context, downloads []models.Downloa
 			count.ID = fmt.Sprintf("sonarr-season:%d:%d:%d", group.service, group.series, season)
 			count.ShowID = fmt.Sprintf("sonarr-show:%d:%d", group.service, group.series)
 			count.ShowTitle = series.Title
+			count.PosterServiceID = group.service
+			count.PosterURL = fmt.Sprintf("/MediaCover/%d/poster.jpg", group.series)
 			count.Title = fmt.Sprintf("%s — Season %d", series.Title, season)
 			result = append(result, count)
 		}

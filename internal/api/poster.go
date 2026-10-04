@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -20,7 +21,12 @@ func (a *API) posterSignature(id, path string) string {
 	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
 }
 
+var coverPath = regexp.MustCompile(`^/MediaCover/[1-9][0-9]*/poster\.jpg$`)
+
 func validPosterPath(path string) bool {
+	if coverPath.MatchString(path) {
+		return true
+	}
 	u, err := url.Parse(path)
 	return err == nil && !u.IsAbs() && u.Host == "" && u.User == nil && u.Fragment == "" &&
 		u.Path == "/api/v1/images/proxy" && u.RawPath == "" && len(path) < 4096
@@ -51,7 +57,11 @@ func (a *API) playbackPoster(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	service, err := a.services.Get(serviceID)
-	if err != nil || !service.Enabled || service.Type != models.ServiceTracearr {
+	if err != nil || !service.Enabled || (service.Type != models.ServiceTracearr && service.Type != models.ServiceSonarr && service.Type != models.ServiceRadarr) {
+		http.NotFound(w, r)
+		return
+	}
+	if (service.Type == models.ServiceTracearr) == coverPath.MatchString(path) {
 		http.NotFound(w, r)
 		return
 	}
@@ -59,6 +69,14 @@ func (a *API) playbackPoster(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.NotFound(w, r)
 		return
+	}
+	if coverPath.MatchString(path) {
+		credential, err := a.services.Credential(serviceID)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		req.Header.Set("X-Api-Key", credential)
 	}
 	// Tracearr's image proxy is public. Never send its API token to image URLs.
 	client := &http.Client{Timeout: 10 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
