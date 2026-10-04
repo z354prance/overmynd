@@ -1799,3 +1799,18 @@ body:has(#servicesView.active) .dashboard-footer .nav-item[data-view="dashboard"
 
 #pipelineList .pipeline-detail > span:first-child { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 #pipelineList .pipeline-source { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* Reset inherited heading gaps so the stage remains fully visible. */
+#pipelineList .pipeline-card { height:260px; grid-template-rows:88px 66px 39px 12px 18px 6px; gap:2px; align-content:start; }
+#pipelineList .progress-art { height:88px; }
+#pipelineList .pipeline-card-heading { height:66px; gap:0; justify-content:flex-start; }
+#pipelineList .pipeline-card-heading > div { flex:0 0 49px; }
+#pipelineList .pipeline-stage { height:17px; max-width:100%; line-height:17px; white-space:nowrap; }
+#pipelineList .pipeline-problem { height:12px; line-height:12px; }
+
+/* Preserve portrait artwork and use only the rows the card actually needs. */
+#pipelineList .pipeline-card { height:280px; grid-template-rows:108px 66px 39px 12px 18px 6px; gap:2px; }
+#pipelineList .progress-art { width:72px; height:108px; justify-self:center; }
+#pipelineList .progress-art .playback-poster { width:100%; height:100%; object-fit:contain; }
+#pipelineList .progress-art-placeholder > span { display:none; }
+#pipelineList .progress-art-placeholder .media-card-type { font-size:0; }
