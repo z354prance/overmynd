@@ -16,7 +16,7 @@
         <div class="topbar-heading">
         <h1 id="pageTitle" hidden>Dashboard</h1></div><div class="dashboard-brand" id="dashboardBrand"><h1>OVERMYND</h1><img src="/overmynd-icon.svg" alt="" width="88" height="88"></div>
 
-        <div class="topbar-meta">
+        <div class="topbar-meta"><button id="openMediaRequest" type="button" class="service-secondary-button">Request media</button>
           <span id="lastUpdated">Waiting for data</span>
           <span class="live-indicator">
             <span class="status-dot"></span>
@@ -32,7 +32,7 @@
           <article class="panel playback-panel">
             <div class="panel-header">
               <div>
-                
+
                 <h2>Now Playing</h2>
               </div>
               <span class="panel-count" id="playbackCount">0</span>
@@ -47,16 +47,7 @@
             <p id="recentlyAddedStatus" class="request-message" role="status"></p>
             <div id="recentlyAddedList" class="pipeline-list pipeline-cards"><div class="empty-state">Checking recent additions…</div></div>
           </section>
-          <section class="panel request-panel" aria-labelledby="requestHeading">
-            <div class="panel-header"><div><h2 id="requestHeading">Request something to watch</h2></div></div>
-            <form id="mediaSearchForm" class="media-search-form">
-              <label class="service-form-field"><span>Movie or TV show</span><input id="mediaSearchQuery" type="search" placeholder="Search movies and TV shows…" minlength="2" maxlength="200" required></label>
-              <button id="mediaSearchButton" class="service-primary-button" type="submit" disabled>Search</button>
-              <button id="mediaSearchClear" class="service-secondary-button" type="button" hidden>Clear</button>
-            </form>
-            <p id="mediaRequestMessage" class="request-message" role="status" aria-live="polite">Checking request availability…</p>
-            <button type="button" id="showSearchResults" class="service-secondary-button" hidden>View results</button>
-          </section>
+
           <article class="panel pipeline-panel">
             <div class="panel-header">
               <div>
@@ -489,7 +480,16 @@
     <div class="request-dialog-actions"><button id="requestCancel" class="service-secondary-button" type="button">Cancel</button><button id="requestConfirm" class="service-primary-button" type="button">Send request</button></div>
     <p id="requestConfirmMessage" role="status" aria-live="polite"></p>
   </dialog>
-  <dialog id="searchResultsPanel" aria-labelledby="searchResultsHeading"><header><h2 id="searchResultsHeading">Search results</h2><button type="button" id="closeSearchResults" class="service-secondary-button">Close</button></header><div id="mediaSearchResults" class="media-search-results"></div></dialog>
+  <dialog id="searchResultsPanel" aria-labelledby="searchResultsHeading"><header><h2 id="searchResultsHeading">Request media</h2><button type="button" id="closeSearchResults" class="service-secondary-button">Close</button></header>          <section class="panel request-panel" aria-labelledby="requestHeading">
+            <div class="panel-header"><div><h2 id="requestHeading">Request something to watch</h2></div></div>
+            <form id="mediaSearchForm" class="media-search-form">
+              <label class="service-form-field"><span>Movie or TV show</span><input id="mediaSearchQuery" type="search" placeholder="Search movies and TV shows…" minlength="2" maxlength="200" required></label>
+              <button id="mediaSearchButton" class="service-primary-button" type="submit" disabled>Search</button>
+              <button id="mediaSearchClear" class="service-secondary-button" type="button" hidden>Clear</button>
+            </form>
+            <p id="mediaRequestMessage" class="request-message" role="status" aria-live="polite">Checking request availability…</p>
+
+          </section><div id="mediaSearchResults" class="media-search-results"></div></dialog>
 <script src="/js/app.js"></script>
 
 </body>

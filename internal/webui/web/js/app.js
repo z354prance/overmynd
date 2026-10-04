@@ -2044,8 +2044,7 @@ $("mediaSearchQuery").addEventListener("input", () => {
   $("mediaSearchClear").hidden = !$("mediaSearchQuery").value && !$("mediaSearchResults").childElementCount;
 });
 $("mediaSearchClear").addEventListener("click", () => {
- $("searchResultsPanel").close();
- $("showSearchResults").hidden=true;
+
   ++searchGeneration;
   mediaSearchResults = [];
   selectedMediaRequest = null;
@@ -2067,7 +2066,7 @@ $("mediaSearchForm").addEventListener("submit", async event => {
     const response = await serviceAPIRequest(`/api/v1/media-request/search?query=${encodeURIComponent($("mediaSearchQuery").value.trim())}`);
     if (generation !== searchGeneration) return;
     mediaSearchResults = response.results || [];
-    $("showSearchResults").hidden=false;
+
     if (!$("searchResultsPanel").open) $("searchResultsPanel").show();
     $("mediaSearchResults").innerHTML = mediaSearchResults.map((item,index) => {
       const title = item.title || item.name || "Untitled";
@@ -2123,7 +2122,7 @@ async function refreshRecentlyAdded() {
     const items = Array.isArray(result.items) ? result.items.slice(0, 6) : [];
     $("recentlyAddedCount").textContent = items.length;
     $("recentlyAddedStatus").textContent = result.errors?.length ? result.errors.join(" ") : result.configured === false ? "Enable Tracearr to show confirmed library additions." : "";
-    $("recentlyAddedList").innerHTML = items.length ? items.map(item => `<article class="now-playing-card recent-poster-card media-${mediaCardType(item)}">${playbackPoster(item)}<div class="now-playing-details">${mediaCardBadge(item)}<div class="item-title" title="${escapeHTML(item.show_title || item.title)}">${escapeHTML(item.show_title || item.title)}</div><p class="item-meta">${escapeHTML(mediaLabel(item))}</p></div>${item.episodes?.length ? `<details class="recent-episodes"><summary>${item.episodes.length} recently added episode${item.episodes.length === 1 ? "" : "s"}</summary><ul>${item.episodes.map(title=>`<li>${escapeHTML(title)}</li>`).join("")}</ul></details>` : ""}<p class="item-meta">Added ${escapeHTML(new Date(item.added_at).toLocaleString())}</p></article>`).join("") : '<div class="empty-state">No confirmed recent additions.</div>';
+    $("recentlyAddedList").innerHTML = items.length ? items.map(item => `<article class="now-playing-card recent-poster-card media-${mediaCardType(item)}">${playbackPoster(item)}<div class="now-playing-details">${mediaCardBadge(item)}<div class="item-title" title="${escapeHTML(item.show_title || item.title)}">${escapeHTML(item.show_title || item.title)}</div><p class="item-meta">${escapeHTML(mediaLabel(item))}</p></div>${item.episodes?.length ? `<details class="recent-episodes"><summary>${item.episodes.length} recently added episode${item.episodes.length === 1 ? "" : "s"}</summary><ul>${item.episodes.map(title=>`<li>${escapeHTML(title)}</li>`).join("")}</ul></details>` : ""}<p class="item-meta">${escapeHTML(new Date(item.added_at).toLocaleDateString())}</p></article>`).join("") : '<div class="empty-state">No confirmed recent additions.</div>';
   } catch {
     $("recentlyAddedStatus").textContent = "Unable to refresh recent additions. Retrying automatically.";
     $("recentlyAddedList").querySelector(".empty-state")?.replaceChildren(document.createTextNode("Recent additions unavailable."));
@@ -2132,5 +2131,5 @@ async function refreshRecentlyAdded() {
 refreshRecentlyAdded();
 setInterval(refreshRecentlyAdded, 30000);
 $("closeSearchResults").addEventListener("click",()=>$("searchResultsPanel").close());
-$("showSearchResults").addEventListener("click",()=>{if (!$("searchResultsPanel").open) $("searchResultsPanel").show();});
+$("openMediaRequest").addEventListener("click",()=>{if (!$("searchResultsPanel").open) $("searchResultsPanel").showModal(); $("mediaSearchQuery").focus();});
 document.addEventListener("keydown",event=>{if(event.key==="Escape" && !$("mediaRequestDialog").open) $("searchResultsPanel").close();});

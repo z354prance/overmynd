@@ -1578,3 +1578,86 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 #searchResultsPanel header { display:flex; justify-content:space-between; align-items:center; gap:16px; }
 #searchResultsPanel h2 { font-size:18px; }
 @media(max-width:1100px) { #dashboardView .dashboard-grid { display:flex; } #dashboardView .dashboard-grid > .request-panel { position:static; order:-1; } }
+
+/* Operations layout: viewing above compact live work. */
+.main { max-width:1800px; margin:auto; padding:24px 30px; }
+#pageHeader { min-height:54px; margin-bottom:20px; }
+#pageHeader.dashboard-topbar { display:flex; justify-content:space-between; align-items:center; }
+.dashboard-brand { position:static; transform:none; display:flex; flex-direction:row-reverse; align-items:center; gap:12px; }
+.dashboard-brand h1 { font-size:20px; margin:0; letter-spacing:4px; }
+.dashboard-brand img { width:42px; height:42px; }
+#pageHeader .topbar-heading:has(#pageTitle[hidden]) { display:none; }
+#lastUpdated { display:none; }
+#dashboardView .dashboard-grid { display:grid; grid-template-columns:minmax(0, 0.38fr) minmax(0, 0.62fr); gap:16px; align-items:stretch; }
+#dashboardView .dashboard-grid > .playback-panel { grid-column:1; grid-row:1; }
+#dashboardView .dashboard-grid > [aria-labelledby="recentlyAddedHeading"] { grid-column:2; grid-row:1; }
+#dashboardView .dashboard-grid > .pipeline-panel { grid-column:1 / -1; grid-row:2; }
+.panel-header { padding:16px; }
+.pipeline-panel .panel-kicker { display:none; }
+#playbackList { display:flex; flex-direction:column; padding:12px; gap:10px; }
+#playbackList .now-playing-card { display:grid; grid-template-columns:76px minmax(0,1fr); column-gap:12px; border-top:1px solid var(--border); }
+#playbackList .playback-art { grid-column:1; grid-row:1 / span 2; width:76px; height:114px; }
+#playbackList .now-playing-details { padding:0; min-width:0; }
+#playbackList .progress-track { grid-column:2; margin-top:8px; align-self:end; }
+#recentlyAddedList { grid-template-columns:repeat(6,minmax(0,1fr)); padding:12px; gap:10px; }
+#recentlyAddedList .recent-poster-card { border:0; padding:0; background:transparent; }
+#recentlyAddedList .playback-art { border:2px solid var(--media-accent); }
+#recentlyAddedList .media-card-type { font-size:9px; }
+#recentlyAddedList .item-title { font-size:12px; }
+.progress-columns, .progress-columns.has-series { display:flex; flex-direction:column; gap:12px; padding:12px; }
+.series-overview { border:0; padding:0; }
+.progress-columns section > h3 { font-size:10px; margin-bottom:8px; }
+#pipelineList, #seriesOverviewList { display:flex; flex-direction:column; gap:8px; }
+#pipelineList .pipeline-card, #seriesOverviewList .pipeline-card { display:grid; grid-template-columns:64px minmax(170px,1fr) minmax(170px,1fr) minmax(150px,1.3fr) 55px; align-items:center; gap:12px; padding:8px; border-left:2px solid var(--media-accent); }
+#pipelineList .progress-art, #seriesOverviewList .progress-art { grid-column:1; grid-row:1; width:64px; height:76px; aspect-ratio:auto; margin:0; }
+#pipelineList .pipeline-card-heading, #seriesOverviewList .pipeline-card-heading { grid-column:2; grid-row:1; min-height:0; display:block; }
+#pipelineList h3 { height:auto; font-size:12px; }
+#pipelineList .pipeline-card-heading .media-card-type { display:none; }
+#pipelineList .pipeline-stage { padding:0; background:transparent; font-size:10px; }
+#pipelineList .pipeline-detail { grid-column:3; grid-row:1; height:auto; min-height:0; margin:0; }
+#pipelineList .pipeline-progress, #seriesOverviewList .pipeline-progress { grid-column:4; grid-row:1; margin:0; order:initial; }
+#pipelineList .pipeline-progress-label, #seriesOverviewList .pipeline-progress-label { grid-column:5; grid-row:1; margin:0; order:initial; }
+#pipelineList .pipeline-progress-label > span { display:none; }
+#pipelineList .pipeline-progress-label strong, #seriesOverviewList .pipeline-progress-label strong { font-size:13px; }
+#pipelineList .pipeline-problem { grid-column:2 / -1; margin:0; }
+#seriesOverviewList .pipeline-card-heading .media-card-type { display:none; }
+#seriesOverviewList .pipeline-progress-label { display:flex; flex-direction:column-reverse; }
+#seriesOverviewList .pipeline-progress-label span { font-size:9px; }
+#seriesOverviewList .season-breakdown { grid-column:3; grid-row:1; margin:0; }
+.progress-art-placeholder > span, .progress-art-placeholder .media-card-type { font-size:0; }
+.progress-art-placeholder svg { width:26px; height:26px; }
+.manual-placeholder { width:32px; height:32px; }
+#searchResultsPanel { inset:0; margin:auto; width:min(850px,calc(100vw - 32px)); max-height:85vh; }
+#searchResultsPanel::backdrop { background:#0009; backdrop-filter:blur(3px); }
+#searchResultsPanel .request-panel { border:0; background:transparent; }
+#searchResultsPanel .request-panel .panel-header { display:none; }
+#searchResultsPanel .media-search-form { display:flex; flex-wrap:wrap; }
+#searchResultsPanel .service-form-field { flex:1 1 280px; }
+@media(max-width:1100px) {
+ #dashboardView .dashboard-grid { grid-template-columns:minmax(0,1fr); }
+ #dashboardView .dashboard-grid > .playback-panel { grid-column:1; grid-row:1; }
+ #dashboardView .dashboard-grid > [aria-labelledby="recentlyAddedHeading"] { grid-column:1; grid-row:2; }
+ #dashboardView .dashboard-grid > .pipeline-panel { grid-column:1; grid-row:3; }
+}
+@media(max-width:700px) {
+ .main { padding:16px 12px; }
+ .dashboard-brand h1 { font-size:14px; letter-spacing:2px; }
+ .dashboard-brand img { width:30px; height:30px; }
+ .topbar-meta .live-indicator { display:none; }
+ #recentlyAddedList { grid-template-columns:repeat(3,minmax(0,1fr)); }
+ #pipelineList .pipeline-card, #seriesOverviewList .pipeline-card { grid-template-columns:48px minmax(0,1fr) 48px; gap:8px; }
+ #pipelineList .progress-art, #seriesOverviewList .progress-art { width:48px; height:66px; grid-row:1 / span 2; }
+ #pipelineList .pipeline-card-heading, #seriesOverviewList .pipeline-card-heading { grid-column:2; }
+ #pipelineList .pipeline-detail, #seriesOverviewList .season-breakdown { grid-column:2; grid-row:2; }
+ #pipelineList .pipeline-progress, #seriesOverviewList .pipeline-progress { grid-column:2 / -1; grid-row:3; }
+ #pipelineList .pipeline-progress-label, #seriesOverviewList .pipeline-progress-label { grid-column:3; grid-row:1; }
+ #pipelineList .pipeline-problem { grid-row:4; }
+}
+#pipelineList, #seriesOverviewList { align-items:stretch; min-height:0; }
+#pipelineList .pipeline-card, #seriesOverviewList .pipeline-card { width:100%; min-width:0; }
+#pipelineList .empty-state, #recentlyAddedList .empty-state, #playbackList .empty-state { min-height:100px; }
+#recentlyAddedList { min-height:0; }
+
+#recentlyAddedList .now-playing-details > .item-meta { display:none; }
+#recentlyAddedList .now-playing-details { display:flex; flex-direction:column; gap:6px; }
+#recentlyAddedList .now-playing-details .item-title { order:-1; min-height:30px; }
