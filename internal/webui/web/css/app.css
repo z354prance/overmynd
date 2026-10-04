@@ -1743,3 +1743,17 @@ body:has(#servicesView.active) .dashboard-footer .nav-item[data-view="dashboard"
 #dashboardView [aria-labelledby="recentlyAddedHeading"] > .panel-header { flex-shrink:0; }
 #recentlyAddedStatus:empty { display:none; }
 #playbackList, #recentlyAddedList { flex:1; min-height:0; max-height:none; overflow-y:auto; align-content:start; justify-content:start; padding:12px; gap:10px; }
+/* Horizontal media cards: recent additions in one list, playback in two columns. */
+#recentlyAddedList { grid-template-columns:minmax(0,1fr); grid-auto-rows:116px; }
+#recentlyAddedList .recent-poster-card { display:grid; grid-template-columns:64px minmax(0,1fr); grid-template-rows:34px minmax(0,1fr) 18px; gap:3px 10px; width:100%; height:116px; padding:8px; border:1px solid var(--border); background:var(--panel-soft); }
+#recentlyAddedList .playback-art { grid-column:1; grid-row:1 / -1; width:64px; height:96px; }
+#recentlyAddedList .now-playing-details { grid-column:2; grid-row:1; min-height:0; padding:0; }
+#recentlyAddedList .item-title { height:auto; min-height:0; }
+#recentlyAddedList .recent-episodes { grid-column:2; grid-row:2; min-height:0; margin:0; overflow:auto; }
+#recentlyAddedList .recent-poster-card > .item-meta:last-child { grid-column:2; grid-row:3; height:18px; min-height:0; padding:0; margin:0; }
+#playbackList { grid-template-columns:repeat(2,minmax(0,1fr)); }
+#playbackList .now-playing-card { display:grid; grid-template-columns:64px minmax(0,1fr); grid-template-rows:minmax(0,1fr) 4px; gap:8px 10px; width:100%; height:180px; }
+#playbackList .playback-art { grid-column:1; grid-row:1; width:64px; height:96px; }
+#playbackList .now-playing-details { grid-column:2; grid-row:1; padding-top:0; min-height:0; overflow-y:auto; }
+#playbackList .progress-track { grid-column:1 / -1; grid-row:2; margin:0; }
+@media(max-width:559px) { #playbackList { grid-template-columns:minmax(0,1fr); } }

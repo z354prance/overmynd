@@ -81,7 +81,7 @@ const assert = require('node:assert/strict');
     await page.locator('#closeSearchResults').click();
     assert.equal(await page.locator('#dashboardView .playback-panel').count(),1);
     await page.waitForFunction(()=>document.querySelectorAll('#playbackList .now-playing-card').length===2);
-    assert(await page.locator('#playbackList .now-playing-card').first().evaluate(card=>{const art=card.querySelector('.playback-art').getBoundingClientRect();const info=card.querySelector('.now-playing-details').getBoundingClientRect();const bar=card.querySelector('.progress-track').getBoundingClientRect();return info.top>=art.bottom && bar.top>=info.bottom;}));
+    assert(await page.locator('#playbackList .now-playing-card').first().evaluate(card=>{const art=card.querySelector('.playback-art').getBoundingClientRect();const info=card.querySelector('.now-playing-details').getBoundingClientRect();const bar=card.querySelector('.progress-track').getBoundingClientRect();return info.left>=art.right && bar.top>=info.bottom;}));
     await page.waitForFunction(()=>document.querySelector('#playbackList img').naturalWidth>0);
     await page.waitForFunction(()=>document.querySelectorAll('#playbackList img')[1].hidden);
     for(const width of [320,375,768,1440]){
