@@ -1,6 +1,7 @@
 package correlation
 
 import (
+	"path"
 	"regexp"
 	"strings"
 
@@ -35,9 +36,19 @@ func MetadataFromDownload(item models.Download) MetadataIdentity {
 	}
 }
 
+// Tdarr reports the media filename; ARR queues report the release without its
+// container extension. Keep all release details to avoid matching other episodes.
+func processingReleaseTitle(title string) string {
+	switch strings.ToLower(path.Ext(title)) {
+	case ".mkv", ".mp4", ".avi", ".m4v", ".ts", ".m2ts", ".mov", ".webm":
+		return strings.TrimSuffix(title, path.Ext(title))
+	}
+	return title
+}
+
 func MetadataFromProcessing(item models.ProcessingJob) MetadataIdentity {
 	return MetadataIdentity{
-		Title: normalizeTitle(item.Title),
+		Title: normalizeTitle(processingReleaseTitle(item.Title)),
 	}
 }
 
