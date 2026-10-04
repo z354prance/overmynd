@@ -7,6 +7,7 @@ import (
 	"github.com/z354prance/overmynd/internal/models"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 )
 
@@ -145,5 +146,28 @@ func TestRecentAdditionsPagesPastBulkShow(t *testing.T) {
 				t.Fatal("bulk show was not grouped")
 			}
 		})
+	}
+}
+
+func TestRecentPosterPath(t *testing.T) {
+	for _, serverType := range []string{"emby", "jellyfin"} {
+		got := recentPosterPath("server", serverType, "episode", "show", "episode")
+		u, err := url.Parse(got)
+		if err != nil || u.Query().Get("server") != "server" {
+			t.Fatal(got, err)
+		}
+		want := "/Items/show/Images/Primary"
+		if serverType == "plex" {
+			want = "/library/metadata/show/thumb"
+		}
+		if u.Query().Get("url") != want {
+			t.Fatal(got)
+		}
+	}
+	if recentPosterPath("s", "unknown", "id", "", "movie") != "" {
+		t.Fatal("unsupported server")
+	}
+	if recentPosterPath("", "emby", "id", "", "movie") != "" {
+		t.Fatal("missing server")
 	}
 }

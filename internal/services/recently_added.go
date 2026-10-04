@@ -11,17 +11,19 @@ import (
 )
 
 type RecentlyAddedItem struct {
-	ShowTitle string   `json:"show_title,omitempty"`
-	ShowID    string   `json:"show_id,omitempty"`
-	Episodes  []string `json:"episodes,omitempty"`
-	mediaID   string
-	serviceID int64
-	ID        string    `json:"id"`
-	Title     string    `json:"title"`
-	Kind      string    `json:"kind"`
-	Year      int       `json:"year,omitempty"`
-	AddedAt   time.Time `json:"added_at"`
-	Stage     string    `json:"stage"`
+	PosterURL       string   `json:"poster_url,omitempty"`
+	PosterServiceID int64    `json:"-"`
+	ShowTitle       string   `json:"show_title,omitempty"`
+	ShowID          string   `json:"show_id,omitempty"`
+	Episodes        []string `json:"episodes,omitempty"`
+	mediaID         string
+	serviceID       int64
+	ID              string    `json:"id"`
+	Title           string    `json:"title"`
+	Kind            string    `json:"kind"`
+	Year            int       `json:"year,omitempty"`
+	AddedAt         time.Time `json:"added_at"`
+	Stage           string    `json:"stage"`
 }
 type RecentlyAddedResult struct {
 	Items      []RecentlyAddedItem `json:"items"`
@@ -56,15 +58,16 @@ func (m *Manager) RecentlyAdded(ctx context.Context) (RecentlyAddedResult, error
 			for pageNumber := 0; pageNumber < 20; pageNumber++ {
 				var page struct {
 					Data []struct {
-						ID        string     `json:"id"`
-						MediaID   string     `json:"media_id"`
-						ShowKey   string     `json:"grandparent_rating_key"`
-						ServerID  string     `json:"server_id"`
-						RatingKey string     `json:"rating_key"`
-						Title     string     `json:"title"`
-						Year      int        `json:"year"`
-						AddedAt   time.Time  `json:"added_at"`
-						RemovedAt *time.Time `json:"removed_at"`
+						ID         string     `json:"id"`
+						MediaID    string     `json:"media_id"`
+						ShowKey    string     `json:"grandparent_rating_key"`
+						ServerID   string     `json:"server_id"`
+						ServerType string     `json:"server_type"`
+						RatingKey  string     `json:"rating_key"`
+						Title      string     `json:"title"`
+						Year       int        `json:"year"`
+						AddedAt    time.Time  `json:"added_at"`
+						RemovedAt  *time.Time `json:"removed_at"`
 					} `json:"data"`
 					Meta struct {
 						NextCursor string `json:"nextCursor"`
@@ -101,7 +104,7 @@ func (m *Manager) RecentlyAdded(ctx context.Context) (RecentlyAddedResult, error
 							return fmt.Sprintf("%d:%s:%s", service.ID, item.ServerID, item.ShowKey)
 						}
 						return ""
-					}(), mediaID: item.MediaID, serviceID: service.ID, ID: identity, Title: item.Title, Kind: kind, Year: item.Year, AddedAt: item.AddedAt, Stage: "available"})
+					}(), PosterURL: recentPosterPath(item.ServerID, item.ServerType, item.RatingKey, item.ShowKey, kind), PosterServiceID: service.ID, mediaID: item.MediaID, serviceID: service.ID, ID: identity, Title: item.Title, Kind: kind, Year: item.Year, AddedAt: item.AddedAt, Stage: "available"})
 				}
 				if len(distinct) >= 6 || page.Meta.NextCursor == "" {
 					break
@@ -198,4 +201,25 @@ func groupRecentShows(items []RecentlyAddedItem) []RecentlyAddedItem {
 		result = append(result, item)
 	}
 	return result
+}
+
+// Image paths come only from confirmed library identities, not user input.
+func recentPosterPath(server, serverType, ratingKey, showKey, kind string) string {
+	if kind == "episode" && showKey != "" {
+		ratingKey = showKey
+	}
+	if server == "" || ratingKey == "" {
+		return ""
+	}
+	var path string
+	switch serverType {
+	case "plex":
+		// Tracearr requires the timestamped thumb path, absent from this feed.
+		return ""
+	case "emby", "jellyfin":
+		path = "/Items/" + url.PathEscape(ratingKey) + "/Images/Primary"
+	default:
+		return ""
+	}
+	return "/api/v1/images/proxy?" + url.Values{"server": {server}, "url": {path}}.Encode()
 }

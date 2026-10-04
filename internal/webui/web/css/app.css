@@ -1509,37 +1509,6 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 
 #pipelineList .pipeline-progress-label { margin-top: 8px; }
 #pipelineList .pipeline-detail { min-height: 22px; margin: 6px 0 8px; }
-/* Compact completed cards; episode details remain expandable. */
-#recentlyAddedList { grid-template-columns: repeat(auto-fill, minmax(0, 230px)); align-items: start; gap: 10px; padding: 12px; }
-#recentlyAddedList .pipeline-card { padding: 12px; }
-#recentlyAddedList .pipeline-card-heading { gap: 6px; }
-#recentlyAddedList h3 { font-size: 13px; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-#recentlyAddedList .media-card-type { font-size: 9px; margin-bottom: 5px; }
-#recentlyAddedList .item-meta { font-size: 10px; line-height: 1.4; }
-#recentlyAddedList .pipeline-stage { font-size: 9px; padding: 3px 5px; }
-#recentlyAddedList .pipeline-progress-label { margin-top: 10px; font-size: 10px; }
-#recentlyAddedList .pipeline-progress-label strong { font-size: 14px; }
-#recentlyAddedList .pipeline-progress { height: 5px; margin-top: 5px; }
-#recentlyAddedList .pipeline-detail, #recentlyAddedList .pipeline-steps { display: none; }
-#recentlyAddedList .recent-episodes { font-size: 10px; margin-top: 7px; }
-#recentlyAddedList .recent-episodes ul { margin: 6px 0; }
-@media (max-width: 360px) { #recentlyAddedList { grid-template-columns: minmax(0, 1fr); } }
-/* Balanced six-card layout with stable progress and date alignment. */
-#recentlyAddedList { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; }
-#recentlyAddedList .pipeline-card { position: relative; height: 230px; display: flex; flex-direction: column; }
-#recentlyAddedList .pipeline-card-heading { height: 82px; flex-shrink: 0; }
-#recentlyAddedList .pipeline-card-heading > div { width: 100%; }
-#recentlyAddedList .media-card-type { padding-right: 90px; }
-#recentlyAddedList h3 { height: 36px; }
-#recentlyAddedList .pipeline-stage { position: absolute; top: 12px; right: 12px; }
-#recentlyAddedList .pipeline-progress { flex-shrink: 0; }
-#recentlyAddedList .recent-episodes { min-height: 18px; overflow: auto; }
-#recentlyAddedList .recent-episodes summary { cursor: pointer; }
-#recentlyAddedList .pipeline-card > .item-meta:last-child { margin-top: auto; padding-top: 6px; min-height: 34px; flex-shrink: 0; }
-@media (min-width: 1600px) { #recentlyAddedList { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
-@media (max-width: 899px) { #recentlyAddedList { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 559px) { #recentlyAddedList { grid-template-columns: minmax(0, 1fr); } }
-
 .dashboard-footer { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-top:24px; padding:16px 0; border-top:1px solid var(--border); color:var(--muted); font-size:12px; }
 .dashboard-footer nav { display:flex; flex-wrap:wrap; gap:8px; }
 .dashboard-footer .nav-item { width:auto; padding:10px 16px; border:1px solid var(--border); }
@@ -1558,3 +1527,17 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .playback-extra { margin-top: 8px; }
 .playback-extra summary { cursor: pointer; color: var(--muted); font-size: 11px; }
 .playback-extra[open] summary { color: var(--media-accent); }
+
+/* Recently added shares the poster-first playback layout. */
+#recentlyAddedList { grid-template-columns: repeat(6, minmax(0,180px)); justify-content:center; align-items:stretch; gap:12px; padding:16px; }
+.recent-poster-card .item-title { min-height:36px; font-size:13px; overflow:hidden; }
+.recent-poster-card .media-card-type { margin-top:8px; }
+.recent-poster-card > .item-meta:last-child { margin-top:auto; padding-top:10px; font-size:10px; }
+.recent-poster-card .recent-episodes { font-size:10px; }
+.recent-poster-card .recent-episodes summary { cursor:pointer; }
+#recentlyAddedList .empty-state { grid-column:1 / -1; }
+@media(max-width:1199px) { #recentlyAddedList { grid-template-columns:repeat(3,minmax(0,180px)); } }
+@media(max-width:639px) { #recentlyAddedList { grid-template-columns:repeat(2,minmax(0,180px)); } }
+@media(max-width:359px) { #recentlyAddedList { grid-template-columns:minmax(0,180px); } }
+
+#recentlyAddedList { grid-auto-rows: 1fr; }

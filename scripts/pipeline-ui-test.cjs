@@ -143,19 +143,15 @@ const assert = require('node:assert/strict');
     await page.evaluate(()=>refreshDashboard());
     recent = Array.from({length:6},(_,i)=>({id:`ready-${i}`,title:i % 2 ? 'A much longer show title that needs two lines' : `Finished ${i}`,kind:i % 2 ? 'series' : 'movie',episodes:i % 2 ? ['Episode one', 'Episode two', 'Episode three'] : [],added_at:'2026-09-30T12:00:00Z'}));
     await page.evaluate(()=>refreshRecentlyAdded());
-    assert.equal(await page.locator('#recentlyAddedList .pipeline-card').count(),6);
-    assert.equal(await page.locator('#recentlyAddedList [aria-valuenow="100"]').count(),6);
-    assert.equal(await page.locator('#recentlyAddedList .pipeline-steps li').count(),24);
-    assert.equal(await page.locator('#recentlyAddedList [aria-current="step"]').first().textContent(),'Ready');
-    assert.equal(await page.locator('#pipelineList .pipeline-card').count(),0);
+    assert.equal(await page.locator('#recentlyAddedList .recent-poster-card').count(),6);
+    assert.equal(await page.locator('#recentlyAddedList .playback-art').count(),6);
+    assert.equal(await page.locator('#recentlyAddedList .pipeline-steps').count(),0);
     for (const width of [320,768,1440,1800]) {
       await page.setViewportSize({width,height:1000});
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-      const boxes = await page.locator('#recentlyAddedList .pipeline-card').evaluateAll(cards => cards.map(c => ({width:c.offsetWidth,height:c.offsetHeight,top:c.offsetTop,bar:c.querySelector('.pipeline-progress').offsetTop,date:c.lastElementChild.offsetTop})));
-      assert(boxes.every(b => b.height === 230 && Math.abs(b.width-boxes[0].width)<=1 && b.bar===boxes[0].bar && b.date===boxes[0].date));
-      assert.equal(boxes.filter(b=>b.top===boxes[0].top).length,width>=1600?6:width>=900?3:width>=560?2:1);
-      await page.locator('#recentlyAddedList details').first().evaluate(el=>el.open=true);
-      assert.equal(await page.locator('#recentlyAddedList .pipeline-card').nth(1).evaluate(el=>el.offsetHeight),230);
+      const boxes=await page.locator('#recentlyAddedList .recent-poster-card').evaluateAll(cards=>cards.map(c=>({w:c.offsetWidth,h:c.offsetHeight,top:c.offsetTop})));
+      assert(boxes.every(b=>Math.abs(b.w-boxes[0].w)<=1 && b.h===boxes[0].h));
+      assert.equal(boxes.filter(b=>b.top===boxes[0].top).length,width>=1200?6:width>=640?3:width>=360?2:1);
     }
     assert.deepEqual(errors,[]);
     console.log('PASS: lifecycle cards, measured/unknown progress, stage changes, source isolation, escaping, responsive layout');

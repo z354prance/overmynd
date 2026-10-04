@@ -8,5 +8,9 @@ func (a *API) recentlyAdded(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
+	for i := range result.Items {
+		item := &result.Items[i]
+		item.PosterURL = a.posterURL(item.PosterServiceID, item.PosterURL)
+	}
 	writeJSON(w, http.StatusOK, result)
 }
