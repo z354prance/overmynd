@@ -1706,13 +1706,33 @@ body:has(#servicesView.active) .dashboard-footer .nav-item[data-view="dashboard"
 #pipelineList .pipeline-progress-label, #pipelineList .pipeline-progress { flex-shrink:0; }
 /* Recent artwork stays the same size instead of expanding with the panel. */
 [aria-labelledby="recentlyAddedHeading"] { container-type:inline-size; }
-#recentlyAddedList { grid-template-columns:repeat(3,140px); grid-auto-rows:330px; justify-content:center; align-items:stretch; }
-#recentlyAddedList .recent-poster-card { width:140px; height:330px; overflow:hidden; }
-#recentlyAddedList .playback-art { width:140px; height:210px; aspect-ratio:auto; flex-shrink:0; }
+#recentlyAddedList { grid-template-columns:repeat(3,110px); grid-auto-rows:260px; justify-content:center; align-items:stretch; }
+#recentlyAddedList .recent-poster-card { width:110px; height:260px; overflow:hidden; }
+#recentlyAddedList .playback-art { width:110px; height:165px; aspect-ratio:auto; flex-shrink:0; }
 #recentlyAddedList .now-playing-details { flex:0 0 40px; min-height:40px; overflow:hidden; padding-top:6px; }
 #recentlyAddedList .item-title { height:34px; min-height:34px; }
 #recentlyAddedList .recent-episodes { flex:1; min-height:18px; overflow-y:auto; margin:6px 0 0; }
 #recentlyAddedList .recent-episodes ul { margin:5px 0; }
 #recentlyAddedList .recent-poster-card > .item-meta:last-child { flex-shrink:0; height:26px; min-height:26px; padding-top:6px; }
-@container (max-width:467px) { #recentlyAddedList { grid-template-columns:repeat(2,140px); } }
-@container (max-width:315px) { #recentlyAddedList { grid-template-columns:140px; } }
+@container (max-width:377px) { #recentlyAddedList { grid-template-columns:repeat(2,110px); } }
+@container (max-width:255px) { #recentlyAddedList { grid-template-columns:110px; } }
+
+/* Compact fixed-size cards; do not stretch an empty neighbouring panel. */
+#dashboardView .dashboard-grid { align-items:start; }
+#playbackList { grid-template-columns:repeat(auto-fill,140px); gap:10px; max-height:710px; }
+#playbackList .now-playing-card, #pipelineList .pipeline-card { width:140px; height:350px; padding:8px; }
+#playbackList .playback-art, #pipelineList .progress-art { height:180px; }
+#playbackList .item-title, #pipelineList h3 { font-size:12px; }
+#playbackList .item-meta { font-size:10px; }
+#pipelineList { grid-template-columns:repeat(auto-fill,140px); gap:10px; }
+#pipelineList .pipeline-card-heading { height:75px; min-height:75px; }
+#pipelineList .pipeline-detail { font-size:10px; margin:5px 0; }
+#pipelineList .pipeline-progress-label strong { font-size:14px; }
+#recentlyAddedList .item-title { font-size:11px; }
+#recentlyAddedList .recent-episodes { font-size:9px; }
+#recentlyAddedList .recent-poster-card > .item-meta:last-child { font-size:9px; height:22px; min-height:22px; padding-top:3px; }
+@media(max-width:359px) { #playbackList { grid-template-columns:140px; justify-content:center; } }
+#recentlyAddedList { max-height:560px; overflow-y:auto; scrollbar-gutter:stable; overscroll-behavior:contain; }
+/* Reserve room for the scrollbar before choosing the number of columns. */
+@container (max-width:393px) { #recentlyAddedList { grid-template-columns:repeat(2,110px); } }
+@container (max-width:271px) { #recentlyAddedList { grid-template-columns:110px; } }
