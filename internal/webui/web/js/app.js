@@ -163,7 +163,7 @@ function pipelineCardMarkup(item) {
     <div class="pipeline-progress${waiting ? " unmeasured" : ""}${progress.problems.length || progress.paused ? " paused" : ""}" role="progressbar" aria-label="${escapeHTML(title)}: ${escapeHTML(progress.label)}" aria-valuemin="0" aria-valuemax="100" ${waiting ? 'aria-valuetext="Progress not reported"' : `aria-valuenow="${Math.round(progress.percent)}"`}>
       <div class="pipeline-progress-fill" style="width:${waiting ? 100 : progress.percent}%"></div>
     </div>
-    <p class="pipeline-detail">${escapeHTML(progress.detail)}${progress.serviceNames.length ? ` · ${escapeHTML(progress.serviceNames.join(", "))}` : ""}</p>
+    <p class="pipeline-detail" title="${escapeHTML([progress.detail, ...progress.serviceNames].join(" - "))}"><span>${escapeHTML(progress.detail)}</span>${progress.serviceNames.length ? `<span class="pipeline-source">${escapeHTML(progress.serviceNames.join(", "))}</span>` : ""}</p>
     <ol class="pipeline-steps" aria-label="Workflow stages">${steps.map(([stage, name]) => `<li${stage === current ? ' aria-current="step"' : ""}>${name}</li>`).join("")}</ol>
     ${progress.problems.length ? `<p class="pipeline-problem">${escapeHTML(progress.problems.map(pretty).join(" · "))}</p>` : ""}
   `;
