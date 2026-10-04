@@ -2142,3 +2142,26 @@ for (const id of ["searchResultsPanel", "mediaRequestDialog"]) {
  dialog.addEventListener("pointerdown",event=>{startedOutside=outside(event);});
  dialog.addEventListener("click",event=>{if(startedOutside && outside(event)) dialog.close(); startedOutside=false;});
 }
+
+// Keep compact cards unchanged while their details are read in a modal.
+document.addEventListener("click", event => {
+  const summary = event.target.closest("#playbackList details > summary, #recentlyAddedList details > summary");
+  if (!summary) return;
+  event.preventDefault();
+  const details = summary.parentElement;
+  const card = details.closest("article");
+  $("cardDetailsTitle").textContent = card.querySelector(".item-title")?.textContent || "Details";
+  const content = $("cardDetailsContent");
+  content.replaceChildren(...Array.from(details.children).filter(child => child !== summary).map(child => child.cloneNode(true)));
+  const dialog = $("cardDetailsDialog");
+  if (!dialog.open) dialog.showModal();
+});
+$("closeCardDetails").addEventListener("click", () => $("cardDetailsDialog").close());
+{
+  const dialog = $("cardDetailsDialog");
+  let startedOutside = false;
+  const outside = event => { const rect = dialog.getBoundingClientRect(); return event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom; };
+  dialog.addEventListener("pointerdown", event => { startedOutside = outside(event); });
+  dialog.addEventListener("click", event => { if (startedOutside && outside(event)) dialog.close(); startedOutside = false; });
+  dialog.addEventListener("close", () => $("cardDetailsContent").replaceChildren());
+}

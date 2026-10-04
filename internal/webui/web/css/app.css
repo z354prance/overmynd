@@ -1776,3 +1776,10 @@ body:has(#servicesView.active) .dashboard-footer .nav-item[data-view="dashboard"
 #playbackList .playback-extra { float:right; margin:0; font-size:9px; line-height:14px; }
 #playbackList .playback-extra[open] { float:none; }
 #playbackList .playback-time { margin:0; font-size:9px; line-height:14px; }
+
+.card-details-dialog { max-height:80vh; overflow-y:auto; }
+.card-details-dialog header { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.card-details-dialog header h2 { margin:0; }
+.card-details-dialog .playback-facts { font-size:13px; }
+.card-details-dialog .playback-facts > div { grid-template-columns:90px minmax(0,1fr); padding:6px 0; }
+#cardDetailsContent ul { padding-left:20px; font-size:13px; line-height:1.7; overflow-wrap:anywhere; }
