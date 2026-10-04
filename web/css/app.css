@@ -1908,3 +1908,16 @@ body:has(#servicesView.active) .dashboard-footer .nav-item[data-view="dashboard"
  #dashboardView .dashboard-grid > .playback-panel,
  #dashboardView .dashboard-grid > [aria-labelledby="recentlyAddedHeading"] { height:610px; }
 }
+
+/* Individual jobs use compact portrait cards; series summaries remain horizontal. */
+#pipelineList { grid-template-columns:repeat(auto-fill,160px); gap:10px; align-items:start; }
+#pipelineList .pipeline-card { width:160px; height:286px; grid-template-columns:minmax(0,1fr) 42px; grid-template-rows:126px 54px 30px 16px 18px 4px; gap:4px 6px; padding:8px; }
+#pipelineList .progress-art { grid-column:1 / -1; grid-row:1; width:84px; height:126px; justify-self:center; align-self:start; }
+#pipelineList .pipeline-card-heading { grid-column:1 / -1; grid-row:2; height:54px; }
+#pipelineList h3 { height:32px; line-height:16px; white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+#pipelineList .pipeline-stage { height:18px; line-height:18px; }
+#pipelineList .pipeline-detail { grid-column:1 / -1; grid-row:3; height:30px; }
+#pipelineList .pipeline-problem { grid-column:1 / -1; grid-row:4; height:16px; line-height:16px; }
+#pipelineList .pipeline-extra { grid-column:1; grid-row:5; }
+#pipelineList .pipeline-progress-label { grid-column:2; grid-row:5; height:18px; }
+#pipelineList .pipeline-progress { grid-column:1 / -1; grid-row:6; }
