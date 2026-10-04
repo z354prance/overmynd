@@ -1896,3 +1896,15 @@ body:has(#servicesView.active) .dashboard-footer .nav-item[data-view="dashboard"
 #pipelineList .pipeline-stage { display:block; }
 
 #pipelineList .progress-art-placeholder > .media-card-type { display:flex; margin:0; }
+
+/* Equal viewing panels; only the playback list scrolls as sessions accumulate. */
+#dashboardView .dashboard-grid > .playback-panel,
+#dashboardView .dashboard-grid > [aria-labelledby="recentlyAddedHeading"] { height:510px; display:flex; flex-direction:column; min-height:0; }
+#dashboardView .playback-panel > .panel-header,
+#dashboardView [aria-labelledby="recentlyAddedHeading"] > .panel-header { flex-shrink:0; }
+#playbackList { flex:1; min-height:0; max-height:none; overflow-y:auto; scrollbar-gutter:stable; align-content:start; }
+#recentlyAddedList { flex:1; min-height:0; align-content:start; }
+@media(max-width:540px) {
+ #dashboardView .dashboard-grid > .playback-panel,
+ #dashboardView .dashboard-grid > [aria-labelledby="recentlyAddedHeading"] { height:610px; }
+}

@@ -193,6 +193,16 @@ const assert = require('node:assert/strict');
       assert.equal(await page.locator('#recentlyAddedList .recent-poster-card').nth(1).evaluate(el=>el.offsetHeight),width<=540?78:62);
       assert(await page.locator('#recentlyAddedList').evaluate(el=>getComputedStyle(el).overflowY==='visible'));
       assert(await page.locator('#recentlyAddedList').evaluate(el=>el.scrollHeight<=el.clientHeight));
+      const panelHeights = await page.locator('.playback-panel, [aria-labelledby="recentlyAddedHeading"]').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height));
+      assert.equal(panelHeights[0],panelHeights[1]);
+      await page.evaluate(()=>{state.playback=Array.from({length:14},(_,i)=>({id:`layout-${i}`,media_title:'Playback layout test',state:'playing'}));renderPlayback();});
+      assert(await page.locator('#playbackList').evaluate(el=>getComputedStyle(el).overflowY==='auto' && el.scrollHeight>el.clientHeight));
+      assert.equal(await page.locator('.playback-panel').evaluate(el=>el.getBoundingClientRect().height),panelHeights[0]);
+      if(width>1000) {
+        const bounds = await page.locator('.playback-panel, [aria-labelledby="recentlyAddedHeading"]').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().bottom));
+        assert.equal(bounds[0],bounds[1]);
+      }
+
     }
     assert.deepEqual(errors,[]);
     console.log('PASS: lifecycle cards, measured/unknown progress, stage changes, source isolation, escaping, responsive layout');
