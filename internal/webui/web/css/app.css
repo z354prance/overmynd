@@ -1704,3 +1704,15 @@ body:has(#servicesView.active) .dashboard-footer .nav-item[data-view="dashboard"
 #pipelineList .pipeline-detail { min-height:0; max-height:42px; overflow-y:auto; flex-shrink:1; }
 #pipelineList .pipeline-problem { max-height:28px; overflow-y:auto; flex-shrink:1; }
 #pipelineList .pipeline-progress-label, #pipelineList .pipeline-progress { flex-shrink:0; }
+/* Recent artwork stays the same size instead of expanding with the panel. */
+[aria-labelledby="recentlyAddedHeading"] { container-type:inline-size; }
+#recentlyAddedList { grid-template-columns:repeat(3,140px); grid-auto-rows:330px; justify-content:center; align-items:stretch; }
+#recentlyAddedList .recent-poster-card { width:140px; height:330px; overflow:hidden; }
+#recentlyAddedList .playback-art { width:140px; height:210px; aspect-ratio:auto; flex-shrink:0; }
+#recentlyAddedList .now-playing-details { flex:0 0 40px; min-height:40px; overflow:hidden; padding-top:6px; }
+#recentlyAddedList .item-title { height:34px; min-height:34px; }
+#recentlyAddedList .recent-episodes { flex:1; min-height:18px; overflow-y:auto; margin:6px 0 0; }
+#recentlyAddedList .recent-episodes ul { margin:5px 0; }
+#recentlyAddedList .recent-poster-card > .item-meta:last-child { flex-shrink:0; height:26px; min-height:26px; padding-top:6px; }
+@container (max-width:467px) { #recentlyAddedList { grid-template-columns:repeat(2,140px); } }
+@container (max-width:315px) { #recentlyAddedList { grid-template-columns:140px; } }
