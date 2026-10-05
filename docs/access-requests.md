@@ -44,7 +44,7 @@ protect `/config` and its backups as you do the existing integration credentials
 - Applicant gets an expiring setup link by email. They confirm any Connect email,
   then choose their local Emby password. The account is enabled only after setup
   succeeds and Connect no longer reports a pending confirmation.
-- Applicant receives a completion notice. A decline sends a decline notice.
+- After Connect verification, password setup, and account activation succeed, the applicant automatically receives a setup-complete email with TV, browser, phone/tablet, Xbox, and PlayStation 4 sign-in instructions. It distinguishes Connect credentials from the local server password and includes official app/help links. **Resend sign-in instructions** on a completed request sends the same guide, including for accounts completed before this update. Failed or pending setup never sends this completion email. A decline sends a decline notice.
 
 Setup links last 24 hours and work once. Only their hashes are saved. Resending a
 link invalidates the previous one. The local password is sent to Emby during

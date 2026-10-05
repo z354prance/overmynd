@@ -86,7 +86,7 @@
       const actions = document.createElement("div"); actions.className = "access-actions"; card.append(actions);
       const options = item.status === "pending" ? [["approve", "Approve"], ["decline", "Decline"], ["resend", "Resend notices"]]
         : item.status === "incomplete" ? [["approve", "Retry setup"]]
-        : ["awaiting_setup", "active", "declined"].includes(item.status) ? [["resend", item.status === "awaiting_setup" ? "Send fresh setup link" : "Resend notice"]] : [];
+        : ["awaiting_setup", "active", "declined"].includes(item.status) ? [["resend", item.status === "awaiting_setup" ? "Send fresh setup link" : item.status === "active" ? "Resend sign-in instructions" : "Resend notice"]] : [];
       if (item.emby_id && ["incomplete", "awaiting_setup", "active"].includes(item.status)) options.push(["reapply-template", "Reapply template"], ["reset", "Reset after Emby deletion"]);
       for (const [action, label] of options) {
         const button = document.createElement("button"); button.type = "button"; button.className = "service-secondary-button"; button.textContent = label;

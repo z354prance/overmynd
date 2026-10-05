@@ -384,7 +384,7 @@ func (m *Manager) Resend(id int64) error {
 	case "declined":
 		m.notify(id, s, []notice{{r.Email, "Access request update", "Your request for server access was not approved. Contact the server owner if you have questions."}})
 	case "active":
-		m.notify(id, s, []notice{{r.Email, "Emby setup complete", "Your account is ready. Sign in to Emby using your linked Emby Connect account."}})
+		m.notify(id, s, []notice{completionNotice(r)})
 	default:
 		return errors.New("resolve the setup error before resending")
 	}
@@ -502,6 +502,6 @@ func (m *Manager) Setup(ctx context.Context, token, password string) error {
 		return e
 	}
 	success = true
-	m.notify(id, s, []notice{{r.Email, "Emby setup complete", "Your account is ready. Sign in to your Emby app with your linked Emby Connect account. Your local username is " + r.Username + "."}})
+	m.notify(id, s, []notice{completionNotice(r)})
 	return nil
 }
