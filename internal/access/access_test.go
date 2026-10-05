@@ -535,7 +535,7 @@ func TestExplicitTemplatePermissionsAndConfiguration(t *testing.T) {
 	}
 }
 func TestPermissionFailuresKeepAccountDisabled(t *testing.T) {
-	for _, mode := range []string{"ignored restrictions", "configuration failure", "enabled on creation"} {
+	for _, mode := range []string{"ignored restrictions", "configuration failure"} {
 		t.Run(mode, func(t *testing.T) {
 			f := testManager(t)
 			f.submit(t)
@@ -544,8 +544,6 @@ func TestPermissionFailuresKeepAccountDisabled(t *testing.T) {
 				f.ignoreRestrictions = true
 			case "configuration failure":
 				f.configFails = true
-			case "enabled on creation":
-				f.bornEnabled = true
 			}
 			if f.m.Approve(context.Background(), 1) == nil {
 				t.Fatal("unsafe provisioning succeeded")
@@ -640,5 +638,24 @@ func TestReapplyDoesNotModifyPromotedAdmin(t *testing.T) {
 	}
 	if f.policy["IsAdministrator"] != true {
 		t.Fatal("changed promoted account")
+	}
+}
+
+func TestEnabledCreationContinuesAfterVerifiedDisable(t *testing.T) {
+	f := testManager(t)
+	f.submit(t)
+	f.bornEnabled = true
+	if e := f.m.Approve(context.Background(), 1); e != nil {
+		t.Fatal(e)
+	}
+	if f.creates != 1 || f.linkCalls != 1 || f.policy["IsDisabled"] != true || f.policy["EnableAllFolders"] != false {
+		t.Fatal("automatic recovery was unsafe or duplicated provisioning")
+	}
+	r, _ := f.m.get(1)
+	if r.Status != "awaiting_setup" {
+		t.Fatal(r.Status)
+	}
+	if e := f.m.Setup(context.Background(), f.token(t), "a strong local password"); e != nil {
+		t.Fatal(e)
 	}
 }

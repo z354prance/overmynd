@@ -10,8 +10,8 @@ request permissions.
    Set its library, playback, remote-access, and other permissions to those new
    members should inherit. Keep it disabled. Copy its user ID from the user page
    URL. This template is required: Overmynd requests a disabled copy, explicitly writes the template policy and
-   user configuration, and reads them back before continuing. A server that
-   creates the user enabled is stopped and the user is disabled for inspection.
+   user configuration, and reads them back before continuing. If Emby creates the user enabled, Overmynd disables it and verifies that
+   disable before continuing on the same user. A failed disable stops setup.
 2. Create an Emby API key. The Emby server must support `CopyFromUserId` with
    `UserCopyOptions: ["UserPolicy", "UserConfiguration"]` on `POST /Users/New` and Connect linking.
 3. Publish Overmynd through HTTPS. In **Settings > Server access requests > Access
@@ -58,6 +58,13 @@ Connect verification reads the existing user's `ConnectUserName` and
 password setup. The linked identity must match the approved Connect identity
 (case-insensitively). An unrecognized pending-link response keeps setup blocked
 rather than assuming confirmation.
+
+## Request history
+
+Active and declined requests without outstanding errors move into the collapsed
+**Completed requests** section when the queue refreshes. Records remain stored
+for duplicate prevention, account repair, and resending notices; there is no
+automatic deletion. Requests with setup or delivery errors stay visible.
 
 ## Failures and retries
 

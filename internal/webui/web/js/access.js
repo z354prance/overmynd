@@ -67,8 +67,15 @@
   });
   const statuses = { pending: "Awaiting approval", incomplete: "Setup needs attention", provisioning: "Creating account", awaiting_setup: "Waiting for recipient setup", setting_up: "Finishing setup", active: "Active", declined: "Declined" };
   function queue(items) {
-    const container = el("accessQueue"); container.replaceChildren();
+    const container = el("accessQueue");
+    const historyOpen = container.querySelector(".access-history")?.open || false;
+    container.replaceChildren();
     if (!items.length) { container.textContent = "No access requests yet."; return; }
+    const completed = item => ["active", "declined"].includes(item.status) && !item.error && !item.mail_error;
+    const count = items.filter(completed).length;
+    const history = document.createElement("details"); history.className = "access-history"; history.open = historyOpen;
+    const summary = document.createElement("summary"); summary.textContent = `Completed requests (${count})`; history.append(summary);
+    if (count === items.length) { const empty = document.createElement("p"); empty.textContent = "No requests need attention."; container.append(empty); }
     for (const item of items) {
       const card = document.createElement("article"); card.className = "access-queue-card";
       const title = document.createElement("h4"); title.textContent = `${item.name} - ${statuses[item.status] || item.status}`; card.append(title);
@@ -112,8 +119,9 @@
         });
         details.append(form); card.append(details);
       }
-      container.append(card);
+      (completed(item) ? history : container).append(card);
     }
+    if (count) container.append(history);
   }
   async function loadQueue() {
     if (!state.authenticated) return;

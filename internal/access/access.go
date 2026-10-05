@@ -338,7 +338,8 @@ func (m *Manager) Approve(ctx context.Context, id int64) error {
 		if err := quarantine(s, r, user.Policy); err != nil {
 			return m.fail(id, s, err.Error())
 		}
-		return m.fail(id, s, "Emby did not create the account disabled as requested. It has been disabled; inspect the server's template-copy support before retrying")
+		// The disable was read back successfully. Continue on this same user;
+		// never repeat creation or skip explicit template verification.
 	}
 	if _, _, e = applyTemplate(ctx, s, r, template); e != nil {
 		return m.fail(id, s, e.Error())
