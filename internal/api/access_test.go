@@ -7,7 +7,7 @@ import (
 
 func TestAccessAdminBoundary(t *testing.T) {
 	h, token := testRouter(t)
-	for _, route := range []struct{ method, path string }{{"GET", "settings"}, {"PUT", "settings"}, {"GET", "requests"}, {"POST", "test-email"}, {"POST", "requests/1/approve"}, {"POST", "requests/1/decline"}, {"POST", "requests/1/resend"}, {"POST", "requests/1/correct"}, {"POST", "requests/1/reset"}} {
+	for _, route := range []struct{ method, path string }{{"GET", "settings"}, {"PUT", "settings"}, {"GET", "requests"}, {"POST", "test-email"}, {"POST", "requests/1/approve"}, {"POST", "requests/1/decline"}, {"POST", "requests/1/resend"}, {"POST", "requests/1/correct"}, {"POST", "requests/1/reset"}, {"POST", "requests/1/reapply-template"}} {
 		w := request(t, h, "", route.method, "/api/v1/access/"+route.path, `{}`)
 		if w.Code != 401 {
 			t.Fatalf("public %s: %d %s", route.path, w.Code, w.Body)

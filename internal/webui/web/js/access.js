@@ -80,14 +80,14 @@
       const options = item.status === "pending" ? [["approve", "Approve"], ["decline", "Decline"], ["resend", "Resend notices"]]
         : item.status === "incomplete" ? [["approve", "Retry setup"]]
         : ["awaiting_setup", "active", "declined"].includes(item.status) ? [["resend", item.status === "awaiting_setup" ? "Send fresh setup link" : "Resend notice"]] : [];
-      if (item.emby_id && ["incomplete", "awaiting_setup", "active"].includes(item.status)) options.push(["reset", "Reset after Emby deletion"]);
+      if (item.emby_id && ["incomplete", "awaiting_setup", "active"].includes(item.status)) options.push(["reapply-template", "Reapply template"], ["reset", "Reset after Emby deletion"]);
       for (const [action, label] of options) {
         const button = document.createElement("button"); button.type = "button"; button.className = "service-secondary-button"; button.textContent = label;
         button.addEventListener("click", () => busy(card, async () => {
           try {
             message("accessAdminMessage", "Updating request...");
             const result = await api(`requests/${item.id}/${action}`, {});
-            if (state.authenticated) message("accessAdminMessage", action === "reset" ? "Old setup links cleared. Approve this request again to create a new account." : result.message);
+            if (state.authenticated) message("accessAdminMessage", action === "reapply-template" ? "Template settings verified. Account is disabled until the recipient finishes the new setup email." : action === "reset" ? "Old setup links cleared. Approve this request again to create a new account." : result.message);
           } catch (error) { if (state.authenticated) message("accessAdminMessage", error.message); }
           await loadQueue();
         })); actions.append(button);

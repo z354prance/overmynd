@@ -14,23 +14,31 @@ import (
 )
 
 type fixture struct {
-	m                *Manager
-	policy           map[string]any
-	templateDisabled bool
-	existing         bool
-	pending          bool
-	linkFails        bool
-	linkCalls        int
-	connectName      string
-	connectType      string
-	pendingJSON      string
-	pendingHTTP      int
-	deleted          bool
-	usersHTTP        int
-	creates          int
-	passwords        []string
-	notices          []notice
-	mailFails        bool
+	refuseDisable      bool
+	templatePolicy     map[string]any
+	templateConfig     map[string]any
+	config             map[string]any
+	ignoreRestrictions bool
+	broadenOnEnable    bool
+	bornEnabled        bool
+	configFails        bool
+	m                  *Manager
+	policy             map[string]any
+	templateDisabled   bool
+	existing           bool
+	pending            bool
+	linkFails          bool
+	linkCalls          int
+	connectName        string
+	connectType        string
+	pendingJSON        string
+	pendingHTTP        int
+	deleted            bool
+	usersHTTP          int
+	creates            int
+	passwords          []string
+	notices            []notice
+	mailFails          bool
 }
 
 func testManager(t *testing.T) *fixture {
@@ -44,6 +52,9 @@ func testManager(t *testing.T) *fixture {
 		t.Fatal(e)
 	}
 	f := &fixture{m: New(db.DB), templateDisabled: true, connectName: "alice-connect", connectType: "LinkedUser", policy: map[string]any{"IsDisabled": true, "IsAdministrator": false, "EnabledFolders": []string{"approved-library"}, "EnableAllFolders": false}}
+	f.templatePolicy = map[string]any{"IsDisabled": true, "IsAdministrator": false, "EnableAllFolders": false, "EnabledFolders": []string{"approved-library"}, "EnableContentDeletion": false, "EnableMediaPlayback": true, "EnableRemoteAccess": true, "EnableAllChannels": false, "EnabledChannels": []string{}, "SimultaneousStreamLimit": 2, "RemoteClientBitrateLimit": 8000000, "EnableVideoPlaybackTranscoding": false}
+	f.templateConfig = map[string]any{"AudioLanguagePreference": "eng", "SubtitleMode": "OnlyForced", "ProfilePin": "1234"}
+	f.config = map[string]any{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("X-Emby-Token") != "test-key" {
 			t.Error("missing API credential")
@@ -54,7 +65,9 @@ func testManager(t *testing.T) *fixture {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.Method + " " + r.URL.Path {
 		case "GET /Users/template":
-			json.NewEncoder(w).Encode(embyUser{ID: "template", Policy: map[string]any{"IsDisabled": f.templateDisabled, "IsAdministrator": false}})
+			policy := copySettings(f.templatePolicy)
+			policy["IsDisabled"] = f.templateDisabled
+			json.NewEncoder(w).Encode(embyUser{ID: "template", Policy: policy, Configuration: f.templateConfig})
 		case "GET /Users":
 			if f.usersHTTP != 0 {
 				http.Error(w, "failed", f.usersHTTP)
@@ -73,9 +86,11 @@ func testManager(t *testing.T) *fixture {
 				UserCopyOptions      []string
 			}
 			json.NewDecoder(r.Body).Decode(&body)
-			if body.Name != "alice" || body.CopyFromUserId != "template" || len(body.UserCopyOptions) != 1 || body.UserCopyOptions[0] != "UserPolicy" {
+			if body.Name != "alice" || body.CopyFromUserId != "template" || len(body.UserCopyOptions) != 2 || body.UserCopyOptions[0] != "UserPolicy" || body.UserCopyOptions[1] != "UserConfiguration" {
 				t.Error("unsafe user creation")
 			}
+			// Simulate a server that copies the disabled flag but leaves broad defaults.
+			f.policy = map[string]any{"IsDisabled": !f.bornEnabled, "IsAdministrator": false, "EnableAllFolders": true, "EnabledFolders": []string{}, "EnableContentDeletion": true}
 			f.creates++
 			f.deleted = false
 			json.NewEncoder(w).Encode(embyUser{ID: "created"})
@@ -84,9 +99,21 @@ func testManager(t *testing.T) *fixture {
 				http.NotFound(w, r)
 				return
 			}
-			json.NewEncoder(w).Encode(embyUser{ID: "created", Name: "alice", Policy: f.policy, ConnectUserName: f.connectName, ConnectLinkType: f.connectType})
+			json.NewEncoder(w).Encode(embyUser{ID: "created", Name: "alice", Policy: f.policy, ConnectUserName: f.connectName, ConnectLinkType: f.connectType, Configuration: f.config})
 		case "POST /Users/created/Policy":
 			json.NewDecoder(r.Body).Decode(&f.policy)
+			if f.refuseDisable {
+				f.policy["IsDisabled"] = false
+			}
+			if f.ignoreRestrictions || (f.broadenOnEnable && f.policy["IsDisabled"] == false) {
+				f.policy["EnableAllFolders"] = true
+			}
+		case "POST /Users/created/Configuration":
+			if f.configFails {
+				http.Error(w, "failed", 500)
+				return
+			}
+			json.NewDecoder(r.Body).Decode(&f.config)
 		case "POST /Users/created/Password":
 			var body map[string]string
 			json.NewDecoder(r.Body).Decode(&body)
@@ -477,5 +504,141 @@ func TestResetRequiresConfirmedAbsence(t *testing.T) {
 				t.Fatal("changed uncertain request")
 			}
 		})
+	}
+}
+
+func TestExplicitTemplatePermissionsAndConfiguration(t *testing.T) {
+	f := testManager(t)
+	f.submit(t)
+	if e := f.m.Approve(context.Background(), 1); e != nil {
+		t.Fatal(e)
+	}
+	policy, config := templateSettings(embyUser{Policy: f.templatePolicy, Configuration: f.templateConfig}, true)
+	if diff := settingsDifference(policy, f.policy, true); diff != "" {
+		t.Fatal("template policy mismatch", diff)
+	}
+	if diff := settingsDifference(config, f.config, false); diff != "" {
+		t.Fatal("template config mismatch", diff)
+	}
+	if f.config["ProfilePin"] != "" {
+		t.Fatal("copied template PIN")
+	}
+	// Simulate the old bug or permissions changed while awaiting setup.
+	f.policy["EnableAllFolders"] = true
+	f.policy["EnableContentDeletion"] = true
+	if e := f.m.Setup(context.Background(), f.token(t), "a strong local password"); e != nil {
+		t.Fatal(e)
+	}
+	policy["IsDisabled"] = false
+	if diff := settingsDifference(policy, f.policy, true); diff != "" {
+		t.Fatal("setup kept broad permissions", diff)
+	}
+}
+func TestPermissionFailuresKeepAccountDisabled(t *testing.T) {
+	for _, mode := range []string{"ignored restrictions", "configuration failure", "enabled on creation"} {
+		t.Run(mode, func(t *testing.T) {
+			f := testManager(t)
+			f.submit(t)
+			switch mode {
+			case "ignored restrictions":
+				f.ignoreRestrictions = true
+			case "configuration failure":
+				f.configFails = true
+			case "enabled on creation":
+				f.bornEnabled = true
+			}
+			if f.m.Approve(context.Background(), 1) == nil {
+				t.Fatal("unsafe provisioning succeeded")
+			}
+			if f.policy["IsDisabled"] != true || f.linkCalls != 0 {
+				t.Fatal("unsafe account linked or enabled")
+			}
+			r, _ := f.m.get(1)
+			if r.Status != "incomplete" {
+				t.Fatal(r.Status)
+			}
+			var token string
+			f.m.db.QueryRow("SELECT token_hash FROM access_requests WHERE id=1").Scan(&token)
+			if token != "" {
+				t.Fatal("setup token issued despite failure")
+			}
+		})
+	}
+}
+func TestActivationReadbackFailureDisablesAccount(t *testing.T) {
+	f := testManager(t)
+	f.submit(t)
+	if e := f.m.Approve(context.Background(), 1); e != nil {
+		t.Fatal(e)
+	}
+	f.broadenOnEnable = true
+	if f.m.Setup(context.Background(), f.token(t), "a strong local password") == nil {
+		t.Fatal("activation mismatch accepted")
+	}
+	if f.policy["IsDisabled"] != true {
+		t.Fatal("account left enabled after mismatch")
+	}
+	r, _ := f.m.get(1)
+	if r.Status == "active" {
+		t.Fatal("marked active despite mismatch")
+	}
+}
+func TestReapplyTemplateRepairsExistingAccount(t *testing.T) {
+	f := testManager(t)
+	f.submit(t)
+	if e := f.m.Approve(context.Background(), 1); e != nil {
+		t.Fatal(e)
+	}
+	oldToken := f.token(t)
+	if e := f.m.Setup(context.Background(), oldToken, "a strong local password"); e != nil {
+		t.Fatal(e)
+	}
+	f.policy["EnableAllFolders"] = true
+	if e := f.m.ReapplyTemplate(context.Background(), 1); e != nil {
+		t.Fatal(e)
+	}
+	if f.creates != 1 || f.linkCalls != 1 || f.policy["IsDisabled"] != true || f.policy["EnableAllFolders"] != false {
+		t.Fatal("repair failed or recreated account/link")
+	}
+	if f.m.Setup(context.Background(), oldToken, "a strong local password") == nil {
+		t.Fatal("old setup link usable")
+	}
+	if e := f.m.Setup(context.Background(), f.token(t), "a new strong local password"); e != nil {
+		t.Fatal(e)
+	}
+	if f.policy["EnableAllFolders"] != false {
+		t.Fatal("repair did not preserve restrictions")
+	}
+}
+
+func TestCannotDisableIsReportedWithoutIssuingSetup(t *testing.T) {
+	f := testManager(t)
+	f.submit(t)
+	f.bornEnabled = true
+	f.refuseDisable = true
+	err := f.m.Approve(context.Background(), 1)
+	if err == nil || !strings.Contains(err.Error(), "manually") {
+		t.Fatal("failed to report manual disable requirement", err)
+	}
+	if f.linkCalls != 0 {
+		t.Fatal("linked unsafe user")
+	}
+	r, _ := f.m.get(1)
+	if !strings.Contains(r.Error, "manually") {
+		t.Fatal(r.Error)
+	}
+}
+func TestReapplyDoesNotModifyPromotedAdmin(t *testing.T) {
+	f := testManager(t)
+	f.submit(t)
+	if e := f.m.Approve(context.Background(), 1); e != nil {
+		t.Fatal(e)
+	}
+	f.policy["IsAdministrator"] = true
+	if f.m.ReapplyTemplate(context.Background(), 1) == nil {
+		t.Fatal("modified administrator")
+	}
+	if f.policy["IsAdministrator"] != true {
+		t.Fatal("changed promoted account")
 	}
 }

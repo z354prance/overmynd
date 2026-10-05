@@ -17,6 +17,7 @@ import (
 )
 
 type embyUser struct {
+	Configuration   map[string]any `json:"Configuration"`
 	ID              string         `json:"Id"`
 	Name            string         `json:"Name"`
 	Policy          map[string]any `json:"Policy"`

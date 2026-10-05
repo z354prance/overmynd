@@ -297,15 +297,13 @@ func (m *Manager) Approve(ctx context.Context, id int64) error {
 	if n != 1 {
 		return errors.New("request already being handled")
 	}
+	template, e := readTemplate(ctx, s)
+	if e != nil {
+		return m.fail(id, s, e.Error())
+	}
 	// Never adopt an existing username after an uncertain create result.
+	createdNow := false
 	if r.EmbyID == "" {
-		var template embyUser
-		if e = emby(ctx, s, "GET", "/Users/"+url.PathEscape(s.TemplateID), nil, &template); e != nil {
-			return m.fail(id, s, "Unable to read the Emby template user")
-		}
-		if template.Policy == nil || template.Policy["IsDisabled"] != true || template.Policy["IsAdministrator"] != false {
-			return m.fail(id, s, "Template must be a disabled, non-administrator Emby user")
-		}
 		var users []embyUser
 		if e = emby(ctx, s, "GET", "/Users", nil, &users); e != nil {
 			return m.fail(id, s, "Unable to check existing Emby usernames")
@@ -316,11 +314,12 @@ func (m *Manager) Approve(ctx context.Context, id int64) error {
 			}
 		}
 		var created embyUser
-		e = emby(ctx, s, "POST", "/Users/New", map[string]any{"Name": r.Username, "CopyFromUserId": s.TemplateID, "UserCopyOptions": []string{"UserPolicy"}}, &created)
+		e = emby(ctx, s, "POST", "/Users/New", map[string]any{"Name": r.Username, "CopyFromUserId": s.TemplateID, "UserCopyOptions": []string{"UserPolicy", "UserConfiguration"}}, &created)
 		if e != nil || !idPattern.MatchString(created.ID) {
 			return m.fail(id, s, "Emby creation did not return a confirmed user ID. Check Emby for a partially created account before retrying")
 		}
 		r.EmbyID = created.ID
+		createdNow = true
 		if _, e = m.db.Exec("UPDATE access_requests SET emby_id=? WHERE id=?", r.EmbyID, id); e != nil {
 			return e
 		}
@@ -335,12 +334,14 @@ func (m *Manager) Approve(ctx context.Context, id int64) error {
 	if user.Policy == nil {
 		return m.fail(id, s, "Emby did not return the user policy")
 	}
-	user.Policy["IsAdministrator"] = false
-	user.Policy["IsDisabled"] = true
-	user.Policy["IsHidden"] = true
-	user.Policy["IsHiddenRemotely"] = true
-	if e = emby(ctx, s, "POST", "/Users/"+r.EmbyID+"/Policy", user.Policy, nil); e != nil {
-		return m.fail(id, s, "Unable to apply the disabled non-admin policy; inspect this user in Emby")
+	if createdNow && user.Policy["IsDisabled"] != true {
+		if err := quarantine(s, r, user.Policy); err != nil {
+			return m.fail(id, s, err.Error())
+		}
+		return m.fail(id, s, "Emby did not create the account disabled as requested. It has been disabled; inspect the server's template-copy support before retrying")
+	}
+	if _, _, e = applyTemplate(ctx, s, r, template); e != nil {
+		return m.fail(id, s, e.Error())
 	}
 	if e = emby(ctx, s, "POST", "/Users/"+r.EmbyID+"/Password", map[string]any{"Id": r.EmbyID, "NewPw": secret()}, nil); e != nil {
 		return m.fail(id, s, "Unable to secure the new account with a temporary random password")
@@ -443,11 +444,18 @@ func (m *Manager) Setup(ctx context.Context, token, password string) error {
 		return errors.New("setup is already in progress")
 	}
 	success := false
+	activationAttempted := false
 	defer func() {
 		if !success {
-			_ = m.setState(id, "awaiting_setup", "Setup did not finish; the recipient can retry their link")
-			if r.Error == "" {
-				m.notify(id, s, []notice{{s.AdminEmail, "Overmynd account setup needs attention", fmt.Sprintf("The recipient could not finish access request %d. Check its status in Overmynd Settings: %s", id, s.PublicURL)}})
+			recoveryMessage := "Setup did not finish; the recipient can retry their link"
+			if activationAttempted {
+				if err := quarantine(s, r, nil); err != nil {
+					recoveryMessage = err.Error()
+				}
+			}
+			_ = m.setState(id, "awaiting_setup", recoveryMessage)
+			if r.Error == "" || activationAttempted {
+				m.notify(id, s, []notice{{s.AdminEmail, "Overmynd account setup needs attention", fmt.Sprintf("The recipient could not finish access request %d: %s. Check its status in Overmynd Settings: %s", id, recoveryMessage, s.PublicURL)}})
 			}
 		}
 	}()
@@ -461,16 +469,32 @@ func (m *Manager) Setup(ctx context.Context, token, password string) error {
 	if user.Policy["IsAdministrator"] != false {
 		return errors.New("account permissions changed; contact the server owner")
 	}
+	if user.Policy["IsDisabled"] != true {
+		if e = quarantine(s, r, user.Policy); e != nil {
+			return e
+		}
+	}
+	template, e := readTemplate(ctx, s)
+	if e != nil {
+		return e
+	}
+	desiredPolicy, desiredConfig, e := applyTemplate(ctx, s, r, template)
+	if e != nil {
+		return e
+	}
 	if e = verifyConnect(ctx, s, r, user); e != nil {
 		return e
 	}
 	if e = emby(ctx, s, "POST", "/Users/"+r.EmbyID+"/Password", map[string]any{"Id": r.EmbyID, "NewPw": password}, nil); e != nil {
 		return errors.New("Emby could not set the password; retry or contact the server owner")
 	}
-	user.Policy["IsDisabled"] = false
-	user.Policy["IsAdministrator"] = false
-	if e = emby(ctx, s, "POST", "/Users/"+r.EmbyID+"/Policy", user.Policy, nil); e != nil {
-		return errors.New("unable to enable your account; retry or contact the server owner")
+	desiredPolicy["IsDisabled"] = false
+	activationAttempted = true
+	if e = emby(ctx, s, "POST", "/Users/"+r.EmbyID+"/Policy", desiredPolicy, nil); e != nil {
+		return errors.New("unable to enable your account; contact the server owner")
+	}
+	if e = verifySettings(ctx, s, r, desiredPolicy, desiredConfig); e != nil {
+		return e
 	}
 	_, e = m.db.Exec("UPDATE access_requests SET status='active',error='',token_hash='',token_expires=0,updated_at=? WHERE id=?", time.Now().UTC().Format(time.RFC3339), id)
 	if e != nil {

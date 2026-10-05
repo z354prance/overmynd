@@ -9,10 +9,11 @@ request permissions.
 1. In Emby, create a dedicated **disabled, non-administrator template user**.
    Set its library, playback, remote-access, and other permissions to those new
    members should inherit. Keep it disabled. Copy its user ID from the user page
-   URL. This template is required: Overmynd copies its policy during creation so
-   the new user starts disabled, before setting a random temporary password.
+   URL. This template is required: Overmynd requests a disabled copy, explicitly writes the template policy and
+   user configuration, and reads them back before continuing. A server that
+   creates the user enabled is stopped and the user is disabled for inspection.
 2. Create an Emby API key. The Emby server must support `CopyFromUserId` with
-   `UserCopyOptions: ["UserPolicy"]` on `POST /Users/New` and Connect linking.
+   `UserCopyOptions: ["UserPolicy", "UserConfiguration"]` on `POST /Users/New` and Connect linking.
 3. Publish Overmynd through HTTPS. In **Settings > Server access requests > Access
    and email settings**, enter that public URL, the internal Emby URL, API key,
    and template user ID. Use the URL of Overmynd, not a Wizarr invite URL.
@@ -36,8 +37,10 @@ protect `/config` and its backups as you do the existing integration credentials
 - Overmynd holds the request and emails the applicant and administrator. No Emby
   user is created before approval.
 - Administrator signs into Overmynd and approves or declines in the approval
-  queue. Approval copies the disabled template policy, secures the account with
-  a random password, and requests the Connect link.
+  queue. Approval explicitly applies and verifies the disabled template policy
+  and configuration, secures the account with a random password, and requests the
+  Connect link. The template PIN and lockout counters are not copied; new accounts
+  are always non-admin and hidden.
 - Applicant gets an expiring setup link by email. They confirm any Connect email,
   then choose their local Emby password. The account is enabled only after setup
   succeeds and Connect no longer reports a pending confirmation.
@@ -45,7 +48,10 @@ protect `/config` and its backups as you do the existing integration credentials
 
 Setup links last 24 hours and work once. Only their hashes are saved. Resending a
 link invalidates the previous one. The local password is sent to Emby during
-setup and is never stored in Overmynd. Request data is visible only to admins.
+setup and is never stored in Overmynd. Setup reapplies the current template
+settings while disabled, then verifies the policy again after enabling. Failed
+permission writes or readbacks trigger a disable attempt; if Emby cannot confirm
+the disable, the queue reports that manual intervention is required. Request data is visible only to admins.
 
 Connect verification reads the existing user's `ConnectUserName` and
 `ConnectLinkType` plus `GET /Connect/Pending`; it never recreates the link during
@@ -68,6 +74,13 @@ email or Connect username, then approve/retry. Successful approval locks these
 details. Existing Emby usernames are never adopted or reset. An uncertain create
 response therefore requires checking Emby for a partial account and resolving
 the conflict before retrying. A recorded user ID is reused on retries.
+
+For an existing account with incorrect permissions, use **Reapply template**.
+This disables the account, applies and verifies the current template's policy and
+configuration, invalidates old setup links, and sends a fresh setup email. It
+preserves the existing user and Connect link. The recipient must finish setup
+again before access is enabled. It does not automatically alter existing accounts
+merely because you upgraded Overmynd.
 
 If you delete a provisioned Emby user to test again, use **Reset after Emby
 deletion** on the existing request. Overmynd checks both the deleted user's
