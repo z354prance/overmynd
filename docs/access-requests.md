@@ -116,3 +116,5 @@ end-to-end check before inviting others.
 
 API references: [Create user](https://dev.emby.media/reference/RestAPI/UserService/postUsersNew.html),
 [Connect link](https://dev.emby.media/reference/RestAPI/ConnectService/postUsersByIdConnectLink.html).
+
+Temporary Emby connection failures and HTTP 408/500/502/503/504 responses receive one automatic retry after a one-second pause for reads and repeatable policy, configuration, and password updates. The existing operation deadline still applies. Account creation and Connect invitations are never automatically repeated, since an interrupted response may already have created the account or sent the invitation. Permission verification failures and invalid credentials still require attention; email delivery is not automatically retried.

@@ -3,6 +3,7 @@ package access
 import (
 	"bufio"
 	"context"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -64,5 +65,63 @@ func TestSMTPRequiresStartTLSBeforeCredentials(t *testing.T) {
 		if strings.HasPrefix(command, "AUTH") || strings.HasPrefix(command, "MAIL") {
 			t.Fatal("sent credentials/mail without TLS")
 		}
+	}
+}
+
+func TestEmbyBoundedSafeRetry(t *testing.T) {
+	for _, tc := range []struct {
+		name, method, path string
+		status             int
+		recover            bool
+		calls              int
+	}{
+		{"read recovers", "GET", "/Users/alice", 503, true, 2},
+		{"policy recovers", "POST", "/Users/alice/Policy", 502, true, 2},
+		{"configuration recovers", "POST", "/Users/alice/Configuration", 500, true, 2},
+		{"password recovers", "POST", "/Users/alice/Password", 504, true, 2},
+		{"stops after retry", "GET", "/Users/alice", 503, false, 2},
+		{"credentials need attention", "GET", "/Users/alice", 401, false, 1},
+		{"no duplicate creation", "POST", "/Users/New", 503, false, 1},
+		{"no duplicate invitation", "POST", "/Users/alice/Connect/Link", 503, false, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			calls := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				body, _ := io.ReadAll(r.Body)
+				if string(body) != `{"value":true}` {
+					t.Errorf("retry changed body: %s", body)
+				}
+				if calls == 1 || !tc.recover {
+					w.WriteHeader(tc.status)
+					return
+				}
+				w.Write([]byte(`{"ok":true}`))
+			}))
+			defer server.Close()
+			var result map[string]bool
+			err := emby(context.Background(), Settings{EmbyURL: server.URL}, tc.method, tc.path, map[string]bool{"value": true}, &result)
+			if calls != tc.calls || (err == nil) != tc.recover {
+				t.Fatalf("calls=%d err=%v", calls, err)
+			}
+			if tc.recover && !result["ok"] {
+				t.Fatal("missing response")
+			}
+		})
+	}
+}
+
+func TestEmbyRetryRespectsCancellation(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { calls++; w.WriteHeader(503) }))
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	if err := emby(ctx, Settings{EmbyURL: server.URL}, "GET", "/Users/alice", nil, nil); err == nil {
+		t.Fatal("expected cancellation")
+	}
+	if calls != 1 {
+		t.Fatalf("retried after cancellation: %d", calls)
 	}
 }

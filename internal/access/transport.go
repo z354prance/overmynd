@@ -38,9 +38,31 @@ func emby(ctx context.Context, s Settings, method, path string, body, out any) e
 			return err
 		}
 	}
+	// Only repeat operations that cannot create another account or invitation.
+	safe := method == http.MethodGet
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	if method == http.MethodPost && len(parts) == 3 && parts[0] == "Users" {
+		safe = parts[2] == "Policy" || parts[2] == "Configuration" || parts[2] == "Password"
+	}
+	for attempt := 0; ; attempt++ {
+		retry, err := embyAttempt(ctx, s, method, path, payload, out)
+		if err == nil || !safe || !retry || attempt == 1 || ctx.Err() != nil {
+			return err
+		}
+		timer := time.NewTimer(time.Second)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+	}
+}
+
+func embyAttempt(ctx context.Context, s Settings, method, path string, payload []byte, out any) (bool, error) {
 	req, err := http.NewRequestWithContext(ctx, method, strings.TrimRight(s.EmbyURL, "/")+path, bytes.NewReader(payload))
 	if err != nil {
-		return errors.New("invalid Emby URL")
+		return false, errors.New("invalid Emby URL")
 	}
 	req.Header.Set("X-Emby-Token", s.EmbyKey)
 	req.Header.Set("Content-Type", "application/json")
@@ -48,17 +70,28 @@ func emby(ctx context.Context, s Settings, method, path string, body, out any) e
 	client := http.Client{Timeout: 15 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	res, err := client.Do(req)
 	if err != nil {
-		return errors.New("Emby connection failed")
+		var networkError net.Error
+		var operationError *net.OpError
+		transient := (errors.As(err, &networkError) && networkError.Timeout()) || errors.As(err, &operationError) || errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF)
+		return transient, errors.New("Emby connection failed")
 	}
 	defer res.Body.Close()
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return embyStatusError(res.StatusCode)
+		transient := res.StatusCode == 408 || res.StatusCode == 500 || res.StatusCode == 502 || res.StatusCode == 503 || res.StatusCode == 504
+		return transient, embyStatusError(res.StatusCode)
 	}
 	if out != nil {
-		return json.NewDecoder(io.LimitReader(res.Body, 4<<20)).Decode(out)
+		// Decode a complete response before touching the destination; a truncated
+		// first attempt must not leave stale fields in the successful retry.
+		var raw json.RawMessage
+		if err := json.NewDecoder(io.LimitReader(res.Body, 4<<20)).Decode(&raw); err != nil {
+			return errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF), err
+		}
+		return false, json.Unmarshal(raw, out)
 	}
-	return nil
+	return false, nil
 }
+
 func sendMail(s Settings, to, subject, body string) error {
 	if !address(to) || !address(s.From) || strings.ContainsAny(subject, "\r\n") || s.SMTPHost == "" || s.SMTPPort < 1 || s.SMTPPort > 65535 {
 		return errors.New("invalid email settings")
