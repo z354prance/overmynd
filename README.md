@@ -87,3 +87,9 @@ Disappearing download or Tdarr jobs are not treated as proof of success. Recentl
 Season overview cards are pinned ahead of individual active items. They use Sonarr's `hasFile` status: imported monitored episodes divided by all monitored episodes in that season, including any unaired monitored episodes. Sonarr queue episode IDs select active shows. Each show card includes all seasons with monitored episodes, including completed seasons and seasons without individual queue entries. The card disappears when the show no longer has queue entries. Download completion and Tdarr completion do not increment the import count. Existing imported files count toward completion (this is not a quality-upgrade progress meter). Individual download/processing cards keep their own source progress.
 
 Recently Added groups episodes by Tracearr's server/show identity before selecting six cards. Movies remain separate. Each show has an expandable episode list; the feed is paged until six distinct entries of each media type are found or history ends, so a large episode batch cannot crowd out older shows. Episode lists cover fetched history, not the complete library. A safety limit of 20 pages per media type reports when older entries may be missing. Entries lacking show identity remain separate.
+
+## Emby access requests
+
+Optional, approval-based access requests with direct Emby provisioning and email
+notifications are available in Settings. Wizarr is not required. See
+[setup and testing instructions](docs/access-requests.md).

@@ -1231,6 +1231,7 @@ $("logoutButton").addEventListener("click", async () => {
 function applyAuth(status) {
   state.authenticated = Boolean(status.authenticated);
   renderServices();
+  window.refreshAccessAdmin?.();
   $("requestSettingsPanel").hidden = !state.authenticated;
   if (state.authenticated) loadRequestSettings();
   else $("requestSettingsForm").reset();

@@ -14,6 +14,9 @@ func TestWriteOriginProtection(t *testing.T) {
 		{"POST", "/api/v1/auth/logout"}, {"POST", "/api/v1/services"},
 		{"PUT", "/api/v1/services/1"}, {"DELETE", "/api/v1/services/1"},
 		{"POST", "/api/v1/services/1/test"},
+		{"POST", "/api/v1/access/request"}, {"POST", "/api/v1/access/setup"},
+		{"PUT", "/api/v1/access/settings"}, {"POST", "/api/v1/access/test-email"},
+		{"POST", "/api/v1/access/requests/1/approve"}, {"POST", "/api/v1/access/requests/1/decline"}, {"POST", "/api/v1/access/requests/1/resend"}, {"POST", "/api/v1/access/requests/1/correct"},
 	}
 	for _, route := range routes {
 		for _, attack := range []struct{ name, origin, site, header string }{

@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/z354prance/overmynd/internal/access"
 	"github.com/z354prance/overmynd/internal/auth"
 	"github.com/z354prance/overmynd/internal/integrations"
 	"github.com/z354prance/overmynd/internal/services"
@@ -14,6 +15,8 @@ import (
 )
 
 type API struct {
+	access         *access.Manager
+	accessLimiter  publicRequestLimiter
 	services       *services.Manager
 	registry       *integrations.Registry
 	auth           *auth.Manager
@@ -28,6 +31,7 @@ func NewRouter(
 ) http.Handler {
 	api := &API{
 		services: serviceManager,
+		access:   serviceManager.AccessManager(),
 		registry: registry,
 		auth:     authManager,
 	}
@@ -55,6 +59,16 @@ func NewRouter(
 	mux.HandleFunc("PUT /api/v1/request-settings", api.requireAdmin(api.saveRequestSettings))
 	mux.HandleFunc("GET /api/v1/processing", api.processing)
 	mux.HandleFunc("GET /api/v1/public/services", api.listPublicServices)
+
+	// Access requests are opt-in public submissions; provisioning is administrator-only.
+	mux.HandleFunc("GET /api/v1/access/status", api.accessStatus)
+	mux.HandleFunc("POST /api/v1/access/request", api.accessSubmit)
+	mux.HandleFunc("POST /api/v1/access/setup", api.accessSetup)
+	mux.HandleFunc("GET /api/v1/access/settings", api.requireAdmin(api.accessSettings))
+	mux.HandleFunc("PUT /api/v1/access/settings", api.requireAdmin(api.accessSaveSettings))
+	mux.HandleFunc("POST /api/v1/access/test-email", api.requireAdmin(api.accessTestEmail))
+	mux.HandleFunc("GET /api/v1/access/requests", api.requireAdmin(api.accessList))
+	mux.HandleFunc("POST /api/v1/access/requests/{id}/{action}", api.requireAdmin(api.accessAction))
 
 	// Authentication endpoints.
 	mux.HandleFunc("GET /api/v1/auth/status", api.authStatus)

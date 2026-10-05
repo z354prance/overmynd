@@ -313,6 +313,34 @@
             <p id="requestSettingsMessage" role="status" aria-live="polite"></p>
           </form>
         </section>
+        <section class="panel settings-panel" id="accessAdminPanel" hidden>
+          <div class="panel-header"><h2>Server access requests</h2></div>
+          <div class="access-admin-content">
+            <p>Approve new Emby users here. Requests never create an account until you approve them.</p>
+            <details><summary>Access and email settings</summary>
+              <p>Create a disabled, non-administrator template user in Emby with the library permissions new users should inherit. Copy its user ID from the Emby user page URL. Keep that template disabled.</p>
+              <form id="accessSettingsForm" class="access-settings-grid">
+                <label class="service-enabled-field"><input name="enabled" type="checkbox"><span>Enable public access requests</span></label>
+<label class="service-form-field"><span>Public Overmynd URL</span><input name="public_url" type="url" placeholder="https://overmynd.example.com" autocomplete="off"></label>
+<label class="service-form-field"><span>Emby server URL</span><input name="emby_url" type="url" placeholder="http://server:8096" autocomplete="off"></label>
+<label class="service-form-field"><span>Emby API key</span><input name="emby_key" type="password" placeholder="Leave blank to keep saved key" autocomplete="off"></label>
+<label class="service-form-field"><span>Disabled template user ID</span><input name="template_id" type="text" placeholder="Emby user ID" autocomplete="off"></label>
+<label class="service-form-field"><span>SMTP hostname</span><input name="smtp_host" type="text" placeholder="From your email provider" autocomplete="off"></label>
+<label class="service-form-field"><span>SMTP port</span><input name="smtp_port" type="number" placeholder="465" autocomplete="off" min="1" max="65535"></label>
+<label class="service-form-field"><span>SMTP mailbox login</span><input name="smtp_user" type="text" placeholder="Mailbox username" autocomplete="off"></label>
+<label class="service-form-field"><span>SMTP mailbox password</span><input name="smtp_password" type="password" placeholder="Leave blank to keep saved password" autocomplete="off"></label>
+<label class="service-form-field"><span>Sender email / alias</span><input name="from" type="email" placeholder="" autocomplete="off"></label>
+<label class="service-form-field"><span>Administrator notification email</span><input name="admin_email" type="email" placeholder="" autocomplete="off"></label>
+                <label class="service-form-field"><span>SMTP encryption</span><select name="smtp_security"><option value="tls">TLS (usually port 465)</option><option value="starttls">STARTTLS (usually port 587)</option></select></label>
+                <p class="service-field-help">Use the SMTP settings supplied by your provider. An alias can be the sender; use its authorized mailbox login. Public Overmynd URL must use HTTPS for password setup links.</p>
+                <div class="access-actions"><button type="submit" class="service-primary-button">Save access settings</button><button id="accessTestEmail" type="button" class="service-secondary-button">Send test email</button></div>
+              </form>
+            </details>
+            <p id="accessAdminMessage" role="status"></p>
+            <div class="access-actions"><h3>Approval queue</h3><button id="accessRefresh" type="button" class="service-secondary-button">Refresh requests</button></div>
+            <div id="accessQueue"></div>
+          </div>
+        </section>
       </div>
 
       <div class="view" id="servicesView">
@@ -465,7 +493,7 @@
         </section>
       </div>
 
-      <footer class="dashboard-footer"><nav aria-label="Dashboard and administration">
+      <footer class="dashboard-footer"><button id="requestAccessButton" class="service-secondary-button" type="button" hidden>Request access</button><nav aria-label="Dashboard and administration">
         <button class="nav-item active" type="button" data-view="dashboard">Dashboard</button>
         <button class="nav-item" type="button" data-view="services"><span aria-hidden="true">&#9636;</span> Services</button>
         <button class="nav-item" type="button" data-view="settings"><span aria-hidden="true">&#9881;</span> Settings</button>
@@ -501,7 +529,31 @@
     <a href="https://paypal.me/z354prance" target="_blank" rel="noopener noreferrer">PayPal <span aria-hidden="true">&#8599;</span></a>
     <a href="https://cash.app/$PayLuffie" target="_blank" rel="noopener noreferrer">Cash App <span aria-hidden="true">&#8599;</span></a>
   </div>
+<dialog id="accessRequestDialog" class="request-dialog access-dialog" aria-labelledby="accessRequestTitle">
+    <header><h2 id="accessRequestTitle">Request server access</h2><button type="button" class="service-secondary-button" data-close-access>Close</button></header>
+    <p>First, <a href="https://emby.media/connect.html" target="_blank" rel="noopener noreferrer">create and verify your Emby Connect account</a>, or use one you already have. Return here with its username. We never ask for your Connect password.</p>
+    <form id="accessRequestForm">
+      <label class="service-form-field"><span>Your name</span><input name="name" autocomplete="name" required maxlength="100"></label>
+      <label class="service-form-field"><span>Email for updates</span><input name="email" type="email" autocomplete="email" required maxlength="254"></label>
+      <label class="service-form-field"><span>Preferred server username</span><input name="username" autocomplete="off" required minlength="3" maxlength="64" pattern="[a-zA-Z0-9][a-zA-Z0-9_.\-]{2,63}" title="3-64 letters, numbers, dots, underscores, or dashes"></label>
+      <label class="service-form-field"><span>Emby Connect username</span><input name="connect_username" autocomplete="off" required maxlength="100"></label>
+      <p class="service-field-help">Your request is held for approval. If approved, we will email a link to finish setting up your server account.</p>
+      <button class="service-primary-button" type="submit">Submit for approval</button>
+    </form>
+    <p id="accessRequestMessage" role="status"></p>
+  </dialog>
+  <dialog id="accessSetupDialog" class="request-dialog access-dialog" aria-labelledby="accessSetupTitle">
+    <header><h2 id="accessSetupTitle">Finish your Emby setup</h2><button type="button" class="service-secondary-button" data-close-access>Close</button></header>
+    <p>Confirm any Emby Connect linking email first. Choose a separate password for your local server account below.</p>
+    <form id="accessSetupForm">
+      <label class="service-form-field"><span>New server password</span><input name="password" type="password" autocomplete="new-password" required minlength="12" maxlength="256"></label>
+      <label class="service-form-field"><span>Confirm password</span><input name="confirm" type="password" autocomplete="new-password" required minlength="12" maxlength="256"></label>
+      <button class="service-primary-button" type="submit">Finish setup</button>
+    </form>
+    <p id="accessSetupMessage" role="status"></p>
+  </dialog>
 <script src="/js/app.js"></script>
+<script src="/js/access.js"></script>
 
 </body>
 </html>

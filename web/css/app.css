@@ -1921,3 +1921,23 @@ body:has(#servicesView.active) .dashboard-footer .nav-item[data-view="dashboard"
 #pipelineList .pipeline-extra { grid-column:1; grid-row:5; }
 #pipelineList .pipeline-progress-label { grid-column:2; grid-row:5; height:18px; }
 #pipelineList .pipeline-progress { grid-column:1 / -1; grid-row:6; }
+
+/* Access requests and approval tools. */
+#requestAccessButton { margin-right: auto; }
+.access-dialog { width: min(520px, calc(100vw - 32px)); max-height: calc(100dvh - 40px); overflow: auto; }
+.access-dialog header, .access-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.access-dialog form { display: grid; gap: 14px; }
+.access-dialog p, .access-admin-content p { line-height: 1.5; }
+.access-dialog a { color: #409cff; }
+.access-admin-content { padding: 20px; }
+.access-admin-content > details { margin: 18px 0; }
+.access-admin-content summary { cursor: pointer; }
+.access-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; margin-top: 16px; }
+.access-settings-grid > .service-enabled-field, .access-settings-grid > p, .access-settings-grid > .access-actions { grid-column: 1 / -1; }
+.access-queue-card { background: #141820; border: 1px solid #292e39; border-radius: 10px; padding: 16px; margin: 12px 0; overflow-wrap: anywhere; }
+.access-queue-card h4 { margin: 0; }
+.access-error { color: #ffaf94; }
+@media (max-width: 640px) { .access-settings-grid { grid-template-columns: 1fr; } .dashboard-footer { flex-wrap: wrap; gap: 16px; } }
+
+.access-correction { display: grid; gap: 12px; margin-top: 12px; }
+.access-queue-card > details { margin-top: 14px; }
