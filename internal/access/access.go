@@ -461,12 +461,8 @@ func (m *Manager) Setup(ctx context.Context, token, password string) error {
 	if user.Policy["IsAdministrator"] != false {
 		return errors.New("account permissions changed; contact the server owner")
 	}
-	var link struct{ IsPending *bool }
-	if e = emby(ctx, s, "POST", "/Users/"+r.EmbyID+"/Connect/Link?ConnectUsername="+url.QueryEscape(r.Connect), nil, &link); e != nil || link.IsPending == nil {
-		return errors.New("unable to verify Emby Connect linking; contact the server owner")
-	}
-	if *link.IsPending {
-		return errors.New("Emby Connect confirmation is still pending; check your Connect email, confirm it, then retry")
+	if e = verifyConnect(ctx, s, r, user); e != nil {
+		return e
 	}
 	if e = emby(ctx, s, "POST", "/Users/"+r.EmbyID+"/Password", map[string]any{"Id": r.EmbyID, "NewPw": password}, nil); e != nil {
 		return errors.New("Emby could not set the password; retry or contact the server owner")

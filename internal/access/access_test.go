@@ -20,6 +20,13 @@ type fixture struct {
 	existing         bool
 	pending          bool
 	linkFails        bool
+	linkCalls        int
+	connectName      string
+	connectType      string
+	pendingJSON      string
+	pendingHTTP      int
+	deleted          bool
+	usersHTTP        int
 	creates          int
 	passwords        []string
 	notices          []notice
@@ -36,18 +43,27 @@ func testManager(t *testing.T) *fixture {
 	if e = db.Migrate(); e != nil {
 		t.Fatal(e)
 	}
-	f := &fixture{m: New(db.DB), templateDisabled: true, policy: map[string]any{"IsDisabled": true, "IsAdministrator": false, "EnabledFolders": []string{"approved-library"}, "EnableAllFolders": false}}
+	f := &fixture{m: New(db.DB), templateDisabled: true, connectName: "alice-connect", connectType: "LinkedUser", policy: map[string]any{"IsDisabled": true, "IsAdministrator": false, "EnabledFolders": []string{"approved-library"}, "EnableAllFolders": false}}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("X-Emby-Token") != "test-key" {
 			t.Error("missing API credential")
+		}
+		if r.Header.Get("Accept") != "application/json" {
+			t.Error("missing JSON response negotiation")
 		}
 		w.Header().Set("Content-Type", "application/json")
 		switch r.Method + " " + r.URL.Path {
 		case "GET /Users/template":
 			json.NewEncoder(w).Encode(embyUser{ID: "template", Policy: map[string]any{"IsDisabled": f.templateDisabled, "IsAdministrator": false}})
 		case "GET /Users":
+			if f.usersHTTP != 0 {
+				http.Error(w, "failed", f.usersHTTP)
+				return
+			}
 			if f.existing {
 				json.NewEncoder(w).Encode([]embyUser{{ID: "existing", Name: "alice"}})
+			} else if f.creates > 0 && !f.deleted {
+				json.NewEncoder(w).Encode([]embyUser{{ID: "created", Name: "alice"}})
 			} else {
 				w.Write([]byte("[]"))
 			}
@@ -61,16 +77,36 @@ func testManager(t *testing.T) *fixture {
 				t.Error("unsafe user creation")
 			}
 			f.creates++
+			f.deleted = false
 			json.NewEncoder(w).Encode(embyUser{ID: "created"})
 		case "GET /Users/created":
-			json.NewEncoder(w).Encode(embyUser{ID: "created", Name: "alice", Policy: f.policy})
+			if f.deleted {
+				http.NotFound(w, r)
+				return
+			}
+			json.NewEncoder(w).Encode(embyUser{ID: "created", Name: "alice", Policy: f.policy, ConnectUserName: f.connectName, ConnectLinkType: f.connectType})
 		case "POST /Users/created/Policy":
 			json.NewDecoder(r.Body).Decode(&f.policy)
 		case "POST /Users/created/Password":
 			var body map[string]string
 			json.NewDecoder(r.Body).Decode(&body)
 			f.passwords = append(f.passwords, body["NewPw"])
+		case "GET /Connect/Pending":
+			if f.pendingHTTP != 0 {
+				http.Error(w, "upstream error", f.pendingHTTP)
+				return
+			}
+			if f.pendingJSON != "" {
+				w.Write([]byte(f.pendingJSON))
+				return
+			}
+			if f.pending {
+				w.Write([]byte(`[{"LocalUserId":"created"}]`))
+			} else {
+				w.Write([]byte(`[]`))
+			}
 		case "POST /Users/created/Connect/Link":
+			f.linkCalls++
 			if r.URL.Query().Get("ConnectUsername") != "alice-connect" {
 				t.Error("wrong Connect account")
 			}
@@ -315,5 +351,131 @@ func TestDeclineAndCorrection(t *testing.T) {
 	}
 	if f.m.Correct(1, "another@example.com", "another-connect") == nil {
 		t.Fatal("closed request changed")
+	}
+}
+
+func TestSetupReadsExistingConnectLinkWithoutRelinking(t *testing.T) {
+	f := testManager(t)
+	f.submit(t)
+	if e := f.m.Approve(context.Background(), 1); e != nil {
+		t.Fatal(e)
+	}
+	// A second link-creation request would fail on the real server.
+	f.linkFails = true
+	if e := f.m.Setup(context.Background(), f.token(t), "a strong local password"); e != nil {
+		t.Fatal(e)
+	}
+	if f.linkCalls != 1 {
+		t.Fatalf("created Connect link %d times", f.linkCalls)
+	}
+}
+func TestConnectVerificationFailsClosed(t *testing.T) {
+	for _, tc := range []struct {
+		name, connectName, connectType, pending string
+		status                                  int
+	}{
+		{name: "unlinked", connectType: ""},
+		{name: "guest", connectName: "alice-connect", connectType: "Guest"},
+		{name: "different identity", connectName: "someone-else", connectType: "LinkedUser"},
+		{name: "null pending list", connectName: "alice-connect", connectType: "LinkedUser", pending: "null"},
+		{name: "malformed pending list", connectName: "alice-connect", connectType: "LinkedUser", pending: "{}"},
+		{name: "unidentified pending entry", connectName: "alice-connect", connectType: "LinkedUser", pending: `[{"Unknown":"value"}]`},
+		{name: "pending API failure", connectName: "alice-connect", connectType: "LinkedUser", status: 503},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := testManager(t)
+			f.submit(t)
+			if e := f.m.Approve(context.Background(), 1); e != nil {
+				t.Fatal(e)
+			}
+			f.connectName = tc.connectName
+			f.connectType = tc.connectType
+			f.pendingJSON = tc.pending
+			f.pendingHTTP = tc.status
+			token := f.token(t)
+			if f.m.Setup(context.Background(), token, "a strong local password") == nil {
+				t.Fatal("unsafe setup accepted")
+			}
+			if len(f.passwords) != 1 || f.policy["IsDisabled"] != true || f.linkCalls != 1 {
+				t.Fatal("verification changed account")
+			}
+			r, _ := f.m.get(1)
+			if r.Status != "awaiting_setup" {
+				t.Fatal(r.Status)
+			}
+		})
+	}
+}
+func TestConnectVerificationIgnoresIdentifiedOtherPendingUser(t *testing.T) {
+	f := testManager(t)
+	f.submit(t)
+	if e := f.m.Approve(context.Background(), 1); e != nil {
+		t.Fatal(e)
+	}
+	f.pendingJSON = `[{"LocalUserId":"another-user"}]`
+	f.connectName = "ALICE-CONNECT"
+	if e := f.m.Setup(context.Background(), f.token(t), "a strong local password"); e != nil {
+		t.Fatal(e)
+	}
+}
+
+func TestResetAfterDeletion(t *testing.T) {
+	f := testManager(t)
+	f.submit(t)
+	if e := f.m.Approve(context.Background(), 1); e != nil {
+		t.Fatal(e)
+	}
+	oldToken := f.token(t)
+	if f.m.ResetDeleted(context.Background(), 1) == nil {
+		t.Fatal("reset existing Emby user")
+	}
+	f.deleted = true
+	// Public setup must not recreate deleted users.
+	if f.m.Setup(context.Background(), oldToken, "a strong local password") == nil || f.creates != 1 {
+		t.Fatal("setup recreated deleted account")
+	}
+	if e := f.m.ResetDeleted(context.Background(), 1); e != nil {
+		t.Fatal(e)
+	}
+	r, _ := f.m.get(1)
+	if r.Status != "pending" || r.EmbyID != "" {
+		t.Fatal(r)
+	}
+	if f.m.Setup(context.Background(), oldToken, "a strong local password") == nil {
+		t.Fatal("old token survived reset")
+	}
+	if e := f.m.Approve(context.Background(), 1); e != nil {
+		t.Fatal(e)
+	}
+	if f.creates != 2 {
+		t.Fatal("fresh approval did not create user")
+	}
+	if e := f.m.Setup(context.Background(), f.token(t), "a strong local password"); e != nil {
+		t.Fatal(e)
+	}
+}
+func TestResetRequiresConfirmedAbsence(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		http     int
+		existing bool
+	}{{"list failure", 503, false}, {"username reused", 0, true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := testManager(t)
+			f.submit(t)
+			if e := f.m.Approve(context.Background(), 1); e != nil {
+				t.Fatal(e)
+			}
+			f.deleted = true
+			f.usersHTTP = tc.http
+			f.existing = tc.existing
+			if f.m.ResetDeleted(context.Background(), 1) == nil {
+				t.Fatal("uncertain deletion accepted")
+			}
+			r, _ := f.m.get(1)
+			if r.EmbyID != "created" || r.Status != "awaiting_setup" {
+				t.Fatal("changed uncertain request")
+			}
+		})
 	}
 }

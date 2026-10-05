@@ -106,6 +106,8 @@ func (a *API) accessAction(w http.ResponseWriter, r *http.Request) {
 		if e = decodeJSON(r, &input); e == nil {
 			e = a.access.Correct(id, input.Email, input.Connect)
 		}
+	case "reset":
+		e = a.access.ResetDeleted(r.Context(), id)
 	case "approve":
 		e = a.access.Approve(r.Context(), id)
 	case "decline":

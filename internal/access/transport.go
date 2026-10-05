@@ -17,10 +17,16 @@ import (
 )
 
 type embyUser struct {
-	ID     string         `json:"Id"`
-	Name   string         `json:"Name"`
-	Policy map[string]any `json:"Policy"`
+	ID              string         `json:"Id"`
+	Name            string         `json:"Name"`
+	Policy          map[string]any `json:"Policy"`
+	ConnectUserName string         `json:"ConnectUserName,omitempty"`
+	ConnectLinkType string         `json:"ConnectLinkType,omitempty"`
 }
+
+type embyStatusError int
+
+func (e embyStatusError) Error() string { return fmt.Sprintf("Emby returned HTTP %d", int(e)) }
 
 func emby(ctx context.Context, s Settings, method, path string, body, out any) error {
 	var payload []byte
@@ -37,6 +43,7 @@ func emby(ctx context.Context, s Settings, method, path string, body, out any) e
 	}
 	req.Header.Set("X-Emby-Token", s.EmbyKey)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
 	client := http.Client{Timeout: 15 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	res, err := client.Do(req)
 	if err != nil {
@@ -44,7 +51,7 @@ func emby(ctx context.Context, s Settings, method, path string, body, out any) e
 	}
 	defer res.Body.Close()
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return fmt.Errorf("Emby returned HTTP %d", res.StatusCode)
+		return embyStatusError(res.StatusCode)
 	}
 	if out != nil {
 		return json.NewDecoder(io.LimitReader(res.Body, 4<<20)).Decode(out)

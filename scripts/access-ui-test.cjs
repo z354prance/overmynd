@@ -14,7 +14,7 @@ const assert = require('node:assert/strict');
       if(path==='/api/v1/access/request'){submitted.push(request.postDataJSON());return route.fulfill({status:202,json:{message:'Submitted for approval. Watch your email.'}});}
       if(path==='/api/v1/access/setup'){submitted.push(request.postDataJSON());return route.fulfill({json:{message:'Your account is ready.'}});}
       if(path==='/api/v1/access/settings' && request.method()==='PUT'){saved=request.postDataJSON();return route.fulfill({json:{...saved,emby_key:undefined,smtp_password:undefined}});}
-      if(path.startsWith('/api/v1/access/requests/')){actions.push(path);if(path.endsWith('/correct')) Object.assign(pending,request.postDataJSON());else pending.status='awaiting_setup';return route.fulfill({json:{message:'Request updated'}});}
+      if(path.startsWith('/api/v1/access/requests/')){actions.push(path);if(path.endsWith('/correct')) Object.assign(pending,request.postDataJSON());else if(path.endsWith('/reset')) {pending.status='pending';pending.emby_id='';}else {pending.status='awaiting_setup';pending.emby_id='created';}return route.fulfill({json:{message:'Request updated'}});}
       const values={
         '/api/v1/auth/status':{authenticated,setup_required:false,username:'admin'},
         '/api/v1/access/status':{enabled:true},
@@ -72,6 +72,9 @@ const assert = require('node:assert/strict');
     await page.locator('#accessQueue button').filter({hasText:/^Approve$/}).click();
     await page.locator('#accessQueue button').filter({hasText:'fresh setup link'}).waitFor();
     assert.deepEqual(actions,['/api/v1/access/requests/1/correct','/api/v1/access/requests/1/approve']);
+    await page.getByRole('button',{name:'Reset after Emby deletion',exact:true}).click();
+    await page.locator('#accessQueue button').filter({hasText:/^Approve$/}).waitFor();
+    assert.equal(actions.at(-1),'/api/v1/access/requests/1/reset');
     await page.setViewportSize({width:390,height:844});
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     await page.locator('[data-view=dashboard]').click();await page.locator('#requestAccessButton').click();

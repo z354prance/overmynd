@@ -47,6 +47,12 @@ Setup links last 24 hours and work once. Only their hashes are saved. Resending 
 link invalidates the previous one. The local password is sent to Emby during
 setup and is never stored in Overmynd. Request data is visible only to admins.
 
+Connect verification reads the existing user's `ConnectUserName` and
+`ConnectLinkType` plus `GET /Connect/Pending`; it never recreates the link during
+password setup. The linked identity must match the approved Connect identity
+(case-insensitively). An unrecognized pending-link response keeps setup blocked
+rather than assuming confirmation.
+
 ## Failures and retries
 
 The queue displays setup and delivery errors. Email failure does not undo an
@@ -62,6 +68,12 @@ email or Connect username, then approve/retry. Successful approval locks these
 details. Existing Emby usernames are never adopted or reset. An uncertain create
 response therefore requires checking Emby for a partial account and resolving
 the conflict before retrying. A recorded user ID is reused on retries.
+
+If you delete a provisioned Emby user to test again, use **Reset after Emby
+deletion** on the existing request. Overmynd checks both the deleted user's
+endpoint and the Emby user list before clearing its ID and all old setup links.
+It does not delete or modify any Emby users. Approve the request again and use the
+new emails. Public setup links can never recreate a deleted user automatically.
 
 Restarting Overmynd makes interrupted provisioning/setup retryable. Provisioned
 accounts remain disabled until setup succeeds. Do not run multiple Overmynd
