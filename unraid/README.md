@@ -56,3 +56,7 @@ The five folders are `Movies`, `Episodes` (TV), `Anime`, `Music`, and `Books`. O
 A background scan starts on the first storage request and refreshes no more than every 30 minutes while the dashboard is used. Large libraries may take time and can wake disks. The dashboard never waits for a scan; it shows the last result while refreshing. Missing/unreadable folders show unavailable, empty folders show zero. Symlinks are skipped. The API exposes totals only, never paths, filenames, or error details. Configuration is through the administrator-managed container environment, not a public write endpoint.
 
 The footer shows a small used-space ASCII meter with percentage remaining. Click it for category sizes, total capacity, and remaining space. The pop-out closes with Escape, its Close button, or a click outside.
+
+## Embedding in the xivix portal
+
+Overmynd permits framing by `https://xivix.cc`, `https://www.xivix.cc`, and its own origin using CSP `frame-ancestors`. Other parents are rejected. This does not grant the parent access to administrator APIs or relax CSRF checks. The reverse proxy must not add `X-Frame-Options: DENY/SAMEORIGIN` or a stricter `frame-ancestors` policy; multiple CSP policies are intersected by browsers. The portal must allow `https://overmynd.xivix.cc` in its own frame-src policy. If it uses a sandbox attribute, scripts, forms and same-origin behavior must be allowed for interactive requests/sign-in.

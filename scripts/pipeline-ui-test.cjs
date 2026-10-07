@@ -37,6 +37,10 @@ const assert = require('node:assert/strict');
     const card = id => page.locator(`[data-lifecycle-id="${id}"]`);
     assert(await card('download').evaluate(el => el.classList.contains('media-movie')));
     assert(await card('process').evaluate(el => el.classList.contains('media-manual')));
+    assert.equal(await card('download').evaluate(el=>getComputedStyle(el).borderLeftColor),'rgb(212, 175, 55)');
+    assert.equal(await card('process').evaluate(el=>getComputedStyle(el).borderLeftColor),'rgb(172, 180, 192)');
+    assert.equal(await card('download').evaluate(el=>getComputedStyle(el).borderLeftWidth),'2px');
+
     assert.equal(await page.evaluate(() => mediaCardType({kind:'episode'})), 'show');
     assert.equal(await page.evaluate(() => mediaCardType({kind:'series'})), 'show');
     assert.equal(await card('download').locator('[role="progressbar"]').getAttribute('aria-valuenow'),'25');

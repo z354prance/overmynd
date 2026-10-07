@@ -38,5 +38,6 @@ jobs:
           node scripts/requests-ui-test.cjs
           node scripts/access-ui-test.cjs
           node scripts/storage-ui-test.cjs
+          node scripts/frame-ui-test.cjs
       - name: Build Unraid container
         run: docker build -t overmynd:ci .

@@ -18,7 +18,8 @@ func protectRequests(next http.Handler) http.Handler {
 	protected := origins.Handler(next)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("X-Frame-Options", "DENY")
+		// Permit the trusted portal to embed the dashboard; write-origin checks remain unchanged.
+		w.Header().Set("Content-Security-Policy", "frame-ancestors 'self' https://xivix.cc https://www.xivix.cc")
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			w.Header().Set("Cache-Control", "no-store")
 		}

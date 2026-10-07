@@ -160,3 +160,16 @@ body :is(.service-primary-button,.service-secondary-button,.service-close-button
 #storagePopover button { background:transparent; border:0; color:var(--terminal-link); cursor:pointer; }
 #storagePopover dd { margin:0; }
 #storagePopover p { color:var(--muted); font-size:11px; }
+
+/* Retain subtle category edges in the text-only view. */
+#playbackList .now-playing-card, #recentlyAddedList .recent-poster-card,
+#pipelineList .pipeline-card, #seriesOverviewList .pipeline-card {
+ border-left:2px solid var(--media-accent, var(--manual-accent)); padding-left:10px;
+}
+/* Four readable text lines and an ASCII meter, with no artwork-sized reserve. */
+#playbackList .now-playing-card { height:94px; padding:6px 8px; grid-template-rows:62px 18px; gap:0 8px; }
+#playbackList .now-playing-details { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:18px 16px 18px; gap:4px 8px; }
+#playbackList .item-title { grid-column:1 / -1; grid-row:1; }
+#playbackList .item-meta { grid-column:1 / -1; grid-row:2; line-height:16px; }
+#playbackList .playback-time { grid-column:1; grid-row:3; line-height:18px; }
+#playbackList .playback-extra { grid-column:2; grid-row:3; line-height:18px; float:none; }

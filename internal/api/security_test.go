@@ -104,3 +104,16 @@ func TestRejectOversizedAndTrailingJSON(t *testing.T) {
 		}
 	}
 }
+
+func TestTrustedPortalFramePolicy(t *testing.T) {
+	handler, _ := testRouter(t)
+	r := httptest.NewRequest("GET", "https://overmynd.xivix.cc/", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+	if got := w.Header().Get("Content-Security-Policy"); got != "frame-ancestors 'self' https://xivix.cc https://www.xivix.cc" {
+		t.Fatalf("unexpected frame policy: %s", got)
+	}
+	if got := w.Header().Get("X-Frame-Options"); got != "" {
+		t.Fatalf("conflicting frame restriction: %s", got)
+	}
+}

@@ -86,7 +86,7 @@ const assert = require('node:assert/strict');
     await detailTrigger.click();
     assert(await page.locator('#cardDetailsDialog').isVisible());
     assert.equal(await page.locator('#playbackList details').first().evaluate(el=>el.open),false);
-    assert.equal(await page.locator('#playbackList .now-playing-card').first().evaluate(el=>el.offsetHeight),118);
+    assert.equal(await page.locator('#playbackList .now-playing-card').first().evaluate(el=>el.offsetHeight),94);
     assert(await page.locator('#cardDetailsContent .playback-facts').count());
     assert(!(await page.locator('#cardDetailsDialog').evaluate(el=>el.matches(':modal'))));
     assert(await page.locator('#cardDetailsDialog').evaluate(el=>{const r=el.getBoundingClientRect();return r.left>=0 && r.right<=innerWidth && r.top>=0 && r.bottom<=innerHeight;}));
