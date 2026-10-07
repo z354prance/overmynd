@@ -173,3 +173,18 @@ body :is(.service-primary-button,.service-secondary-button,.service-close-button
 #playbackList .item-meta { grid-column:1 / -1; grid-row:2; line-height:16px; }
 #playbackList .playback-time { grid-column:1; grid-row:3; line-height:18px; }
 #playbackList .playback-extra { grid-column:2; grid-row:3; line-height:18px; float:none; }
+
+/* Compact text-only recent rows; fit six without stretching either top panel. */
+#recentlyAddedList .recent-poster-card { height:44px; padding:4px 8px 4px 10px; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:18px 16px; gap:1px 8px; }
+#recentlyAddedList .now-playing-details { grid-column:1 / -1; grid-row:1; }
+#recentlyAddedList .now-playing-details .item-title { height:18px; line-height:18px; }
+#recentlyAddedList .recent-episodes { grid-column:1; grid-row:2; line-height:16px; }
+#recentlyAddedList .recent-poster-card > .item-meta:last-child { grid-column:2; grid-row:2; height:16px; line-height:16px; margin:0; }
+#dashboardView .dashboard-grid > .playback-panel,
+#dashboardView .dashboard-grid > [aria-labelledby="recentlyAddedHeading"] { height:380px; }
+@media(max-width:540px) {
+ #recentlyAddedList .recent-poster-card { height:62px; grid-template-columns:minmax(0,1fr); grid-template-rows:18px 16px 16px; }
+ #recentlyAddedList .recent-poster-card > .item-meta:last-child { grid-column:1; grid-row:3; }
+ #dashboardView .dashboard-grid > .playback-panel,
+ #dashboardView .dashboard-grid > [aria-labelledby="recentlyAddedHeading"] { height:490px; }
+}
