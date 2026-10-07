@@ -153,6 +153,13 @@ function cleanMediaTitle(item) {
   return movie ? movie[1].replace(/[._]+/g, " ").trim() : title;
 }
 
+function asciiMeter(percent) {
+  if (percent === null || !Number.isFinite(Number(percent))) return '<span class="ascii-meter" aria-hidden="true">[ pending ]</span>';
+  const value = Math.max(0, Math.min(100, Number(percent)));
+  const filled = Math.round(value / 5);
+  return `<span class="ascii-meter" aria-hidden="true">[<span>${"|".repeat(filled)}</span><span class="ascii-empty">${".".repeat(20-filled)}</span>]</span>`;
+}
+
 function pipelineCardMarkup(item) {
   const progress = pipelineProgress(item);
   const title = cleanMediaTitle(item);
@@ -169,7 +176,7 @@ function pipelineCardMarkup(item) {
     </div>
     <div class="pipeline-progress-label"><span>${waiting ? "Awaiting progress" : "Current stage"}</span><strong>${waiting ? "—" : `${Math.round(progress.percent)}%`}</strong></div>
     <div class="pipeline-progress${waiting ? " unmeasured" : ""}${progress.problems.length || progress.paused ? " paused" : ""}" role="progressbar" aria-label="${escapeHTML(title)}: ${escapeHTML(progress.label)}" aria-valuemin="0" aria-valuemax="100" ${waiting ? 'aria-valuetext="Progress not reported"' : `aria-valuenow="${Math.round(progress.percent)}"`}>
-      <div class="pipeline-progress-fill" style="width:${waiting ? 100 : progress.percent}%"></div>
+      ${asciiMeter(waiting ? null : progress.percent)}
     </div>
     <p class="pipeline-detail" title="${escapeHTML([progress.detail, ...progress.serviceNames].join(" - "))}"><span>${escapeHTML(progress.detail)}</span>${progress.serviceNames.length ? `<span class="pipeline-source">${escapeHTML(progress.serviceNames.join(", "))}</span>` : ""}</p>
     <details class="pipeline-extra"><summary>Details</summary><dl class="playback-facts">${[
@@ -222,7 +229,7 @@ function showProgressMarkup(show) {
   return `<div class="pipeline-card-heading"><div>${mediaCardBadge(show)}<h3 title="${escapeHTML(show.title)}">${escapeHTML(show.title)}</h3><p class="item-meta">Series import progress · Sonarr</p></div></div>
     <details class="season-breakdown" data-show="${escapeHTML(show.id)}"><summary>Season breakdown</summary><div class="show-season-list" tabindex="0" aria-label="Season import counts">${[...show.seasons].sort((a,b)=>a.season_number-b.season_number).map(s=>`<div><span>Season ${Number(s.season_number)}</span><span>${Number(s.imported)} / ${Number(s.total)} imported</span></div>`).join("")}</div></details>
     <div class="pipeline-progress-label"><span>${show.imported} / ${show.total} imported</span><strong>${Math.round(percent)}%</strong></div>
-    <div class="pipeline-progress" role="progressbar" aria-label="${escapeHTML(show.title)} import progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(percent)}"><div class="pipeline-progress-fill" style="width:${percent}%"></div></div>`;
+    <div class="pipeline-progress" role="progressbar" aria-label="${escapeHTML(show.title)} import progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(percent)}">${asciiMeter(percent)}</div>`;
 }
 // Only retire an ARR queue mirror for the same release in this lifecycle.
 // Keep real downloader records, other releases, and queued/failed Tdarr jobs visible.
@@ -352,7 +359,7 @@ function renderPlayback() {
             <div class="playback-time">${escapeHTML(formatPlaybackTime(progress))} / ${duration > 0 ? escapeHTML(formatPlaybackTime(duration)) : "Live / unknown"}</div>
           </div>
             <div class="progress-track" role="progressbar" aria-label="Playback progress" ${duration > 0 ? `aria-valuenow="${Math.round(percent)}" aria-valuemin="0" aria-valuemax="100"` : 'aria-valuetext="Progress unavailable"'}>
-              <div class="progress-bar" style="width:${percent.toFixed(1)}%"></div>
+              ${asciiMeter(duration > 0 ? percent : null)}
             </div>
         </article>
       `;
@@ -526,7 +533,7 @@ function renderPlaybackView() {
           ? `
             <div class="playback-detail-progress">
               <div class="progress-track">
-                <div class="progress-bar" style="width:${percent.toFixed(1)}%"></div>
+                ${asciiMeter(duration > 0 ? percent : null)}
               </div>
               <div class="playback-time">
                 <span>${escapeHTML(formatPlaybackTime(progress))}</span>

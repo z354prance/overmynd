@@ -82,3 +82,66 @@ body .dashboard-footer { border-top: 1px solid var(--border); }
   body .dashboard-brand h1 { font-size: 18px; }
   body .panel-header { padding: 12px; }
 }
+
+/* Text-first xivix terminal layout. Poster search results remain available in the request dialog. */
+:root { --bg:#0d0d0c; --panel:#0e0f0e; --panel-soft:#111210; --border:#30322f; --border-soft:#242623; --accent:#45bba9; --terminal-link:#c49a6c; }
+body .panel-header { min-height:0; padding:12px 16px; background:#1b1c1a; }
+body .panel-header h2 { font-size:14px; text-transform:lowercase; }
+body .panel-header h2::before { content:none; }
+body .dashboard-brand img { display:none; }
+body .dashboard-brand h1 { font-size:16px; letter-spacing:2px; color:var(--muted); }
+body .dashboard-brand::after { content:"~/xivix/overmynd > status"; font-size:13px; color:var(--accent); }
+body .dashboard-brand { flex-wrap:wrap; gap:8px 20px; }
+body :is(.service-primary-button,.service-secondary-button,.service-close-button) { border-color:transparent; background:transparent; padding:8px; }
+body :is(.service-primary-button,.service-secondary-button,.service-close-button)::before { content:"[ " / ""; }
+body :is(.service-primary-button,.service-secondary-button,.service-close-button)::after { content:" ]" / ""; }
+#dashboardView :is(.playback-art,.progress-art,.media-card-type) { display:none !important; }
+#playbackList .now-playing-card, #recentlyAddedList .recent-poster-card,
+#pipelineList .pipeline-card, #seriesOverviewList .pipeline-card {
+ border:0; border-bottom:1px solid var(--border); border-radius:0; background:transparent;
+}
+#playbackList .now-playing-card:hover, #recentlyAddedList .recent-poster-card:hover,
+#pipelineList .pipeline-card:hover, #seriesOverviewList .pipeline-card:hover { background:#161815; }
+#playbackList .now-playing-card { grid-template-columns:minmax(0,1fr); grid-template-rows:72px 18px; height:118px; padding:10px; gap:6px; }
+#playbackList .now-playing-details { grid-column:1; grid-row:1; }
+#playbackList .progress-track { grid-column:1; grid-row:2; height:18px; }
+#playbackList .item-title { font-size:13px; }
+#recentlyAddedList .recent-poster-card { grid-template-columns:minmax(0,1fr) auto; }
+#recentlyAddedList .now-playing-details { grid-column:1 / -1; }
+#recentlyAddedList .recent-episodes { grid-column:1; }
+#recentlyAddedList .recent-poster-card > .item-meta:last-child { grid-column:2; }
+#pipelineList { display:grid; grid-template-columns:minmax(0,1fr); gap:0; }
+#pipelineList .pipeline-card { width:100%; height:auto; min-height:92px; padding:10px 0; display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(150px,1fr); grid-template-rows:auto auto; gap:6px 12px; }
+#pipelineList .pipeline-card-heading { grid-column:1; grid-row:1 / 3; height:auto; min-height:0; gap:4px; }
+#pipelineList .pipeline-card-heading > div { flex:initial; }
+#pipelineList h3 { height:auto; min-height:16px; max-height:32px; }
+#pipelineList .pipeline-stage { height:auto; background:transparent; color:var(--muted); padding:0; font-size:11px; white-space:normal; }
+#pipelineList .pipeline-detail { grid-column:2; grid-row:1; height:auto; max-height:none; }
+#pipelineList .pipeline-progress { grid-column:3; grid-row:1; height:18px; }
+#pipelineList .pipeline-progress-label { grid-column:3; grid-row:2; justify-content:flex-start; }
+#pipelineList .pipeline-problem { grid-column:2; grid-row:2; height:auto; }
+#pipelineList .pipeline-extra { grid-column:1; grid-row:3; }
+#seriesOverviewList .pipeline-card { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; padding:10px; }
+#seriesOverviewList .pipeline-card-heading { grid-column:1; grid-row:1; }
+#seriesOverviewList .season-breakdown { grid-column:1; grid-row:2; }
+#seriesOverviewList .pipeline-progress-label { grid-column:1; grid-row:3; }
+#seriesOverviewList .pipeline-progress { grid-column:1; grid-row:4; height:18px; }
+#dashboardView :is(.pipeline-progress,.progress-track) { mask-image:none; background:transparent; overflow:hidden; height:18px; }
+.ascii-meter { color:#a376ce; font:12px/18px "Cascadia Mono",Consolas,"Liberation Mono",monospace; white-space:nowrap; letter-spacing:0; }
+.ascii-empty { color:#72706f; }
+#dashboardView .progress-columns.has-series { grid-template-columns:minmax(0,1fr) minmax(0,2fr); }
+@media(max-width:900px) {
+ #dashboardView .progress-columns.has-series { grid-template-columns:minmax(0,1fr); }
+}
+@media(max-width:540px) {
+ #playbackList { grid-template-columns:minmax(0,1fr); }
+ #pipelineList .pipeline-card { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+ #pipelineList .pipeline-card-heading { grid-column:1; grid-row:1; }
+ #pipelineList .pipeline-detail { grid-column:2; grid-row:1; }
+ #pipelineList .pipeline-progress { grid-column:1 / -1; grid-row:2; }
+ #pipelineList .pipeline-progress-label { grid-column:2; grid-row:2; justify-content:flex-end; }
+ #pipelineList .pipeline-problem { grid-column:1 / -1; grid-row:3; }
+ #pipelineList .pipeline-extra { grid-column:1; grid-row:4; }
+}
+
+#playbackList .progress-track[aria-valuenow]::after { content:" " attr(aria-valuenow) "%"; color:var(--muted); font-size:11px; }
