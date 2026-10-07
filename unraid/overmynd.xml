@@ -18,4 +18,6 @@
   <PostArgs/>
   <Config Name="WebUI Port" Target="8080" Default="18080" Mode="tcp" Description="Overmynd dashboard port" Type="Port" Display="always" Required="true" Mask="false">18080</Config>
   <Config Name="Configuration" Target="/config" Default="/mnt/user/appdata/overmynd/config" Mode="rw" Description="Persistent database, settings, and administrator account. Keep this existing path when migrating." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/overmynd/config</Config>
+  <Config Name="Media storage (read only)" Target="/media" Default="/mnt/user/Media" Mode="ro" Description="Read-only media root for cached category sizes and filesystem free space." Type="Path" Display="always" Required="false" Mask="false">/mnt/user/Media</Config>
+  <Config Name="Storage root" Target="OVERMYND_STORAGE_ROOT" Default="/media" Mode="" Description="Container media root. Leave blank to disable public storage totals." Type="Variable" Display="always" Required="false" Mask="false">/media</Config>
 </Container>

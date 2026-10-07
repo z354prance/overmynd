@@ -3,7 +3,9 @@ package api
 import (
 	"crypto/rand"
 	"encoding/json"
+	"github.com/z354prance/overmynd/internal/storage"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -37,6 +39,12 @@ func NewRouter(
 	}
 
 	mux := http.NewServeMux()
+	storageMonitor := storage.New(os.Getenv("OVERMYND_STORAGE_ROOT"))
+	mux.HandleFunc("GET /api/v1/storage", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		json.NewEncoder(w).Encode(storageMonitor.Snapshot())
+	})
 	if _, err := rand.Read(api.posterKey[:]); err != nil {
 		panic(err)
 	}

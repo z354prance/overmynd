@@ -46,3 +46,11 @@ https://raw.githubusercontent.com/z354prance/overmynd/auth-completion/unraid/ove
 ```
 
 Refresh the Docker page afterward. You do not need to rebuild the application image or replace your saved configuration to add the icon.
+
+## Storage footer
+
+Optional public read-only totals are enabled with `OVERMYND_STORAGE_ROOT=/media` and a read-only path mapping `/mnt/user/Media` to `/media`. Existing Unraid containers need both entries added through Edit; pulling the repository does not modify saved templates. Leave the variable blank to disable totals.
+
+The five folders are `Movies`, `Episodes` (TV), `Anime`, `Music`, and `Books`. Other folders are excluded. Categories show logical file sizes (hard-linked files are counted per directory entry), not allocated disk blocks. Free space comes from the media mount's filesystem, so on Unraid shfs it reflects the capacity reported by that share filesystem, potentially including pools. It is not calculated by subtracting these five categories. Compare `df -h /mnt/user/Media` with the intended array capacity.
+
+A background scan starts on the first storage request and refreshes no more than every 30 minutes while the dashboard is used. Large libraries may take time and can wake disks. The dashboard never waits for a scan; it shows the last result while refreshing. Missing/unreadable folders show unavailable, empty folders show zero. Symlinks are skipped. The API exposes totals only, never paths, filenames, or error details. Configuration is through the administrator-managed container environment, not a public write endpoint.

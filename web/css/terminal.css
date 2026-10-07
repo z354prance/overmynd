@@ -145,3 +145,10 @@ body :is(.service-primary-button,.service-secondary-button,.service-close-button
 }
 
 #playbackList .progress-track[aria-valuenow]::after { content:" " attr(aria-valuenow) "%"; color:var(--muted); font-size:11px; }
+
+.dashboard-footer { flex-wrap:wrap; gap:16px; }
+.storage-summary { display:flex; flex:1; flex-wrap:wrap; justify-content:center; gap:6px 12px; min-width:0; color:var(--muted); font-size:11px; }
+.storage-summary[hidden] { display:none; }
+.storage-summary span { white-space:nowrap; }
+.storage-summary span:last-child { color:var(--accent); }
+@media(max-width:900px) { .storage-summary { order:3; flex-basis:100%; justify-content:flex-start; } }
