@@ -17,6 +17,7 @@ type Snapshot struct {
 	Enabled    bool       `json:"enabled"`
 	Scanning   bool       `json:"scanning"`
 	Categories []Category `json:"categories"`
+	TotalBytes *uint64    `json:"total_bytes"`
 	FreeBytes  *uint64    `json:"free_bytes"`
 	UpdatedAt  time.Time  `json:"updated_at"`
 }
@@ -55,7 +56,8 @@ func scan(root string) Snapshot {
 		result.Categories = append(result.Categories, value)
 	}
 	// Free capacity is that of the mounted media filesystem, not the container.
-	if free, err := available(root); err == nil {
+	if free, total, err := available(root); err == nil {
+		result.TotalBytes = &total
 		result.FreeBytes = &free
 	}
 	return result

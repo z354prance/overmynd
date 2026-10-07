@@ -152,3 +152,11 @@ body :is(.service-primary-button,.service-secondary-button,.service-close-button
 .storage-summary span { white-space:nowrap; }
 .storage-summary span:last-child { color:var(--accent); }
 @media(max-width:900px) { .storage-summary { order:3; flex-basis:100%; justify-content:flex-start; } }
+
+.storage-trigger { border:0; padding:8px 0; background:transparent; color:#ad88d3; font:11px/18px "Cascadia Mono",Consolas,monospace; cursor:pointer; white-space:nowrap; }
+#storagePopover { position:fixed; inset:auto; margin:0; width:min(350px,calc(100vw - 16px)); max-height:calc(100dvh - 16px); overflow:auto; padding:16px; border:1px solid var(--border); border-radius:3px; background:var(--panel); color:var(--text); font:12px/1.6 "Cascadia Mono",Consolas,monospace; }
+#storagePopover header, #storagePopover dl > div { display:flex; justify-content:space-between; gap:16px; }
+#storagePopover header { border-bottom:1px solid var(--border); padding-bottom:8px; }
+#storagePopover button { background:transparent; border:0; color:var(--terminal-link); cursor:pointer; }
+#storagePopover dd { margin:0; }
+#storagePopover p { color:var(--muted); font-size:11px; }
