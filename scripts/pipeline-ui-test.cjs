@@ -46,7 +46,7 @@ const assert = require('node:assert/strict');
     assert(!(await card('unknown').textContent()).includes('Import Blocked'));
     assert((await card('unknown').textContent()).includes('awaiting the next step'));
     const sizes=await page.locator('#pipelineList .pipeline-card').evaluateAll(cards=>cards.map(c=>({width:c.getBoundingClientRect().width,height:c.getBoundingClientRect().height})));
-    assert(sizes.every(s=>s.width===sizes[0].width && s.height===286 && s.width===160));
+    assert(sizes.every(s=>s.width===sizes[0].width && s.height===292 && s.width===160));
     assert(await page.locator('#pipelineList .pipeline-card').evaluateAll(cards=>cards.every(card=>{
       const heading=card.querySelector('.pipeline-card-heading').getBoundingClientRect();
       const stage=card.querySelector('.pipeline-stage').getBoundingClientRect();

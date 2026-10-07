@@ -1,0 +1,84 @@
+/* Terminal theme: presentation only; the existing layouts and controls stay intact. */
+:root {
+  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --bg: #0c0d0c;
+  --panel: #101210;
+  --panel-soft: #151815;
+  --border: #343b36;
+  --border-soft: #252c27;
+  --text: #e5e8e2;
+  --muted: #a4ada5;
+  --muted-2: #8c978e;
+  --accent: #40c7ac;
+  --accent-soft: #17352d;
+  --media-progress: #663399;
+  --terminal-link: #d4ad79;
+}
+body { background: var(--bg); font-size: 13px; }
+button, input, select, textarea { font-family: inherit; }
+body :is(.panel, .summary-card, .access-queue-card, .service-management-card, dialog, [popover]) {
+  background: var(--panel); border-color: var(--border); border-radius: 3px;
+}
+body :is(.request-dialog, .card-details-dialog, .access-dialog, [popover]) {
+  color: var(--text); box-shadow: 0 14px 42px #0009; backdrop-filter: none;
+}
+body :is(input, select, textarea) {
+  background: #0b0e0c; color: var(--text); border: 1px solid var(--border); border-radius: 2px;
+}
+body :is(.service-primary-button, .service-secondary-button, .service-close-button) {
+  background: #151915; color: var(--terminal-link); border: 1px solid #756245;
+  border-radius: 2px; box-shadow: none; font-weight: 500;
+}
+body :is(.service-primary-button, .service-secondary-button, .service-close-button):hover {
+  background: #29261f; border-color: var(--terminal-link); color: #f3d4a7;
+}
+body .service-danger-button { border-radius: 2px; background: #321b1e; color: #ffacb0; }
+body :is(a, summary, .dashboard-footer button) { color: var(--terminal-link); }
+body :is(button, a, summary, input, select, textarea):focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 3px;
+}
+body .panel-header { padding: 14px 16px; background: #191d19; border-bottom: 1px solid var(--border); }
+body :is(.panel-header h2, .services-heading h1, .request-dialog h2) {
+  font-size: 16px; font-weight: 500; letter-spacing: 0;
+}
+body .panel-header h2::before { content: "> "; color: var(--accent); }
+body :is(.panel-kicker, .eyebrow) { color: var(--muted); }
+body .dashboard-brand h1 { font-family: inherit; font-weight: 500; font-size: 22px; }
+body .dashboard-topbar { border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+body .live-indicator { color: var(--accent); font-weight: 500; }
+body .status-dot { box-shadow: none; }
+#playbackList .now-playing-card, #recentlyAddedList .recent-poster-card,
+#pipelineList .pipeline-card, #seriesOverviewList .pipeline-card {
+  background: var(--panel-soft); border-radius: 2px; border-color: var(--border);
+  border-left-color: var(--media-accent);
+}
+#playbackList .now-playing-card:hover, #recentlyAddedList .recent-poster-card:hover,
+#pipelineList .pipeline-card:hover, #seriesOverviewList .pipeline-card:hover { background: #1c221d; }
+body :is(.playback-art, .progress-art, .playback-poster) { border-radius: 2px; }
+body :is(.item-title, .pipeline-card h3, .service-name) { font-weight: 500; }
+body :is(.stage, .pipeline-stage, .service-state) { border-radius: 2px; font-weight: 400; }
+body .playback-time { color: var(--muted); }
+/* A mask cuts BOTH the filled and empty meter into fixed-width terminal ticks.
+   The fill width still reflects the actual reported progress, including zero. */
+body :is(.progress-track, .pipeline-progress, .download-progress) {
+  position: relative; border-radius: 0; height: 10px; overflow: visible;
+  background: #343337;
+  mask-image: repeating-linear-gradient(to right, #000 0 3px, transparent 3px 6px);
+}
+body :is(.progress-bar, .pipeline-progress-fill, .download-progress-bar),
+#dashboardView :is(.progress-bar, .pipeline-progress-fill) {
+  height: 100%; border-radius: 0; background: var(--media-progress); transition: none;
+}
+#dashboardView .pipeline-progress.unmeasured .pipeline-progress-fill {
+  background: #8c779f; opacity: .5;
+}
+#playbackList .now-playing-card { height: 106px; grid-template-rows: 72px 10px; }
+#playbackList .progress-track { height: 10px; }
+#pipelineList .pipeline-card { height: 292px; grid-template-rows: 126px 54px 30px 16px 18px 10px; }
+#pipelineList .pipeline-progress, #seriesOverviewList .pipeline-progress { height: 10px; }
+body .access-queue-card { background: var(--panel-soft); }
+body .dashboard-footer { border-top: 1px solid var(--border); }
+@media (max-width: 540px) {
+  body .dashboard-brand h1 { font-size: 18px; }
+  body .panel-header { padding: 12px; }
+}
