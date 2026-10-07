@@ -88,10 +88,10 @@ body .dashboard-footer { border-top: 1px solid var(--border); }
 body .panel-header { min-height:0; padding:12px 16px; background:#1b1c1a; }
 body .panel-header h2 { font-size:14px; text-transform:lowercase; }
 body .panel-header h2::before { content:none; }
-body .dashboard-brand img { display:none; }
-body .dashboard-brand h1 { font-size:16px; letter-spacing:2px; color:var(--muted); }
+body .dashboard-brand img { display:block; width:42px; height:42px; }
+body .dashboard-brand h1 { display:none; }
 body .dashboard-brand::after { content:"~/xivix/overmynd > status"; font-size:13px; color:var(--accent); }
-body .dashboard-brand { flex-wrap:wrap; gap:8px 20px; }
+body .dashboard-brand { flex-direction:row; flex-wrap:wrap; gap:8px 14px; }
 body :is(.service-primary-button,.service-secondary-button,.service-close-button) { border-color:transparent; background:transparent; padding:8px; }
 body :is(.service-primary-button,.service-secondary-button,.service-close-button)::before { content:"[ " / ""; }
 body :is(.service-primary-button,.service-secondary-button,.service-close-button)::after { content:" ]" / ""; }
