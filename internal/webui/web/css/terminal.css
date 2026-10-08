@@ -214,7 +214,7 @@ body .dashboard-footer > .live-indicator { display:flex; align-items:center; gap
 #pageHeader #requestAccessButton { color:var(--muted); font-size:11px; background:transparent; border-color:transparent; padding:4px 0; white-space:nowrap; }
 #pageHeader #requestAccessButton:hover { color:var(--text); text-decoration:underline; }
 #pageHeader #requestAccessButton::before, #pageHeader #requestAccessButton::after { content:none; }
-#pageHeader .storage-summary:not([hidden]) + #requestAccessButton:not([hidden])::before { content:"·"; display:inline-block; padding-right:12px; color:var(--muted); }
+#pageHeader .storage-summary:not([hidden]) + #requestAccessButton:not([hidden])::before { content:"|"; display:inline-block; padding-right:12px; color:var(--muted); }
 .ascii-meter { color:var(--muted); }
 .ascii-filled { color:#b591ed; }
 @supports (background-clip:text) or (-webkit-background-clip:text) {
