@@ -208,6 +208,14 @@ const assert = require('node:assert/strict');
 
     }
     assert.deepEqual(errors,[]);
+    const privacyOfQueue = await page.evaluate(() => {
+      state.processing = ['queued', 'held', 'processing', 'problem'].map((status, i) => ({id:String(i),source:'tdarr',source_service_id:77,state:status,title:status}));
+      const item = {id:'test',kind:'episode',stage:'processing',references:state.processing.map(j=>({record_type:'processing',source:j.source,source_service_id:j.source_service_id,record_id:j.id}))};
+      const singles = state.processing.map(j=>visiblePipelineItem({...item,references:[{record_type:'processing',source:j.source,source_service_id:j.source_service_id,record_id:j.id}]}));
+      return {singles, grouped:individualProgressCards(item).map(i=>i.title)};
+    });
+    assert.deepEqual(privacyOfQueue.singles, [false,false,true,true]);
+    assert.deepEqual(privacyOfQueue.grouped, ['processing','problem']);
     console.log('PASS: lifecycle cards, measured/unknown progress, stage changes, source isolation, escaping, responsive layout');
   } finally { await browser.close(); }
 })().catch(error => {console.error(error); process.exitCode=1;});

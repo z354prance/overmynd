@@ -203,7 +203,13 @@ function isSeriesProgress(item) {
   return [...bySource.values()].some(ids => ids.size > 1);
 }
 
+function pendingTdarrJob(job) {
+  return job.source === "tdarr" && ["queued", "held"].includes(job.state);
+}
+
 function visiblePipelineItem(item) {
+  const jobs = pipelineRecords(item, "processing", state.processing);
+  if (item.stage === "processing" && jobs.length && jobs.every(pendingTdarrJob)) return false;
   if (!["importing", "processing", "downloading"].includes(item.stage)) return false;
   if (isSeriesProgress(item) || item.stage !== "downloading") return true;
   const downloads = pipelineRecords(item, "download", state.downloads);
@@ -252,7 +258,7 @@ function individualProgressCards(item) {
     problems: type === "processing" && record.state === "problem" ? [record.stage === "health_check" ? "tdarr_health_check_failed" : "failed"] : [],
     references: [{record_type:type,source:record.source,source_service_id:record.source_service_id,record_id:record.id}],
   });
-  const activeJobs = jobs.filter(job => job.state !== "queued" || !jobs.some(active => active.state === "processing" && active.source === job.source && active.source_service_id === job.source_service_id && active.title && active.title === job.title));
+  const activeJobs = jobs.filter(job => !pendingTdarrJob(job)).filter(job => job.state !== "queued" || !jobs.some(active => active.state === "processing" && active.source === job.source && active.source_service_id === job.source_service_id && active.title && active.title === job.title));
   return [
     ...activeJobs.map(job=>card(job,"processing","processing")),
     ...transfers.filter(d=> !processingSupersedesDownload(d, activeJobs)).filter(d=> !jobs.length || (!/completed|finished|seeding/i.test(d.status || "") && !(Number(d.size)>0 && Number(d.size_left)===0)))
