@@ -200,3 +200,9 @@ body :is(.service-primary-button,.service-secondary-button,.service-close-button
  .header-actions, .header-status { width:100%; gap:6px 12px; }
  #pageHeader .header-actions button { padding:6px 0; font-size:11px; }
 }
+
+/* Connection indicator anchors the footer opposite administration links. */
+body .dashboard-footer > .live-indicator { display:flex; align-items:center; gap:8px; margin-right:auto; }
+@media(max-width:559px) {
+ body .dashboard-footer { flex-direction:row; align-items:center; }
+}
