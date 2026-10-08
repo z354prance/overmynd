@@ -206,3 +206,15 @@ body .dashboard-footer > .live-indicator { display:flex; align-items:center; gap
 @media(max-width:559px) {
  body .dashboard-footer { flex-direction:row; align-items:center; }
 }
+
+/* Prioritize everyday media requests and support; keep account access quiet. */
+#pageHeader #requestAccessButton { order:3; color:var(--muted); font-size:11px; background:transparent; border-color:transparent; padding:8px 4px; }
+#pageHeader #requestAccessButton:hover { color:var(--text); text-decoration:underline; }
+#pageHeader #requestAccessButton::before, #pageHeader #requestAccessButton::after { content:none; }
+#pageHeader :is(#openMediaRequest, #openDonate) { padding:9px 13px; font-size:13px; font-weight:600; border:1px solid; border-radius:3px; }
+#pageHeader #openMediaRequest { order:1; color:#70e2c6; border-color:#388c78; background:#143229; }
+#pageHeader #openDonate { order:2; color:#edc58d; border-color:#977544; background:#302619; }
+#pageHeader #openMediaRequest:hover { background:#204839; border-color:#70e2c6; }
+#pageHeader #openDonate:hover { background:#44351f; border-color:#edc58d; }
+#pageHeader :is(#openMediaRequest, #openDonate)::before,
+#pageHeader :is(#openMediaRequest, #openDonate)::after { content:none; }
