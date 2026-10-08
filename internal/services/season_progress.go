@@ -7,6 +7,7 @@ import (
 	"github.com/z354prance/overmynd/internal/integrations/arr"
 	"github.com/z354prance/overmynd/internal/models"
 	"sort"
+	"strings"
 )
 
 type SeasonProgress struct {
@@ -28,7 +29,7 @@ type seasonEpisode struct {
 }
 
 func countSeasonProgress(episodes []seasonEpisode, queued map[int64]bool) map[int]SeasonProgress {
-	active := false
+	active := queued[0] // A matched Tdarr job keeps the series active after its queue entries leave Sonarr.
 	for _, ep := range episodes {
 		if queued[ep.ID] {
 			active = true
@@ -49,14 +50,23 @@ func countSeasonProgress(episodes []seasonEpisode, queued map[int64]bool) map[in
 	}
 	return counts
 }
-func (m *Manager) seasonProgress(ctx context.Context, downloads []models.Download) ([]SeasonProgress, []ServiceError) {
+func (m *Manager) seasonProgress(ctx context.Context, downloads []models.Download, processing ...models.ProcessingJob) ([]SeasonProgress, []ServiceError) {
 	result := []SeasonProgress{}
 	errors := []ServiceError{}
+	processingShows, processingErrors := m.processingShows(ctx, processing)
+	errors = append(errors, processingErrors...)
+	downloads = append(append([]models.Download{}, downloads...), processingShows...)
 	type groupKey struct{ service, series int64 }
 	groups := map[groupKey]map[int64]bool{}
 	for _, d := range downloads {
-		if d.Source != models.ServiceSonarr || d.SeriesID == 0 || d.EpisodeID == 0 {
+		if d.Source != models.ServiceSonarr || d.SeriesID == 0 {
 			continue
+		}
+		switch strings.ToLower(d.Status) {
+		case "queued", "paused", "pending", "waiting":
+			if d.SizeLeft >= d.Size {
+				continue
+			}
 		}
 		key := groupKey{d.SourceServiceID, d.SeriesID}
 		if groups[key] == nil {
@@ -64,6 +74,38 @@ func (m *Manager) seasonProgress(ctx context.Context, downloads []models.Downloa
 		}
 		groups[key][d.EpisodeID] = true
 	}
+
+	// Persist only shows that have actually entered the pipeline, not every
+	// missing series. Each key is independent so concurrent refreshes cannot
+	// overwrite the set of tracked shows.
+	for group := range groups {
+		_, err := m.db.DB.ExecContext(ctx, "INSERT INTO settings (key,value,updated_at) VALUES (?, '1', CURRENT_TIMESTAMP) ON CONFLICT(key) DO NOTHING", fmt.Sprintf("tracked-show:%d:%d", group.service, group.series))
+		if err != nil {
+			return result, append(errors, ServiceError{Error: "unable to save series tracking"})
+		}
+	}
+	rows, err := m.db.DB.QueryContext(ctx, "SELECT key FROM settings WHERE key LIKE 'tracked-show:%'")
+	if err != nil {
+		return result, append(errors, ServiceError{Error: "unable to read series tracking"})
+	}
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			continue
+		}
+		var group groupKey
+		if _, err := fmt.Sscanf(key, "tracked-show:%d:%d", &group.service, &group.series); err == nil {
+			if groups[group] == nil {
+				groups[group] = map[int64]bool{}
+			}
+			groups[group][0] = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return result, append(errors, ServiceError{Error: "unable to read series tracking"})
+	}
+	rows.Close()
 	for group, queued := range groups {
 		service, err := m.Get(group.service)
 		if err != nil || !service.Enabled {
@@ -97,7 +139,21 @@ func (m *Manager) seasonProgress(ctx context.Context, downloads []models.Downloa
 			errors = append(errors, serviceError(service, fmt.Errorf("unable to read Sonarr series details")))
 			continue
 		}
-		for season, count := range countSeasonProgress(episodes, queued) {
+
+		counts := countSeasonProgress(episodes, queued)
+		complete := len(counts) > 0
+		for _, count := range counts {
+			if count.Imported < count.Total {
+				complete = false
+			}
+		}
+		if complete {
+			if _, err := m.db.DB.ExecContext(ctx, "DELETE FROM settings WHERE key = ?", fmt.Sprintf("tracked-show:%d:%d", group.service, group.series)); err != nil {
+				errors = append(errors, serviceError(service, fmt.Errorf("unable to finish series tracking")))
+			}
+			continue
+		}
+		for season, count := range counts {
 			count.ID = fmt.Sprintf("sonarr-season:%d:%d:%d", group.service, group.series, season)
 			count.ShowID = fmt.Sprintf("sonarr-show:%d:%d", group.service, group.series)
 			count.ShowTitle = series.Title

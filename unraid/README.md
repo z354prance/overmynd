@@ -83,3 +83,15 @@ hidden sessions do not contribute to the Now Playing count. No Emby permissions,
 playback, or library contents are changed. This controls Now Playing only, not
 Recently Added or download/processing sections. Previously fetched browser data
 cannot be recalled; reload open dashboards after enabling the filter.
+
+
+### Series overview tracking
+
+A series that enters the download/import pipeline, or is identified from an active
+or failed Tdarr episode job, is remembered in the configuration database. Its overview
+stays after queue entries disappear and across restarts, until Sonarr reports files
+for every monitored episode. Pending-only Tdarr jobs and the missing-series library
+are not used to enroll shows. Counts always come from Sonarr, not download percentages.
+Missing or unaired monitored episodes keep an enrolled series unfinished; unmonitored
+episodes do not count. Tdarr recovery matches an exact normalized show title (including
+year when present) before episode coordinates, avoiding ambiguous title matches.

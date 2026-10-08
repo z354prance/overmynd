@@ -70,3 +70,49 @@ func TestActiveShowIncludesCompletedAndNonQueuedSeasons(t *testing.T) {
 		}
 	}
 }
+
+func TestSeriesOverviewPersistsUntilSonarrImportsAllEpisodes(t *testing.T) {
+	complete := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v3/series":
+			fmt.Fprint(w, `[{"id":24,"title":"MacGyver (2016)","year":2016}]`)
+		case "/api/v3/series/24":
+			fmt.Fprint(w, `{"title":"MacGyver (2016)"}`)
+		case "/api/v3/episode":
+			fmt.Fprintf(w, `[{"id":1,"seasonNumber":1,"monitored":true,"hasFile":true},{"id":2,"seasonNumber":2,"monitored":true,"hasFile":%t}]`, complete)
+		default:
+			w.WriteHeader(404)
+		}
+	}))
+	defer server.Close()
+	m := testManager(t)
+	if _, err := m.Create(Input{Type: models.ServiceSonarr, Name: "Sonarr", Enabled: true, BaseURL: server.URL, Credential: "secret"}); err != nil {
+		t.Fatal(err)
+	}
+	pending := []models.ProcessingJob{{Source: models.ServiceTdarr, State: models.ProcessingStateQueued, Title: "MacGyver.2016.S02E03.1080p.mkv"}}
+	if items, errs := m.seasonProgress(context.Background(), nil, pending...); len(items) != 0 || len(errs) != 0 {
+		t.Fatal("pending show was enrolled", items, errs)
+	}
+	jobs := []models.ProcessingJob{{Source: models.ServiceTdarr, State: models.ProcessingStateProcessing, Title: "MacGyver.2016.S02E03.1080p.mkv"}}
+	items, errs := m.seasonProgress(context.Background(), nil, jobs...)
+	if len(errs) != 0 || len(items) != 2 {
+		t.Fatal(items, errs)
+	}
+	// Recreate manager: tracking must survive a restart and empty queues.
+	m = NewManager(m.db)
+	items, errs = m.seasonProgress(context.Background(), nil)
+	if len(errs) != 0 || len(items) != 2 {
+		t.Fatal("lost unfinished show", items, errs)
+	}
+	complete = true
+	items, errs = m.seasonProgress(context.Background(), nil)
+	if len(errs) != 0 || len(items) != 0 {
+		t.Fatal("completed show retained", items, errs)
+	}
+	complete = false
+	items, errs = m.seasonProgress(context.Background(), nil)
+	if len(errs) != 0 || len(items) != 0 {
+		t.Fatal("inactive missing show reappeared", items, errs)
+	}
+}

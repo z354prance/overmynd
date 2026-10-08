@@ -54,7 +54,7 @@ func (m *Manager) Activity(
 	}
 	result.Errors = append(result.Errors, playback.Errors...)
 
-	seasons, seasonErrors := m.seasonProgress(ctx, downloads.Downloads)
+	seasons, seasonErrors := m.seasonProgress(ctx, downloads.Downloads, processing.Jobs...)
 	result.Seasons = seasons
 	result.Errors = append(result.Errors, seasonErrors...)
 
