@@ -49,7 +49,10 @@
       const free = known ? Math.max(0, Math.min(100, 100*data.free_bytes/data.total_bytes)) : null;
       if (known) {
         const filled = Math.round((100-free)/100*16);
-        button.textContent = `storage [${"|".repeat(filled)}${".".repeat(16-filled)}] ${free.toFixed(1)}% free`;
+        const fill = document.createElement("span");
+        fill.className = "ascii-filled";
+        fill.textContent = "|".repeat(filled);
+        button.replaceChildren(document.createTextNode("storage ["), fill, document.createTextNode(`${".".repeat(16-filled)}] ${free.toFixed(1)}% free`));
         button.setAttribute("aria-label", `Storage: ${free.toFixed(1)} percent remaining. Show category sizes.`);
       } else {
         button.textContent = data.scanning ? "storage: scanning..." : "storage: unavailable";

@@ -157,7 +157,7 @@ function asciiMeter(percent) {
   if (percent === null || !Number.isFinite(Number(percent))) return '<span class="ascii-meter" aria-hidden="true">[ pending ]</span>';
   const value = Math.max(0, Math.min(100, Number(percent)));
   const filled = Math.round(value / 5);
-  return `<span class="ascii-meter" aria-hidden="true">[<span>${"|".repeat(filled)}</span><span class="ascii-empty">${".".repeat(20-filled)}</span>]</span>`;
+  return `<span class="ascii-meter" aria-hidden="true">[<span class="ascii-filled">${"|".repeat(filled)}</span><span class="ascii-empty">${".".repeat(20-filled)}</span>]</span>`;
 }
 
 function pipelineCardMarkup(item) {

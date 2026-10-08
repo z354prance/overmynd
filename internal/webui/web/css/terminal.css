@@ -207,14 +207,17 @@ body .dashboard-footer > .live-indicator { display:flex; align-items:center; gap
  body .dashboard-footer { flex-direction:row; align-items:center; }
 }
 
-/* Prioritize everyday media requests and support; keep account access quiet. */
-#pageHeader #requestAccessButton { order:3; color:var(--muted); font-size:11px; background:transparent; border-color:transparent; padding:8px 4px; }
+
+/* Primary terminal links above quiet utilities. */
+#pageHeader :is(#openMediaRequest, #openDonate) { color:var(--terminal-link); background:transparent; border-color:transparent; padding:8px 0; font-size:14px; font-weight:600; }
+#pageHeader :is(#openMediaRequest, #openDonate):hover { color:#f3d4a7; background:transparent; text-decoration:underline; }
+#pageHeader #requestAccessButton { color:var(--muted); font-size:11px; background:transparent; border-color:transparent; padding:4px 0; white-space:nowrap; }
 #pageHeader #requestAccessButton:hover { color:var(--text); text-decoration:underline; }
 #pageHeader #requestAccessButton::before, #pageHeader #requestAccessButton::after { content:none; }
-#pageHeader :is(#openMediaRequest, #openDonate) { padding:9px 13px; font-size:13px; font-weight:600; border:1px solid; border-radius:3px; }
-#pageHeader #openMediaRequest { order:1; color:#70e2c6; border-color:#388c78; background:#143229; }
-#pageHeader #openDonate { order:2; color:#edc58d; border-color:#977544; background:#302619; }
-#pageHeader #openMediaRequest:hover { background:#204839; border-color:#70e2c6; }
-#pageHeader #openDonate:hover { background:#44351f; border-color:#edc58d; }
-#pageHeader :is(#openMediaRequest, #openDonate)::before,
-#pageHeader :is(#openMediaRequest, #openDonate)::after { content:none; }
+#pageHeader .storage-summary:not([hidden]) + #requestAccessButton:not([hidden])::before { content:"·"; display:inline-block; padding-right:12px; color:var(--muted); }
+.ascii-meter { color:var(--muted); }
+.ascii-filled { color:#b591ed; }
+@supports (background-clip:text) or (-webkit-background-clip:text) {
+ body .ascii-filled, body .storage-summary .ascii-filled { background:linear-gradient(90deg,#f27b89 0%,#edb26b 20%,#e5d875 36%,#6dcc9d 52%,#70b9ed 70%,#ad92ec 86%,#dd91cd 100%); background-clip:text; -webkit-background-clip:text; color:transparent; }
+}
+@media(forced-colors:active) { body .ascii-filled, body .storage-summary .ascii-filled { background:none; color:CanvasText; } }
