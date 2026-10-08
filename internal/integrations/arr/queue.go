@@ -43,27 +43,39 @@ func (c *Client) Queue(
 		return QueueResponse{}, fmt.Errorf("API key is required")
 	}
 
-	endpoint, err := c.Endpoint(
-		baseURL,
-		"queue?page=1&pageSize=100",
-	)
-	if err != nil {
-		return QueueResponse{}, err
+	var result QueueResponse
+	seen := map[int64]bool{}
+	received := 0
+	for page := 1; page <= 1000; page++ {
+		endpoint, err := c.Endpoint(baseURL, fmt.Sprintf("queue?page=%d&pageSize=100&sortKey=id&sortDirection=ascending", page))
+		if err != nil {
+			return QueueResponse{}, err
+		}
+		var batch QueueResponse
+		if err := c.http.GetJSON(ctx, endpoint, map[string]string{"X-Api-Key": apiKey}, &batch); err != nil {
+			return QueueResponse{}, err
+		}
+		if page == 1 {
+			result = batch
+			result.Records = []QueueRecord{}
+		}
+		added := 0
+		for _, record := range batch.Records {
+			if !seen[record.ID] {
+				seen[record.ID] = true
+				result.Records = append(result.Records, record)
+				added++
+			}
+		}
+		received += len(batch.Records)
+		result.TotalRecords = batch.TotalRecords
+		// An empty page is valid if the live queue shrank during pagination.
+		if len(batch.Records) == 0 || received >= batch.TotalRecords {
+			return result, nil
+		}
+		if added == 0 {
+			return QueueResponse{}, fmt.Errorf("queue pagination made no progress")
+		}
 	}
-
-	var queue QueueResponse
-
-	err = c.http.GetJSON(
-		ctx,
-		endpoint,
-		map[string]string{
-			"X-Api-Key": apiKey,
-		},
-		&queue,
-	)
-	if err != nil {
-		return QueueResponse{}, err
-	}
-
-	return queue, nil
+	return QueueResponse{}, fmt.Errorf("queue pagination exceeded limit")
 }
