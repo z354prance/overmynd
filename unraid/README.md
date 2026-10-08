@@ -60,3 +60,26 @@ The footer shows a small used-space ASCII meter with percentage remaining. Click
 ## Embedding in the xivix portal
 
 Overmynd permits framing by `https://xivix.cc`, `https://www.xivix.cc`, and its own origin using CSP `frame-ancestors`. Other parents are rejected. This does not grant the parent access to administrator APIs or relax CSRF checks. The reverse proxy must not add `X-Frame-Options: DENY/SAMEORIGIN` or a stricter `frame-ancestors` policy; multiple CSP policies are intersected by browsers. The portal must allow `https://overmynd.xivix.cc` in its own frame-src policy. If it uses a sandbox attribute, scripts, forms and same-origin behavior must be allowed for interactive requests/sign-in.
+
+
+### Hide a private Emby library from Now Playing
+
+For a single-Emby-server deployment, add the container variable
+`OVERMYND_HIDDEN_EMBY_LIBRARIES` with comma-separated library IDs (for example `9`).
+Leave it empty to disable filtering. Existing Unraid containers need this variable
+added through Edit; updating the repository template does not update saved containers.
+
+Tracearr sometimes omits `library_id`. Overmynd then uses its saved access-request
+Emby URL and API key to resolve the session's `rating_key` through Emby's read-only
+`/Items/{Id}/Ancestors` endpoint and match a library root. These credentials must
+point to the same Emby server as Tracearr. The access-request form need not be enabled.
+This filter is not intended for multiple Emby servers with overlapping item/library IDs.
+Unidentified sessions, missing server identities, failed lookups, and unconfigured
+Emby credentials are withheld when their privacy cannot be verified. Explicit
+non-Emby sessions remain visible. Lookups have an eight-second total budget per refresh.
+
+Filtering happens before the public playback response and poster URLs are generated;
+hidden sessions do not contribute to the Now Playing count. No Emby permissions,
+playback, or library contents are changed. This controls Now Playing only, not
+Recently Added or download/processing sections. Previously fetched browser data
+cannot be recalled; reload open dashboards after enabling the filter.
