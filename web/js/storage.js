@@ -26,7 +26,7 @@
     const b = button.getBoundingClientRect();
     const p = popup.getBoundingClientRect();
     popup.style.left = `${Math.max(8, Math.min(innerWidth-p.width-8, b.left+(b.width-p.width)/2))}px`;
-    popup.style.top = `${Math.max(8, Math.min(innerHeight-p.height-8, b.top-p.height-8))}px`;
+    popup.style.top = `${Math.max(8, Math.min(innerHeight-p.height-8, (b.bottom+8+p.height <= innerHeight-8 ? b.bottom+8 : b.top-p.height-8)))}px`;
   }
   popup.addEventListener("toggle", position);
   window.addEventListener("resize", position);
