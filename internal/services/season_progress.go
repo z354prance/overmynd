@@ -8,6 +8,7 @@ import (
 	"github.com/z354prance/overmynd/internal/models"
 	"sort"
 	"strings"
+	"time"
 )
 
 type SeasonProgress struct {
@@ -22,13 +23,19 @@ type SeasonProgress struct {
 	Total           int    `json:"total"`
 }
 type seasonEpisode struct {
-	ID        int64 `json:"id"`
-	Season    int   `json:"seasonNumber"`
-	Monitored bool  `json:"monitored"`
-	HasFile   bool  `json:"hasFile"`
+	AirDateUTC string `json:"airDateUtc"`
+	AirDate    string `json:"airDate"`
+	ID         int64  `json:"id"`
+	Season     int    `json:"seasonNumber"`
+	Monitored  bool   `json:"monitored"`
+	HasFile    bool   `json:"hasFile"`
 }
 
 func countSeasonProgress(episodes []seasonEpisode, queued map[int64]bool) map[int]SeasonProgress {
+	return countSeasonProgressAt(episodes, queued, time.Now())
+}
+
+func countSeasonProgressAt(episodes []seasonEpisode, queued map[int64]bool, now time.Time) map[int]SeasonProgress {
 	active := queued[0] // A matched Tdarr job keeps the series active after its queue entries leave Sonarr.
 	for _, ep := range episodes {
 		if queued[ep.ID] {
@@ -39,6 +46,17 @@ func countSeasonProgress(episodes []seasonEpisode, queued map[int64]bool) map[in
 	for _, ep := range episodes {
 		if !active || !ep.Monitored {
 			continue
+		}
+		// Imported files and actual queued releases count even if Sonarr's air
+		// date is still ahead. Unknown dates retain the existing behavior.
+		if !ep.HasFile && !queued[ep.ID] {
+			aired, err := time.Parse(time.RFC3339, ep.AirDateUTC)
+			if err != nil {
+				aired, err = time.Parse("2006-01-02", ep.AirDate)
+			}
+			if err == nil && aired.After(now) {
+				continue
+			}
 		}
 		count := counts[ep.Season]
 		count.Season = ep.Season
@@ -159,7 +177,7 @@ func (m *Manager) seasonProgress(ctx context.Context, downloads []models.Downloa
 			count.ShowTitle = series.Title
 			count.PosterServiceID = group.service
 			count.PosterURL = fmt.Sprintf("/MediaCover/%d/poster.jpg", group.series)
-			count.Title = fmt.Sprintf("%s — Season %d", series.Title, season)
+			count.Title = fmt.Sprintf("%s â€” Season %d", series.Title, season)
 			result = append(result, count)
 		}
 	}

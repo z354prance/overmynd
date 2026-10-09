@@ -23,11 +23,11 @@ docker stop overmynd-dev &&
 docker rm overmynd-dev
 ```
 
-This removes only the old container, leaving the image and configuration directory in place. In **Docker → Add Container**, select **overmynd** from the user templates. Confirm these values, click **Apply**, and enable **Autostart** on the Docker page:
+This removes only the old container, leaving the image and configuration directory in place. In **Docker â†’ Add Container**, select **overmynd** from the user templates. Confirm these values, click **Apply**, and enable **Autostart** on the Docker page:
 
 - Repository: `overmynd:auth-completion`
-- Host port `18080` → container port `8080` (TCP)
-- Host path `/mnt/user/appdata/overmynd/config` → container path `/config` (read/write)
+- Host port `18080` â†’ container port `8080` (TCP)
+- Host path `/mnt/user/appdata/overmynd/config` â†’ container path `/config` (read/write)
 
 The WebUI remains at `http://SERVER-IP:18080`. Do not run the old and new containers simultaneously against the same configuration directory.
 
@@ -39,7 +39,7 @@ Unraid stores user templates under `/boot/config/plugins/dockerMan/templates-use
 
 ## Icon for an existing container
 
-The template includes the project icon. If you installed an earlier template, open the existing container's **Edit → Advanced View**, set **Icon URL** to the following, and click **Apply**:
+The template includes the project icon. If you installed an earlier template, open the existing container's **Edit â†’ Advanced View**, set **Icon URL** to the following, and click **Apply**:
 
 ```text
 https://raw.githubusercontent.com/z354prance/overmynd/auth-completion/unraid/overmynd-icon-v2.png
@@ -90,8 +90,10 @@ cannot be recalled; reload open dashboards after enabling the filter.
 A series that enters the download/import pipeline, or is identified from an active
 or failed Tdarr episode job, is remembered in the configuration database. Its overview
 stays after queue entries disappear and across restarts, until Sonarr reports files
-for every monitored episode. Pending-only Tdarr jobs and the missing-series library
+for every released monitored episode. Pending-only Tdarr jobs and the missing-series library
 are not used to enroll shows. Counts always come from Sonarr, not download percentages.
-Missing or unaired monitored episodes keep an enrolled series unfinished; unmonitored
-episodes do not count. Tdarr recovery matches an exact normalized show title (including
+Missing released monitored episodes keep an enrolled series unfinished. Future
+episodes without files are excluded unless already in the download queue. Imported
+early releases still count; missing or invalid air dates retain the existing counting
+behavior. Unmonitored episodes do not count. Tdarr recovery matches an exact normalized show title (including
 year when present) before episode coordinates, avoiding ambiguous title matches.
