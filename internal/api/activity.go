@@ -19,5 +19,13 @@ func (a *API) activity(
 		return
 	}
 
+	for i := range result.Lifecycles {
+		item := &result.Lifecycles[i]
+		item.PosterURL = a.posterURL(item.PosterServiceID, item.PosterURL)
+	}
+	for i := range result.Seasons {
+		item := &result.Seasons[i]
+		item.PosterURL = a.posterURL(item.PosterServiceID, item.PosterURL)
+	}
 	writeJSON(w, http.StatusOK, result)
 }

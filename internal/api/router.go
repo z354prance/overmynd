@@ -1,11 +1,15 @@
 package api
 
 import (
+	"crypto/rand"
 	"encoding/json"
+	"github.com/z354prance/overmynd/internal/storage"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
+	"github.com/z354prance/overmynd/internal/access"
 	"github.com/z354prance/overmynd/internal/auth"
 	"github.com/z354prance/overmynd/internal/integrations"
 	"github.com/z354prance/overmynd/internal/services"
@@ -13,9 +17,13 @@ import (
 )
 
 type API struct {
-	services *services.Manager
-	registry *integrations.Registry
-	auth     *auth.Manager
+	access         *access.Manager
+	accessLimiter  publicRequestLimiter
+	services       *services.Manager
+	registry       *integrations.Registry
+	auth           *auth.Manager
+	posterKey      [32]byte
+	requestLimiter publicRequestLimiter
 }
 
 func NewRouter(
@@ -25,21 +33,50 @@ func NewRouter(
 ) http.Handler {
 	api := &API{
 		services: serviceManager,
+		access:   serviceManager.AccessManager(),
 		registry: registry,
 		auth:     authManager,
 	}
 
 	mux := http.NewServeMux()
+	storageMonitor := storage.New(os.Getenv("OVERMYND_STORAGE_ROOT"))
+	mux.HandleFunc("GET /api/v1/storage", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		json.NewEncoder(w).Encode(storageMonitor.Snapshot())
+	})
+	if _, err := rand.Read(api.posterKey[:]); err != nil {
+		panic(err)
+	}
 
 	// Public application and observability endpoints.
 	mux.HandleFunc("GET /health", health)
 	mux.HandleFunc("GET /api/v1/status", status)
 	mux.HandleFunc("GET /api/v1/missing", api.missing)
 	mux.HandleFunc("GET /api/v1/activity", api.activity)
+	mux.HandleFunc("GET /api/v1/recently-added", api.recentlyAdded)
 	mux.HandleFunc("GET /api/v1/requests", api.requests)
 	mux.HandleFunc("GET /api/v1/downloads", api.downloads)
 	mux.HandleFunc("GET /api/v1/playback", api.playback)
+	mux.HandleFunc("GET /api/v1/playback/poster", api.playbackPoster)
+	// Deliberately public, opt-in requests run as the configured Seerr user.
+	mux.HandleFunc("GET /api/v1/media-request/status", api.mediaRequestStatus)
+	mux.HandleFunc("GET /api/v1/media-request/search", api.searchMedia)
+	mux.HandleFunc("POST /api/v1/media-request", api.createMediaRequest)
+	mux.HandleFunc("GET /api/v1/request-settings", api.requireAdmin(api.getRequestSettings))
+	mux.HandleFunc("PUT /api/v1/request-settings", api.requireAdmin(api.saveRequestSettings))
 	mux.HandleFunc("GET /api/v1/processing", api.processing)
+	mux.HandleFunc("GET /api/v1/public/services", api.listPublicServices)
+
+	// Access requests are opt-in public submissions; provisioning is administrator-only.
+	mux.HandleFunc("GET /api/v1/access/status", api.accessStatus)
+	mux.HandleFunc("POST /api/v1/access/request", api.accessSubmit)
+	mux.HandleFunc("POST /api/v1/access/setup", api.accessSetup)
+	mux.HandleFunc("GET /api/v1/access/settings", api.requireAdmin(api.accessSettings))
+	mux.HandleFunc("PUT /api/v1/access/settings", api.requireAdmin(api.accessSaveSettings))
+	mux.HandleFunc("POST /api/v1/access/test-email", api.requireAdmin(api.accessTestEmail))
+	mux.HandleFunc("GET /api/v1/access/requests", api.requireAdmin(api.accessList))
+	mux.HandleFunc("POST /api/v1/access/requests/{id}/{action}", api.requireAdmin(api.accessAction))
 
 	// Authentication endpoints.
 	mux.HandleFunc("GET /api/v1/auth/status", api.authStatus)
@@ -90,7 +127,7 @@ func NewRouter(
 
 	mux.Handle("/", http.FileServerFS(webFS))
 
-	return mux
+	return protectRequests(mux)
 }
 
 func health(w http.ResponseWriter, _ *http.Request) {

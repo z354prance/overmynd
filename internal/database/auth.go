@@ -49,12 +49,7 @@ func (d *Database) CreateUser(
 			updated_at
 		)
 		VALUES (?, ?, ?, ?)
-	`,
-		username,
-		passwordHash,
-		now,
-		now,
-	)
+	`, username, passwordHash, now, now)
 	if err != nil {
 		return 0, fmt.Errorf("create user: %w", err)
 	}
@@ -65,6 +60,44 @@ func (d *Database) CreateUser(
 	}
 
 	return id, nil
+}
+
+// CreateInitialUser atomically creates the first v1 administrator. If setup
+// has already completed, created is false and no additional user is inserted.
+func (d *Database) CreateInitialUser(
+	username string,
+	passwordHash string,
+) (id int64, created bool, err error) {
+	now := time.Now().UTC().Format(time.RFC3339)
+
+	result, err := d.DB.Exec(`
+		INSERT INTO users (
+			username,
+			password_hash,
+			created_at,
+			updated_at
+		)
+		SELECT ?, ?, ?, ?
+		WHERE NOT EXISTS (SELECT 1 FROM users)
+	`, username, passwordHash, now, now)
+	if err != nil {
+		return 0, false, fmt.Errorf("create initial user: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return 0, false, fmt.Errorf("read initial user result: %w", err)
+	}
+	if rows == 0 {
+		return 0, false, nil
+	}
+
+	id, err = result.LastInsertId()
+	if err != nil {
+		return 0, false, fmt.Errorf("read initial user id: %w", err)
+	}
+
+	return id, true, nil
 }
 
 func (d *Database) GetUserByUsername(username string) (User, error) {
@@ -112,12 +145,7 @@ func (d *Database) CreateSession(
 			expires_at
 		)
 		VALUES (?, ?, ?, ?)
-	`,
-		userID,
-		tokenHash,
-		now,
-		expiresAt.UTC().Format(time.RFC3339),
-	)
+	`, userID, tokenHash, now, expiresAt.UTC().Format(time.RFC3339))
 	if err != nil {
 		return fmt.Errorf("create session: %w", err)
 	}

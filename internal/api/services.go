@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -20,6 +21,36 @@ type serviceRequest struct {
 	Username         string             `json:"username,omitempty"`
 	Password         string             `json:"password,omitempty"`
 	UpdateCredential bool               `json:"update_credential"`
+}
+
+type publicService struct {
+	ID      int64              `json:"id"`
+	Type    models.ServiceType `json:"type"`
+	Name    string             `json:"name"`
+	Enabled bool               `json:"enabled"`
+}
+
+func (a *API) listPublicServices(
+	w http.ResponseWriter,
+	_ *http.Request,
+) {
+	items, err := a.services.List()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	publicItems := make([]publicService, 0, len(items))
+	for _, item := range items {
+		publicItems = append(publicItems, publicService{
+			ID:      item.ID,
+			Type:    item.Type,
+			Name:    item.Name,
+			Enabled: item.Enabled,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, publicItems)
 }
 
 func (a *API) serviceTypes(
@@ -166,6 +197,9 @@ func decodeJSON(r *http.Request, target any) error {
 
 	if err := decoder.Decode(target); err != nil {
 		return fmt.Errorf("invalid JSON: %w", err)
+	}
+	if err := decoder.Decode(new(any)); err != io.EOF {
+		return fmt.Errorf("request must contain a single JSON value")
 	}
 
 	return nil

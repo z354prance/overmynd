@@ -2,11 +2,39 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 	"testing"
 
 	"github.com/z354prance/overmynd/internal/database"
 )
+
+func TestConcurrentSetup(t *testing.T) {
+	manager := testManager(t)
+	start := make(chan struct{})
+	results := make(chan error, 4)
+	for i := 0; i < 4; i++ {
+		go func(i int) {
+			<-start
+			_, err := NewManager(manager.db).Setup(fmt.Sprintf("admin%d", i), "correct horse battery staple")
+			results <- err
+		}(i)
+	}
+	close(start)
+	winners := 0
+	for i := 0; i < 4; i++ {
+		err := <-results
+		if err == nil {
+			winners++
+		} else if !errors.Is(err, ErrSetupComplete) {
+			t.Errorf("unexpected setup error: %v", err)
+		}
+	}
+	count, err := manager.db.UserCount()
+	if err != nil || count != 1 || winners != 1 {
+		t.Fatalf("users=%d winners=%d err=%v", count, winners, err)
+	}
+}
 
 func testManager(t *testing.T) *Manager {
 	t.Helper()

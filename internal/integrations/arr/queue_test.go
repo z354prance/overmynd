@@ -2,8 +2,10 @@ package arr
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/z354prance/overmynd/internal/models"
@@ -151,5 +153,65 @@ func TestQueueAndNormalization(t *testing.T) {
 			"EstimatedArrival = %v",
 			got.EstimatedArrival,
 		)
+	}
+}
+
+func TestQueueReadsAll276Records(t *testing.T) {
+	pages := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+		pages++
+		if r.URL.Query().Get("pageSize") != "100" || r.Header.Get("X-Api-Key") != "secret" {
+			t.Error("invalid paginated request")
+		}
+		batch := QueueResponse{Page: page, PageSize: 100, TotalRecords: 276}
+		for n := (page-1)*100 + 1; n <= page*100 && n <= 276; n++ {
+			series := int64(1)
+			if n > 200 {
+				series = 24
+			}
+			batch.Records = append(batch.Records, QueueRecord{ID: int64(n), SeriesID: series, EpisodeID: int64(n)})
+		}
+		json.NewEncoder(w).Encode(batch)
+	}))
+	defer server.Close()
+	queue, err := NewClient("v3").Queue(context.Background(), server.URL, "secret")
+	if err != nil || len(queue.Records) != 276 || pages != 3 {
+		t.Fatalf("records=%d pages=%d err=%v", len(queue.Records), pages, err)
+	}
+	if queue.Records[275].SeriesID != 24 {
+		t.Fatal("later-page show missing")
+	}
+}
+
+func TestQueuePaginationFailureAndRepeatedPage(t *testing.T) {
+	for _, mode := range []string{"failure", "repeat", "empty"} {
+		t.Run(mode, func(t *testing.T) {
+			calls := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				if calls > 1 && mode == "failure" {
+					w.WriteHeader(401)
+					return
+				}
+				batch := QueueResponse{TotalRecords: 276, Records: []QueueRecord{{ID: 1}}}
+				if calls > 1 && mode == "empty" {
+					batch.Records = nil
+				}
+				json.NewEncoder(w).Encode(batch)
+			}))
+			defer server.Close()
+			queue, err := NewClient("v3").Queue(context.Background(), server.URL, "secret")
+			if calls != 2 {
+				t.Fatalf("unexpected calls: %d", calls)
+			}
+			if mode == "empty" {
+				if err != nil || len(queue.Records) != 1 {
+					t.Fatal(queue, err)
+				}
+			} else if err == nil || len(queue.Records) != 0 {
+				t.Fatal("partial/repeated result returned as complete", queue, err)
+			}
+		})
 	}
 }

@@ -147,6 +147,18 @@ func (d *Database) Migrate() error {
                                         ON sessions(expires_at);
                         `,
 		},
+		{version: 3, sql: `
+          CREATE TABLE access_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL, email TEXT NOT NULL COLLATE NOCASE UNIQUE,
+            username TEXT NOT NULL COLLATE NOCASE UNIQUE, connect_username TEXT NOT NULL,
+            status TEXT NOT NULL, emby_id TEXT NOT NULL DEFAULT '',
+            error TEXT NOT NULL DEFAULT '', mail_error TEXT NOT NULL DEFAULT '',
+            token_hash TEXT NOT NULL DEFAULT '', token_expires INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+          );
+          CREATE INDEX access_request_tokens ON access_requests(token_hash);
+        `},
 	}
 
 	for _, migration := range migrations {

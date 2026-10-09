@@ -184,7 +184,11 @@ func flatten(input Input) []record {
 			problems = append(problems, models.LifecycleProblemHeld)
 		}
 		if item.State == models.ProcessingStateProblem {
-			problems = append(problems, models.LifecycleProblemFailed)
+			if item.Source == models.ServiceType("tdarr") && item.Stage == "health_check" {
+				problems = append(problems, models.LifecycleProblemHealthCheckFailed)
+			} else {
+				problems = append(problems, models.LifecycleProblemFailed)
+			}
 		}
 
 		records = append(records, record{
@@ -300,6 +304,16 @@ func buildLifecycle(
 		)
 	}
 
+	// A matched active/queued Tdarr job explains why ARR is still waiting to
+	// import. Preserve other problems and restore the warning once processing ends.
+	for _, index := range indexes {
+		job := records[index].processing
+		if job != nil && (job.State == models.ProcessingStateProcessing || job.State == models.ProcessingStateQueued) && lifecycle.Stage == models.LifecycleStageImporting {
+			lifecycle.Stage = models.LifecycleStageProcessing
+			delete(problemSet, models.LifecycleProblemImportBlocked)
+			break
+		}
+	}
 	for problem := range problemSet {
 		lifecycle.Problems = append(lifecycle.Problems, problem)
 	}

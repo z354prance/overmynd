@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/z354prance/overmynd/internal/access"
 	"github.com/z354prance/overmynd/internal/database"
 	"github.com/z354prance/overmynd/internal/integrations"
 	"github.com/z354prance/overmynd/internal/models"
@@ -159,3 +160,5 @@ func (m *Manager) TestConnection(
 		credential,
 	)
 }
+
+func (m *Manager) AccessManager() *access.Manager { return access.New(m.db.DB) }

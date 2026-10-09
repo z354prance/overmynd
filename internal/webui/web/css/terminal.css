@@ -1,0 +1,223 @@
+/* Terminal theme: presentation only; the existing layouts and controls stay intact. */
+:root {
+  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --bg: #0c0d0c;
+  --panel: #101210;
+  --panel-soft: #151815;
+  --border: #343b36;
+  --border-soft: #252c27;
+  --text: #e5e8e2;
+  --muted: #a4ada5;
+  --muted-2: #8c978e;
+  --accent: #40c7ac;
+  --accent-soft: #17352d;
+  --media-progress: #663399;
+  --terminal-link: #d4ad79;
+}
+body { background: var(--bg); font-size: 13px; }
+button, input, select, textarea { font-family: inherit; }
+body :is(.panel, .summary-card, .access-queue-card, .service-management-card, dialog, [popover]) {
+  background: var(--panel); border-color: var(--border); border-radius: 3px;
+}
+body :is(.request-dialog, .card-details-dialog, .access-dialog, [popover]) {
+  color: var(--text); box-shadow: 0 14px 42px #0009; backdrop-filter: none;
+}
+body :is(input, select, textarea) {
+  background: #0b0e0c; color: var(--text); border: 1px solid var(--border); border-radius: 2px;
+}
+body :is(.service-primary-button, .service-secondary-button, .service-close-button) {
+  background: #151915; color: var(--terminal-link); border: 1px solid #756245;
+  border-radius: 2px; box-shadow: none; font-weight: 500;
+}
+body :is(.service-primary-button, .service-secondary-button, .service-close-button):hover {
+  background: #29261f; border-color: var(--terminal-link); color: #f3d4a7;
+}
+body .service-danger-button { border-radius: 2px; background: #321b1e; color: #ffacb0; }
+body :is(a, summary, .dashboard-footer button) { color: var(--terminal-link); }
+body :is(button, a, summary, input, select, textarea):focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 3px;
+}
+body .panel-header { padding: 14px 16px; background: #191d19; border-bottom: 1px solid var(--border); }
+body :is(.panel-header h2, .services-heading h1, .request-dialog h2) {
+  font-size: 16px; font-weight: 500; letter-spacing: 0;
+}
+body .panel-header h2::before { content: "> "; color: var(--accent); }
+body :is(.panel-kicker, .eyebrow) { color: var(--muted); }
+body .dashboard-brand h1 { font-family: inherit; font-weight: 500; font-size: 22px; }
+body .dashboard-topbar { border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+body .live-indicator { color: var(--accent); font-weight: 500; }
+body .status-dot { box-shadow: none; }
+#playbackList .now-playing-card, #recentlyAddedList .recent-poster-card,
+#pipelineList .pipeline-card, #seriesOverviewList .pipeline-card {
+  background: var(--panel-soft); border-radius: 2px; border-color: var(--border);
+  border-left-color: var(--media-accent);
+}
+#playbackList .now-playing-card:hover, #recentlyAddedList .recent-poster-card:hover,
+#pipelineList .pipeline-card:hover, #seriesOverviewList .pipeline-card:hover { background: #1c221d; }
+body :is(.playback-art, .progress-art, .playback-poster) { border-radius: 2px; }
+body :is(.item-title, .pipeline-card h3, .service-name) { font-weight: 500; }
+body :is(.stage, .pipeline-stage, .service-state) { border-radius: 2px; font-weight: 400; }
+body .playback-time { color: var(--muted); }
+/* A mask cuts BOTH the filled and empty meter into fixed-width terminal ticks.
+   The fill width still reflects the actual reported progress, including zero. */
+body :is(.progress-track, .pipeline-progress, .download-progress) {
+  position: relative; border-radius: 0; height: 10px; overflow: visible;
+  background: #343337;
+  mask-image: repeating-linear-gradient(to right, #000 0 3px, transparent 3px 6px);
+}
+body :is(.progress-bar, .pipeline-progress-fill, .download-progress-bar),
+#dashboardView :is(.progress-bar, .pipeline-progress-fill) {
+  height: 100%; border-radius: 0; background: var(--media-progress); transition: none;
+}
+#dashboardView .pipeline-progress.unmeasured .pipeline-progress-fill {
+  background: #8c779f; opacity: .5;
+}
+#playbackList .now-playing-card { height: 106px; grid-template-rows: 72px 10px; }
+#playbackList .progress-track { height: 10px; }
+#pipelineList .pipeline-card { height: 292px; grid-template-rows: 126px 54px 30px 16px 18px 10px; }
+#pipelineList .pipeline-progress, #seriesOverviewList .pipeline-progress { height: 10px; }
+body .access-queue-card { background: var(--panel-soft); }
+body .dashboard-footer { border-top: 1px solid var(--border); }
+@media (max-width: 540px) {
+  body .dashboard-brand h1 { font-size: 18px; }
+  body .panel-header { padding: 12px; }
+}
+
+/* Text-first xivix terminal layout. Poster search results remain available in the request dialog. */
+:root { --bg:#0d0d0c; --panel:#0e0f0e; --panel-soft:#111210; --border:#30322f; --border-soft:#242623; --accent:#45bba9; --terminal-link:#c49a6c; }
+body .panel-header { min-height:0; padding:12px 16px; background:#1b1c1a; }
+body .panel-header h2 { font-size:14px; text-transform:lowercase; }
+body .panel-header h2::before { content:none; }
+body .dashboard-brand img { display:block; width:42px; height:42px; }
+body .dashboard-brand h1 { display:none; }
+body .dashboard-brand::after { content:"~/xivix/overmynd > status"; font-size:13px; color:var(--accent); }
+body .dashboard-brand { flex-direction:row; flex-wrap:wrap; gap:8px 14px; }
+body :is(.service-primary-button,.service-secondary-button,.service-close-button) { border-color:transparent; background:transparent; padding:8px; }
+body :is(.service-primary-button,.service-secondary-button,.service-close-button)::before { content:"[ " / ""; }
+body :is(.service-primary-button,.service-secondary-button,.service-close-button)::after { content:" ]" / ""; }
+#dashboardView :is(.playback-art,.progress-art,.media-card-type) { display:none !important; }
+#playbackList .now-playing-card, #recentlyAddedList .recent-poster-card,
+#pipelineList .pipeline-card, #seriesOverviewList .pipeline-card {
+ border:0; border-bottom:1px solid var(--border); border-radius:0; background:transparent;
+}
+#playbackList .now-playing-card:hover, #recentlyAddedList .recent-poster-card:hover,
+#pipelineList .pipeline-card:hover, #seriesOverviewList .pipeline-card:hover { background:#161815; }
+#playbackList .now-playing-card { grid-template-columns:minmax(0,1fr); grid-template-rows:72px 18px; height:118px; padding:10px; gap:6px; }
+#playbackList .now-playing-details { grid-column:1; grid-row:1; }
+#playbackList .progress-track { grid-column:1; grid-row:2; height:18px; }
+#playbackList .item-title { font-size:13px; }
+#recentlyAddedList .recent-poster-card { grid-template-columns:minmax(0,1fr) auto; }
+#recentlyAddedList .now-playing-details { grid-column:1 / -1; }
+#recentlyAddedList .recent-episodes { grid-column:1; }
+#recentlyAddedList .recent-poster-card > .item-meta:last-child { grid-column:2; }
+#pipelineList { display:grid; grid-template-columns:minmax(0,1fr); gap:0; }
+#pipelineList .pipeline-card { width:100%; height:auto; min-height:92px; padding:10px 0; display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(150px,1fr); grid-template-rows:auto auto; gap:6px 12px; }
+#pipelineList .pipeline-card-heading { grid-column:1; grid-row:1 / 3; height:auto; min-height:0; gap:4px; }
+#pipelineList .pipeline-card-heading > div { flex:initial; }
+#pipelineList h3 { height:auto; min-height:16px; max-height:32px; }
+#pipelineList .pipeline-stage { height:auto; background:transparent; color:var(--muted); padding:0; font-size:11px; white-space:normal; }
+#pipelineList .pipeline-detail { grid-column:2; grid-row:1; height:auto; max-height:none; }
+#pipelineList .pipeline-progress { grid-column:3; grid-row:1; height:18px; }
+#pipelineList .pipeline-progress-label { grid-column:3; grid-row:2; justify-content:flex-start; }
+#pipelineList .pipeline-problem { grid-column:2; grid-row:2; height:auto; }
+#pipelineList .pipeline-extra { grid-column:1; grid-row:3; }
+#seriesOverviewList .pipeline-card { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; padding:10px; }
+#seriesOverviewList .pipeline-card-heading { grid-column:1; grid-row:1; }
+#seriesOverviewList .season-breakdown { grid-column:1; grid-row:2; }
+#seriesOverviewList .pipeline-progress-label { grid-column:1; grid-row:3; }
+#seriesOverviewList .pipeline-progress { grid-column:1; grid-row:4; height:18px; }
+#dashboardView :is(.pipeline-progress,.progress-track) { mask-image:none; background:transparent; overflow:hidden; height:18px; }
+.ascii-meter { color:#a376ce; font:12px/18px "Cascadia Mono",Consolas,"Liberation Mono",monospace; white-space:nowrap; letter-spacing:0; }
+.ascii-empty { color:#72706f; }
+#dashboardView .progress-columns.has-series { grid-template-columns:minmax(0,1fr) minmax(0,2fr); }
+@media(max-width:900px) {
+ #dashboardView .progress-columns.has-series { grid-template-columns:minmax(0,1fr); }
+}
+@media(max-width:540px) {
+ #playbackList { grid-template-columns:minmax(0,1fr); }
+ #pipelineList .pipeline-card { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+ #pipelineList .pipeline-card-heading { grid-column:1; grid-row:1; }
+ #pipelineList .pipeline-detail { grid-column:2; grid-row:1; }
+ #pipelineList .pipeline-progress { grid-column:1 / -1; grid-row:2; }
+ #pipelineList .pipeline-progress-label { grid-column:2; grid-row:2; justify-content:flex-end; }
+ #pipelineList .pipeline-problem { grid-column:1 / -1; grid-row:3; }
+ #pipelineList .pipeline-extra { grid-column:1; grid-row:4; }
+}
+
+#playbackList .progress-track[aria-valuenow]::after { content:" " attr(aria-valuenow) "%"; color:var(--muted); font-size:11px; }
+
+.dashboard-footer { flex-wrap:wrap; gap:16px; }
+.storage-summary { display:flex; flex:1; flex-wrap:wrap; justify-content:center; gap:6px 12px; min-width:0; color:var(--muted); font-size:11px; }
+.storage-summary[hidden] { display:none; }
+.storage-summary span { white-space:nowrap; }
+.storage-summary span:last-child { color:var(--accent); }
+@media(max-width:900px) { .storage-summary { order:3; flex-basis:100%; justify-content:flex-start; } }
+
+.storage-trigger { border:0; padding:8px 0; background:transparent; color:#ad88d3; font:11px/18px "Cascadia Mono",Consolas,monospace; cursor:pointer; white-space:nowrap; }
+#storagePopover { position:fixed; inset:auto; margin:0; width:min(350px,calc(100vw - 16px)); max-height:calc(100dvh - 16px); overflow:auto; padding:16px; border:1px solid var(--border); border-radius:3px; background:var(--panel); color:var(--text); font:12px/1.6 "Cascadia Mono",Consolas,monospace; }
+#storagePopover header, #storagePopover dl > div { display:flex; justify-content:space-between; gap:16px; }
+#storagePopover header { border-bottom:1px solid var(--border); padding-bottom:8px; }
+#storagePopover button { background:transparent; border:0; color:var(--terminal-link); cursor:pointer; }
+#storagePopover dd { margin:0; }
+#storagePopover p { color:var(--muted); font-size:11px; }
+
+/* Retain subtle category edges in the text-only view. */
+#playbackList .now-playing-card, #recentlyAddedList .recent-poster-card,
+#pipelineList .pipeline-card, #seriesOverviewList .pipeline-card {
+ border-left:2px solid var(--media-accent, var(--manual-accent)); padding-left:10px;
+}
+/* Four readable text lines and an ASCII meter, with no artwork-sized reserve. */
+#playbackList .now-playing-card { height:94px; padding:6px 8px; grid-template-rows:62px 18px; gap:0 8px; }
+#playbackList .now-playing-details { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:18px 16px 18px; gap:4px 8px; }
+#playbackList .item-title { grid-column:1 / -1; grid-row:1; }
+#playbackList .item-meta { grid-column:1 / -1; grid-row:2; line-height:16px; }
+#playbackList .playback-time { grid-column:1; grid-row:3; line-height:18px; }
+#playbackList .playback-extra { grid-column:2; grid-row:3; line-height:18px; float:none; }
+
+/* Compact text-only recent rows; fit six without stretching either top panel. */
+#recentlyAddedList .recent-poster-card { height:44px; padding:4px 8px 4px 10px; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:18px 16px; gap:1px 8px; }
+#recentlyAddedList .now-playing-details { grid-column:1 / -1; grid-row:1; }
+#recentlyAddedList .now-playing-details .item-title { height:18px; line-height:18px; }
+#recentlyAddedList .recent-episodes { grid-column:1; grid-row:2; line-height:16px; }
+#recentlyAddedList .recent-poster-card > .item-meta:last-child { grid-column:2; grid-row:2; height:16px; line-height:16px; margin:0; }
+#dashboardView .dashboard-grid > .playback-panel,
+#dashboardView .dashboard-grid > [aria-labelledby="recentlyAddedHeading"] { height:380px; }
+@media(max-width:540px) {
+ #recentlyAddedList .recent-poster-card { height:62px; grid-template-columns:minmax(0,1fr); grid-template-rows:18px 16px 16px; }
+ #recentlyAddedList .recent-poster-card > .item-meta:last-child { grid-column:1; grid-row:3; }
+ #dashboardView .dashboard-grid > .playback-panel,
+ #dashboardView .dashboard-grid > [aria-labelledby="recentlyAddedHeading"] { height:490px; }
+}
+
+/* Group public actions above storage and connection status. */
+#pageHeader .topbar-meta { display:flex; flex-direction:column; align-items:flex-end; gap:6px; min-width:0; max-width:100%; }
+.header-actions, .header-status { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:8px 16px; max-width:100%; }
+#pageHeader .storage-summary { flex:0 1 auto; order:0; justify-content:flex-end; }
+#pageHeader .storage-trigger { padding:4px 0; }
+#pageHeader .header-actions button { white-space:nowrap; }
+@media(max-width:640px) {
+ #pageHeader .topbar-meta { width:100%; }
+ .header-actions, .header-status { width:100%; gap:6px 12px; }
+ #pageHeader .header-actions button { padding:6px 0; font-size:11px; }
+}
+
+/* Connection indicator anchors the footer opposite administration links. */
+body .dashboard-footer > .live-indicator { display:flex; align-items:center; gap:8px; margin-right:auto; }
+@media(max-width:559px) {
+ body .dashboard-footer { flex-direction:row; align-items:center; }
+}
+
+
+/* Primary terminal links above quiet utilities. */
+#pageHeader :is(#openMediaRequest, #openDonate) { color:var(--terminal-link); background:transparent; border-color:transparent; padding:8px 0; font-size:14px; font-weight:600; }
+#pageHeader :is(#openMediaRequest, #openDonate):hover { color:#f3d4a7; background:transparent; text-decoration:underline; }
+#pageHeader #requestAccessButton { color:var(--muted); font-size:11px; background:transparent; border-color:transparent; padding:4px 0; white-space:nowrap; }
+#pageHeader #requestAccessButton:hover { color:var(--text); text-decoration:underline; }
+#pageHeader #requestAccessButton::before, #pageHeader #requestAccessButton::after { content:none; }
+#pageHeader .storage-summary:not([hidden]) + #requestAccessButton:not([hidden])::before { content:"|"; display:inline-block; padding-right:12px; color:var(--muted); }
+.ascii-meter { color:var(--muted); }
+.ascii-filled { color:#b591ed; }
+@supports (background-clip:text) or (-webkit-background-clip:text) {
+ body .ascii-filled, body .storage-summary .ascii-filled { background:linear-gradient(90deg,#f27b89 0%,#edb26b 20%,#e5d875 36%,#6dcc9d 52%,#70b9ed 70%,#ad92ec 86%,#dd91cd 100%); background-clip:text; -webkit-background-clip:text; color:transparent; }
+}
+@media(forced-colors:active) { body .ascii-filled, body .storage-summary .ascii-filled { background:none; color:CanvasText; } }
