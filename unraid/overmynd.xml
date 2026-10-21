@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Container version="2">
   <Name>overmynd</Name>
-  <Repository>overmynd:auth-completion</Repository>
-  <Registry/>
+  <Repository>ghcr.io/z354prance/overmynd:auth-completion</Repository>
+  <Registry>https://github.com/z354prance/overmynd/pkgs/container/overmynd</Registry>
   <Network>bridge</Network>
   <MyIP/>
   <Shell>sh</Shell>
   <Privileged>false</Privileged>
   <Support>https://github.com/z354prance/overmynd/issues</Support>
   <Project>https://github.com/z354prance/overmynd</Project>
-  <Overview>Overmynd media dashboard with public playback, progress, and optional Seerr requests. Administration requires sign-in. Uses the locally built overmynd:auth-completion image; build it before applying this template. Existing settings are preserved in /mnt/user/appdata/overmynd/config.</Overview>
+  <Overview>Overmynd media dashboard with public playback, progress, and optional Seerr requests. Administration requires sign-in. Pulls the published image from GitHub Container Registry. Use Unraid Force Update to install new builds. Existing settings are preserved in /mnt/user/appdata/overmynd/config.</Overview>
   <Category>MediaApp:Other</Category>
   <Icon>https://raw.githubusercontent.com/z354prance/overmynd/auth-completion/unraid/overmynd-icon-v2.png</Icon>
   <WebUI>http://[IP]:[PORT:8080]</WebUI>

@@ -1,45 +1,43 @@
 # Unraid template
 
-This template pre-fills the existing configuration path and dashboard port. It does not download, replace, or publish your private application settings. It uses the locally built `overmynd:auth-completion` image; no registry image is published by this template.
+Overmynd publishes `ghcr.io/z354prance/overmynd:auth-completion` for Linux amd64
+(Unraid). Each push to `auth-completion` publishes only after all CI checks pass.
+No merge to main is required. Exact builds are also tagged `sha-<full-commit-sha>`.
 
-## Install from the existing checkout
+## Switch an existing container (once)
 
-Run in the Unraid terminal:
+In Unraid Docker > Overmynd > Edit, change **Repository** to:
 
-```bash
-cd /mnt/user/appdata/overmynd &&
-git pull --ff-only origin auth-completion &&
-docker build -t overmynd:auth-completion . &&
-mkdir -p /boot/config/plugins/dockerMan/templates-user &&
-cp -n unraid/overmynd.xml /boot/config/plugins/dockerMan/templates-user/my-overmynd.xml
+```text
+ghcr.io/z354prance/overmynd:auth-completion
 ```
 
-The copy does not overwrite an existing user template, which may contain customized ports or paths. If you already created Overmynd through Unraid, keep managing that existing container through Edit.
-
-For a first migration from the command-line container, after the build and template installation succeed:
-
-```bash
-docker stop overmynd-dev &&
-docker rm overmynd-dev
-```
-
-This removes only the old container, leaving the image and configuration directory in place. In **Docker â†’ Add Container**, select **overmynd** from the user templates. Confirm these values, click **Apply**, and enable **Autostart** on the Docker page:
-
-- Repository: `overmynd:auth-completion`
-- Host port `18080` â†’ container port `8080` (TCP)
-- Host path `/mnt/user/appdata/overmynd/config` â†’ container path `/config` (read/write)
-
-The WebUI remains at `http://SERVER-IP:18080`. Do not run the old and new containers simultaneously against the same configuration directory.
+Keep your existing network/custom IP, port, environment variables and path mappings,
+especially `/mnt/user/appdata/overmynd/config` to `/config`. Click Apply. Do not
+replace the saved template or delete appdata. Existing settings and accounts remain.
 
 ## Updates
 
-Pull and rebuild the image in the same checkout. Then recreate the container through Unraid using its saved template. The template uses a local image, so registry-based Update/Force Update is not the image build mechanism. Do not delete the image or the appdata directory. Keep the configuration mapping unchanged to preserve the database and administrator account.
+Use Docker > Overmynd > Force Update after the GitHub publishing job succeeds.
+Unraid pulls the published image and recreates the container with its saved settings.
+No terminal pull/build commands are necessary. A failed CI run does not publish an update.
+Force Update cannot include uncommitted code or a build that has not finished publishing.
 
-Unraid stores user templates under `/boot/config/plugins/dockerMan/templates-user`; see the [Unraid documentation](https://docs.unraid.net/community-applications/). Adding this file to the repository does not automatically list the app in Community Applications.
+## First installation
+
+Install `unraid/overmynd.xml` as a user template, then select it in Add Container.
+The template pre-fills the configuration path and port; review these before Apply.
+This does not automatically list Overmynd in Community Applications.
+
+## Initial registry setup
+
+GitHub creates new container packages private by default. After the first publication,
+set the package visibility to Public in GitHub's package settings so Unraid can pull
+without credentials. Verify an anonymous pull before switching the running container.
 
 ## Icon for an existing container
 
-The template includes the project icon. If you installed an earlier template, open the existing container's **Edit â†’ Advanced View**, set **Icon URL** to the following, and click **Apply**:
+The template includes the project icon. If you installed an earlier template, open the existing container's **Edit Ã¢â€ â€™ Advanced View**, set **Icon URL** to the following, and click **Apply**:
 
 ```text
 https://raw.githubusercontent.com/z354prance/overmynd/auth-completion/unraid/overmynd-icon-v2.png
