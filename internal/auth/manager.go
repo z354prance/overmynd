@@ -57,15 +57,6 @@ func (m *Manager) Setup(
 	username string,
 	password string,
 ) (Session, error) {
-	required, err := m.SetupRequired()
-	if err != nil {
-		return Session{}, err
-	}
-
-	if !required {
-		return Session{}, ErrSetupComplete
-	}
-
 	username = strings.TrimSpace(username)
 
 	if err := validateUsername(username); err != nil {
@@ -81,9 +72,12 @@ func (m *Manager) Setup(
 		return Session{}, err
 	}
 
-	userID, err := m.db.CreateUser(username, passwordHash)
+	userID, created, err := m.db.CreateInitialUser(username, passwordHash)
 	if err != nil {
 		return Session{}, err
+	}
+	if !created {
+		return Session{}, ErrSetupComplete
 	}
 
 	user, err := m.db.GetUser(userID)
@@ -257,6 +251,13 @@ func verifyPassword(password string, encoded string) (bool, error) {
 		return false, fmt.Errorf("parse password parameters: %w", err)
 	}
 
+	// Refuse corrupted or malicious parameters before allocating memory.
+	if memory == 0 || memory > argonMemory ||
+		iterations == 0 || iterations > argonIterations ||
+		parallelism == 0 || parallelism > argonParallelism {
+		return false, fmt.Errorf("invalid password parameters")
+	}
+
 	salt, err := base64.RawStdEncoding.DecodeString(parts[4])
 	if err != nil {
 		return false, fmt.Errorf("decode password salt: %w", err)
@@ -265,6 +266,9 @@ func verifyPassword(password string, encoded string) (bool, error) {
 	expected, err := base64.RawStdEncoding.DecodeString(parts[5])
 	if err != nil {
 		return false, fmt.Errorf("decode password hash: %w", err)
+	}
+	if len(salt) == 0 || len(salt) > 64 || len(expected) == 0 || len(expected) > 64 {
+		return false, fmt.Errorf("invalid password hash sizes")
 	}
 
 	actual := argon2.IDKey(

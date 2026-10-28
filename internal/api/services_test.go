@@ -88,6 +88,7 @@ func request(
 	}
 
 	recorder := httptest.NewRecorder()
+	req.Header.Set("X-Overmynd-Request", "1")
 
 	handler.ServeHTTP(recorder, req)
 
@@ -447,12 +448,21 @@ func TestRadarrConnectionEndpoint(t *testing.T) {
 		t.Fatalf("register Radarr: %v", err)
 	}
 
-	handler := NewRouter(manager, registry)
+	authManager := auth.NewManager(db)
+	session, err := authManager.Setup(
+		"admin",
+		"correct horse battery staple",
+	)
+	if err != nil {
+		t.Fatalf("setup administrator: %v", err)
+	}
+
+	handler := NewRouter(manager, registry, authManager)
 
 	response := request(
 		t,
 		handler,
-		sessionToken,
+		session.Token,
 		http.MethodPost,
 		fmt.Sprintf(
 			"/api/v1/services/%d/test",
@@ -505,7 +515,7 @@ func TestRadarrConnectionEndpoint(t *testing.T) {
 }
 
 func TestDownloadsRouteExists(t *testing.T) {
-	handler, sessionToken := testRouter(t)
+	handler, _ := testRouter(t)
 
 	request := httptest.NewRequest(
 		http.MethodGet,
@@ -533,7 +543,7 @@ func TestDownloadsRouteExists(t *testing.T) {
 }
 
 func TestActivityRouteExists(t *testing.T) {
-	handler, sessionToken := testRouter(t)
+	handler, _ := testRouter(t)
 
 	req := httptest.NewRequest(
 		http.MethodGet,
@@ -573,5 +583,131 @@ func TestActivityRouteExists(t *testing.T) {
 
 	if result.Errors == nil {
 		t.Fatal("errors must be an array, not null")
+	}
+}
+
+func TestConfigurationRoutesRequireAuthentication(t *testing.T) {
+	handler, _ := testRouter(t)
+
+	routes := []struct {
+		method string
+		path   string
+		body   string
+	}{
+		{http.MethodGet, "/api/v1/service-types", ""},
+		{http.MethodGet, "/api/v1/services", ""},
+		{http.MethodPost, "/api/v1/services", `{"type":"radarr","name":"Radarr","base_url":"http://radarr:7878"}`},
+		{http.MethodGet, "/api/v1/services/1", ""},
+		{http.MethodPut, "/api/v1/services/1", `{"type":"radarr","name":"Radarr","base_url":"http://radarr:7878"}`},
+		{http.MethodDelete, "/api/v1/services/1", ""},
+		{http.MethodPost, "/api/v1/services/1/test", ""},
+	}
+
+	for _, route := range routes {
+		t.Run(route.method+" "+route.path, func(t *testing.T) {
+			response := request(
+				t,
+				handler,
+				"",
+				route.method,
+				route.path,
+				route.body,
+			)
+
+			if response.Code != http.StatusUnauthorized {
+				t.Fatalf(
+					"expected status %d, got %d: %s",
+					http.StatusUnauthorized,
+					response.Code,
+					response.Body.String(),
+				)
+			}
+		})
+	}
+}
+
+func TestPublicObservabilityRoutesDoNotRequireAuthentication(t *testing.T) {
+	handler, _ := testRouter(t)
+
+	for _, path := range []string{
+		"/health",
+		"/api/v1/status",
+		"/api/v1/public/services",
+		"/api/v1/auth/status",
+	} {
+		t.Run(path, func(t *testing.T) {
+			response := request(
+				t,
+				handler,
+				"",
+				http.MethodGet,
+				path,
+				"",
+			)
+
+			if response.Code == http.StatusUnauthorized {
+				t.Fatalf(
+					"public route returned status %d: %s",
+					response.Code,
+					response.Body.String(),
+				)
+			}
+		})
+	}
+}
+
+func TestPublicServicesAreSanitized(t *testing.T) {
+	handler, sessionToken := testRouter(t)
+
+	createResponse := request(
+		t,
+		handler,
+		sessionToken,
+		http.MethodPost,
+		"/api/v1/services",
+		`{
+			"type": "radarr",
+			"name": "Radarr",
+			"enabled": true,
+			"base_url": "http://radarr:7878",
+			"credential": "private-api-key"
+		}`,
+	)
+	if createResponse.Code != http.StatusCreated {
+		t.Fatalf(
+			"expected create status %d, got %d: %s",
+			http.StatusCreated,
+			createResponse.Code,
+			createResponse.Body.String(),
+		)
+	}
+
+	response := request(
+		t,
+		handler,
+		"",
+		http.MethodGet,
+		"/api/v1/public/services",
+		"",
+	)
+	if response.Code != http.StatusOK {
+		t.Fatalf(
+			"expected status %d, got %d: %s",
+			http.StatusOK,
+			response.Code,
+			response.Body.String(),
+		)
+	}
+
+	body := response.Body.String()
+	for _, forbidden := range []string{
+		"base_url",
+		"has_credential",
+		"private-api-key",
+		"http://radarr:7878",
+	} {
+		if strings.Contains(body, forbidden) {
+			t.Fatalf("public services response leaked %q: %s", forbidden, body)
+		}
 	}
 }

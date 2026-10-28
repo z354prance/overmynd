@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/z354prance/overmynd/internal/access"
 	"github.com/z354prance/overmynd/internal/api"
 	"github.com/z354prance/overmynd/internal/auth"
 
@@ -69,6 +70,10 @@ func main() {
 		"path", db.Path(),
 	)
 
+	if err := access.RecoverInterrupted(db.DB); err != nil {
+		slog.Error("access request recovery failed", "error", err)
+		os.Exit(1)
+	}
 	serviceManager := services.NewManager(db)
 
 	authManager := auth.NewManager(db)

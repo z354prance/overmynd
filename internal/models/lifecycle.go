@@ -20,11 +20,12 @@ const (
 type LifecycleProblem string
 
 const (
-	LifecycleProblemMissing       LifecycleProblem = "missing"
-	LifecycleProblemStalled       LifecycleProblem = "stalled"
-	LifecycleProblemFailed        LifecycleProblem = "failed"
-	LifecycleProblemHeld          LifecycleProblem = "held"
-	LifecycleProblemImportBlocked LifecycleProblem = "import_blocked"
+	LifecycleProblemMissing           LifecycleProblem = "missing"
+	LifecycleProblemStalled           LifecycleProblem = "stalled"
+	LifecycleProblemFailed            LifecycleProblem = "failed"
+	LifecycleProblemHealthCheckFailed LifecycleProblem = "tdarr_health_check_failed"
+	LifecycleProblemHeld              LifecycleProblem = "held"
+	LifecycleProblemImportBlocked     LifecycleProblem = "import_blocked"
 )
 
 // CorrelationStrength records how confidently two normalized records were
@@ -66,7 +67,9 @@ type LifecycleReference struct {
 // It deliberately references normalized source records rather than copying
 // every service-specific field into the lifecycle.
 type MediaLifecycle struct {
-	ID string `json:"id"`
+	PosterURL       string `json:"poster_url,omitempty"`
+	PosterServiceID int64  `json:"-"`
+	ID              string `json:"id"`
 
 	Kind  MediaKind `json:"kind,omitempty"`
 	Title string    `json:"title,omitempty"`
