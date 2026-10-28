@@ -18,6 +18,7 @@
         <h1 id="pageTitle" hidden>Dashboard</h1></div><div class="dashboard-brand" id="dashboardBrand"><h1>OVERMYND</h1><img src="/overmynd-icon.svg" alt="Overmynd" width="88" height="88"></div>
 
         <div class="topbar-meta"><nav class="header-actions" aria-label="Media and access"><button id="openMediaRequest" type="button" class="service-secondary-button">Request media</button>
+          <button id="pendingApprovals" type="button" class="service-secondary-button" popovertarget="approvalPopover" hidden></button>
           <button id="openDonate" type="button" class="service-secondary-button" popovertarget="donatePopover">Donate</button>
           </nav><div class="header-status"><div id="storageSummary" class="storage-summary" aria-label="Library sizes and remaining storage" hidden></div><button id="requestAccessButton" class="service-secondary-button" type="button" hidden>need access?</button>
           <span id="lastUpdated">Waiting for data</span>
@@ -554,6 +555,8 @@
     </form>
     <p id="accessSetupMessage" role="status"></p>
   </dialog>
+<section id="approvalPopover" popover="auto" aria-label="Seerr pending approvals"><header><strong>Awaiting approval</strong><button type="button" popovertarget="approvalPopover" popovertargetaction="hide">[ close ]</button></header><p>Review and approve these requests in Seerr.</p><ul id="approvalList"></ul></section><span id="approvalStatus" class="approval-announcement" role="status"></span>
+<script src="/js/approvals.js"></script>
 <script src="/js/app.js"></script>
 <script src="/js/access.js"></script>
 <script src="/js/storage.js"></script>

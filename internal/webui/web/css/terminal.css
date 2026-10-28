@@ -221,3 +221,13 @@ body .dashboard-footer > .live-indicator { display:flex; align-items:center; gap
  body .ascii-filled, body .storage-summary .ascii-filled { background:linear-gradient(90deg,#f27b89 0%,#edb26b 20%,#e5d875 36%,#6dcc9d 52%,#70b9ed 70%,#ad92ec 86%,#dd91cd 100%); background-clip:text; -webkit-background-clip:text; color:transparent; }
 }
 @media(forced-colors:active) { body .ascii-filled, body .storage-summary .ascii-filled { background:none; color:CanvasText; } }
+
+#pageHeader #pendingApprovals { color:#edc58d; font-size:12px; }
+#pendingApprovals[hidden] { display:none; }
+#approvalPopover { position:fixed; inset:auto; margin:0; width:min(360px,calc(100vw - 16px)); max-height:calc(100dvh - 16px); overflow:auto; padding:16px; font:12px/1.6 Consolas,monospace; }
+#approvalPopover header { display:flex; justify-content:space-between; gap:12px; }
+#approvalPopover button { background:transparent; border:0; color:var(--terminal-link); font:inherit; cursor:pointer; }
+#approvalPopover p { color:var(--muted); }
+#approvalList { padding-left:18px; overflow-wrap:anywhere; }
+#approvalList li { padding:6px 0; }
+.approval-announcement { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }

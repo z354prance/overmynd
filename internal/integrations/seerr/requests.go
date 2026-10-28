@@ -212,6 +212,10 @@ func parseSeerrTime(value string) *time.Time {
 }
 
 func activeRequest(status, availability string) bool {
+	// A pending request can target another season or quality of available media.
+	if status == "pending" {
+		return true
+	}
 	if status == "completed" || status == "declined" {
 		return false
 	}
