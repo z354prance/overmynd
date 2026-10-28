@@ -231,3 +231,7 @@ body .dashboard-footer > .live-indicator { display:flex; align-items:center; gap
 #approvalList { padding-left:18px; overflow-wrap:anywhere; }
 #approvalList li { padding:6px 0; }
 .approval-announcement { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+
+.approval-actions { display:flex; gap:16px; }
+.approval-actions[hidden] { display:none; }
+#approvalPopover button:disabled { opacity:.5; cursor:wait; }

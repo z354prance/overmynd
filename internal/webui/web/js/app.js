@@ -1243,6 +1243,7 @@ $("logoutButton").addEventListener("click", async () => {
 
 function applyAuth(status) {
   state.authenticated = Boolean(status.authenticated);
+  window.dispatchEvent(new CustomEvent("overmynd-auth", {detail: state.authenticated}));
   renderServices();
   window.refreshAccessAdmin?.();
   $("requestSettingsPanel").hidden = !state.authenticated;
