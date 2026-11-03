@@ -22,6 +22,19 @@ const assert=require('node:assert/strict');
   assert((await cards.textContent()).includes('512 KB/s'));
   assert((await cards.textContent()).includes('Transfer: Downloading'));
   for(const width of [320,768,1440]) {await page.setViewportSize({width,height:900});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
+  // An ARR-only queue entry is not an active transfer merely because ARR says downloading.
+  const pending={id:'pending',source:'sonarr',source_service_id:1,title:'Pending.S01E02',status:'downloading',size:1000,size_left:1000,time_left:'00:05:17.8228182'};
+  downloads.push(pending);
+  lifecycles.push({id:'pending',title:'Pending',kind:'episode',stage:'downloading',references:[ref('download','sonarr','pending')]});
+  await page.evaluate(()=>refreshDashboard());assert.equal(await cards.count(),1);
+  pending.size_left=999;await page.evaluate(()=>refreshDashboard());assert.equal(await cards.count(),2);
+  pending.size_left=1000;pending.tracked_download_status='warning';await page.evaluate(()=>refreshDashboard());assert.equal(await cards.count(),2);
+  delete pending.tracked_download_status;
+  pending.source='torboxarr';lifecycles[1].references=[ref('download','torboxarr','pending')];
+  await page.evaluate(()=>refreshDashboard());assert.equal(await cards.count(),2);
+  pending.source='sonarr';lifecycles[1].references=[ref('download','sonarr','pending')];
+  delete pending.size_left;await page.evaluate(()=>refreshDashboard());assert.equal(await cards.count(),2);
+  downloads.pop();lifecycles.pop();
   delete downloads[0].speed;delete downloads[0].size;delete downloads[0].size_left;
   await page.evaluate(()=>refreshDashboard());
   assert.equal(await cards.locator('[role=progressbar]').getAttribute('aria-valuenow'),null);

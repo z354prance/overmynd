@@ -214,6 +214,18 @@ function pendingTdarrJob(job) {
   return job.source === "tdarr" && ["queued", "held"].includes(job.state);
 }
 
+function pendingDownload(record) {
+  const status = String(record.status || "");
+  // Keep failures visible even when the transfer never started.
+  if (/fail|error|warning|stall/i.test(`${status} ${record.tracked_download_status || ""}`)) return false;
+  if (/paused|queued|pending|delay|waiting/i.test(status)) return true;
+  // ARR can label a queued job "downloading" and give it an ETA before any
+  // bytes transfer. Only apply this fallback to ARR, not actual client reports.
+  return ["sonarr", "radarr", "lidarr"].includes(record.source) &&
+    /^downloading$/i.test(status) && Number(record.size) > 0 &&
+    Number.isFinite(Number(record.size_left)) && Number(record.size_left) >= Number(record.size);
+}
+
 function visiblePipelineItem(item) {
   const jobs = pipelineRecords(item, "processing", state.processing);
   if (item.stage === "processing" && jobs.length && jobs.every(pendingTdarrJob)) return false;
@@ -222,7 +234,7 @@ function visiblePipelineItem(item) {
   const downloads = pipelineRecords(item, "download", state.downloads);
   const clients = downloads.filter(d => ["nzbget", "qbittorrent", "torboxarr"].includes(d.source));
   const records = clients.length ? clients : downloads;
-  return !records.length || !records.every(d => /paused|queued|pending|delay|waiting/i.test(d.status || ""));
+  return !records.length || !records.every(pendingDownload);
 }
 
 function showProgressCards(seasons) {
