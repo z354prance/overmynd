@@ -416,6 +416,10 @@ func correlationEvidence(
 }
 
 func downloadStage(item models.Download) models.LifecycleStage {
+	// TorBoxarr keeps local verification in its queue after all bytes arrive.
+	if item.Source == models.ServiceTorBoxarr {
+		return models.LifecycleStageDownloading
+	}
 	status := strings.ToLower(strings.TrimSpace(item.Status))
 	tracked := strings.ToLower(strings.TrimSpace(item.TrackedDownload))
 

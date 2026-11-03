@@ -13,6 +13,7 @@ const (
 	ServiceTdarr       ServiceType = "tdarr"
 	ServiceQBittorrent ServiceType = "qbittorrent"
 	ServiceNZBGet      ServiceType = "nzbget"
+	ServiceTorBoxarr   ServiceType = "torboxarr"
 )
 
 var SupportedServices = []ServiceType{
@@ -24,6 +25,7 @@ var SupportedServices = []ServiceType{
 	ServiceTdarr,
 	ServiceQBittorrent,
 	ServiceNZBGet,
+	ServiceTorBoxarr,
 }
 
 type Service struct {

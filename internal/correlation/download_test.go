@@ -98,3 +98,14 @@ func TestDownloaderExplicitDownloadIDPreferred(t *testing.T) {
 		t.Fatal("explicit downloader DownloadID should be preferred")
 	}
 }
+
+func TestTorBoxTransferIdentityAndStage(t *testing.T) {
+	local := models.Download{Source: models.ServiceTorBoxarr, DownloadID: "TBOX-abc", Status: "moving", Size: 100, SizeLeft: 0}
+	arr := models.Download{Source: models.ServiceSonarr, DownloadID: "TBOX-abc"}
+	if !MatchDownloadIdentity(local, arr).Matched {
+		t.Fatal("TorBox and ARR mirrors must correlate")
+	}
+	if downloadStage(local) != models.LifecycleStageDownloading {
+		t.Fatal("local verification must remain before transcode")
+	}
+}

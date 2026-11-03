@@ -23,6 +23,7 @@ import (
 	"github.com/z354prance/overmynd/internal/integrations/seerr"
 	"github.com/z354prance/overmynd/internal/integrations/sonarr"
 	"github.com/z354prance/overmynd/internal/integrations/tdarr"
+	"github.com/z354prance/overmynd/internal/integrations/torboxarr"
 	"github.com/z354prance/overmynd/internal/integrations/tracearr"
 	"github.com/z354prance/overmynd/internal/services"
 )
@@ -97,6 +98,7 @@ func main() {
 		lidarr.New(),
 		qbittorrent.New(),
 		nzbget.New(),
+		torboxarr.New(),
 		seerr.New(),
 		tracearr.New(),
 		tdarr.New(),

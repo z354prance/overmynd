@@ -79,7 +79,7 @@ function pipelineProgress(item) {
   if (item.stage === "downloading") {
     const downloads = pipelineRecords(item, "download", state.downloads);
     // Prefer the download client's byte counts over an ARR copy of the same queue.
-    const clients = downloads.filter((d) => ["qbittorrent", "nzbget"].includes(d.source));
+    const clients = downloads.filter((d) => ["qbittorrent", "nzbget", "torboxarr"].includes(d.source));
     const records = clients.length ? clients : downloads;
     sources = records;
     const measured = records.filter((d) => Number.isFinite(Number(d.size)) && Number(d.size) > 0);
@@ -89,8 +89,15 @@ function pipelineProgress(item) {
       percent = 100 * (total - remaining) / total;
       detail = `${formatBytes(total - remaining)} of ${formatBytes(total)}`;
     }
+    if (records.length === 1 && records[0].source === "torboxarr") {
+      const transfer = records[0];
+      if (percent === null && typeof transfer.progress === "number") percent = transfer.progress;
+      detail = `TorBox to Unraid - ${detail}`;
+      label = `Transfer: ${pretty(transfer.status || "unknown")}`;
+      if (typeof transfer.speed === "number" && transfer.speed >= 0) detail += ` - ${formatBytes(transfer.speed)}/s`;
+    }
     paused = records.some((d) => /paused|queued/i.test(d.status || ""));
-    if (paused) label = "Download paused / queued";
+    if (paused && !records.some(d => d.source === "torboxarr")) label = "Download paused / queued";
     if (records.length === 1 && records[0].time_left && !paused) detail += ` · ${records[0].time_left} remaining`;
   } else if (item.stage === "processing") {
     const reportedJobs = pipelineRecords(item, "processing", state.processing);
@@ -195,7 +202,7 @@ function isSeriesProgress(item) {
   // Count distinct downloader records, not ARR mirrors of the same transfer.
   const bySource = new Map();
   for (const record of pipelineRecords(item, "download", state.downloads)) {
-    if (!["nzbget", "qbittorrent"].includes(record.source)) continue;
+    if (!["nzbget", "qbittorrent", "torboxarr"].includes(record.source)) continue;
     const key = `${record.source}:${record.source_service_id}`;
     if (!bySource.has(key)) bySource.set(key, new Set());
     bySource.get(key).add(String(record.id));
@@ -213,7 +220,7 @@ function visiblePipelineItem(item) {
   if (!["importing", "processing", "downloading"].includes(item.stage)) return false;
   if (isSeriesProgress(item) || item.stage !== "downloading") return true;
   const downloads = pipelineRecords(item, "download", state.downloads);
-  const clients = downloads.filter(d => ["nzbget", "qbittorrent"].includes(d.source));
+  const clients = downloads.filter(d => ["nzbget", "qbittorrent", "torboxarr"].includes(d.source));
   const records = clients.length ? clients : downloads;
   return !records.length || !records.every(d => /paused|queued|pending|delay|waiting/i.test(d.status || ""));
 }
@@ -249,9 +256,12 @@ function processingSupersedesDownload(download, jobs) {
 function individualProgressCards(item) {
   const jobs = pipelineRecords(item, "processing", state.processing);
   const downloads = pipelineRecords(item, "download", state.downloads);
-  const clients = downloads.filter(d => ["nzbget", "qbittorrent"].includes(d.source));
+  const clients = downloads.filter(d => ["nzbget", "qbittorrent", "torboxarr"].includes(d.source));
   const transfers = clients.length ? clients : downloads;
-  if (jobs.length + transfers.length <= 1) return [item];
+  if (jobs.length + transfers.length <= 1) {
+    if (!jobs.length && transfers.length === 1 && transfers[0].source === "torboxarr") return [{...item, stage:"downloading"}];
+    return [item];
+  }
   const card = (record, type, stage) => ({
     id: `task:${type}:${record.source}:${record.source_service_id}:${record.id}`,
     title: record.title || item.title, kind: record.kind || item.kind, poster_url:item.poster_url, stage,
@@ -770,6 +780,7 @@ function formatBytes(value) {
 }
 
 function downloadProgress(item) {
+  if (typeof item.progress === "number" && Number.isFinite(item.progress)) return Math.max(0, Math.min(100, item.progress));
   const size = Number(item.size) || 0;
   const left = Math.max(0, Number(item.size_left) || 0);
 
@@ -786,7 +797,7 @@ function updateDownloadStatusOptions() {
 
   const statuses = [...new Set(
     state.downloads
-      .filter((item) => item.source === "qbittorrent" || item.source === "nzbget")
+      .filter((item) => ["qbittorrent", "nzbget", "torboxarr"].includes(item.source))
       .map((item) => item.status)
       .filter(Boolean)
   )].sort();
@@ -811,7 +822,7 @@ function filteredDownloads() {
   const status = $("downloadStatus").value;
 
   return state.downloads.filter((item) => {
-    if (item.source !== "qbittorrent" && item.source !== "nzbget") {
+    if (!["qbittorrent", "nzbget", "torboxarr"].includes(item.source)) {
       return false;
     }
 
@@ -883,6 +894,7 @@ function renderDownloads() {
       const details = [
         item.protocol ? pretty(item.protocol) : "",
         item.download_client || "",
+        typeof item.speed === "number" ? `${formatBytes(item.speed)}/s` : "",
         item.time_left ? `${item.time_left} remaining` : "",
       ].filter(Boolean);
 
@@ -1515,6 +1527,7 @@ function serviceDefaultName(type) {
     tdarr: "Tdarr",
     qbittorrent: "qBittorrent",
     nzbget: "NZBGet",
+    torboxarr: "TorBoxarr",
     tracearr: "Tracearr",
   };
 

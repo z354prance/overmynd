@@ -93,3 +93,7 @@ Recently Added groups episodes by Tracearr's server/show identity before selecti
 Optional, approval-based access requests with direct Emby provisioning and email
 notifications are available in Settings. Wizarr is not required. See
 [setup and testing instructions](docs/access-requests.md).
+
+### TorBoxarr transfers
+
+TorBoxarr SABnzbd-compatible local transfers are supported. See [setup and reported metrics](docs/torboxarr.md).

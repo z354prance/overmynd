@@ -8,6 +8,9 @@ import "time"
 // apply to a particular source remain empty rather than leaking
 // service-specific structures into the rest of Overmynd.
 type Download struct {
+	// Optional metrics; nil means the downloader did not report a measurement.
+	Progress         *float64    `json:"progress,omitempty"`
+	Speed            *int64      `json:"speed,omitempty"` // bytes per second, per download
 	ID               string      `json:"id"`
 	Source           ServiceType `json:"source"`
 	SourceServiceID  int64       `json:"source_service_id"`

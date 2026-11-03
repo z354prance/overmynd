@@ -37,6 +37,7 @@ jobs:
           done
           node scripts/auth-ui-test.cjs
           node scripts/pipeline-ui-test.cjs
+          node scripts/torboxarr-ui-test.cjs
           node scripts/requests-ui-test.cjs
           node scripts/access-ui-test.cjs
           node scripts/storage-ui-test.cjs
