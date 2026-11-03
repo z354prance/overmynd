@@ -10,9 +10,12 @@ import (
 )
 
 type ActivityResult struct {
-	Seasons    []SeasonProgress        `json:"seasons"`
-	Lifecycles []models.MediaLifecycle `json:"lifecycles"`
-	Errors     []ServiceError          `json:"errors"`
+	// These are the exact records used to build Lifecycles, not a second poll.
+	DownloadSnapshot   DownloadResult          `json:"download_snapshot"`
+	ProcessingSnapshot ProcessingResult        `json:"processing_snapshot"`
+	Seasons            []SeasonProgress        `json:"seasons"`
+	Lifecycles         []models.MediaLifecycle `json:"lifecycles"`
+	Errors             []ServiceError          `json:"errors"`
 }
 
 func (m *Manager) Activity(
@@ -40,12 +43,14 @@ func (m *Manager) Activity(
 	if err != nil {
 		return ActivityResult{}, err
 	}
+	result.DownloadSnapshot = downloads
 	result.Errors = append(result.Errors, downloads.Errors...)
 
 	processing, err := m.Processing(ctx, registry)
 	if err != nil {
 		return ActivityResult{}, err
 	}
+	result.ProcessingSnapshot = processing
 	result.Errors = append(result.Errors, processing.Errors...)
 
 	playback, err := m.Playback(ctx, registry)

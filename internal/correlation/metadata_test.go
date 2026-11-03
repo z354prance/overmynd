@@ -130,3 +130,16 @@ func TestTitleNormalization(t *testing.T) {
 		t.Fatalf("%q != %q", a, b)
 	}
 }
+
+func TestNZBSubmissionMatchesOnlySameRelease(t *testing.T) {
+	a := MetadataFromDownload(models.Download{Title: "Fellow.Travelers.S01E07.1080p.ALL4.WEB-DL.AAC2.0.H.264-WeBaDaBaDoo.nzb"})
+	b := MetadataFromDownload(models.Download{Title: "Fellow.Travelers.S01E07.1080p.ALL4.WEB-DL.AAC2.0.H.264-WeBaDaBaDoo"})
+	if !MatchMetadata(a, b).Matched {
+		t.Fatal("NZB suffix prevented same-release match")
+	}
+	for _, title := range []string{"Fellow.Travelers.S01E08.1080p.ALL4.WEB-DL.AAC2.0.H.264-WeBaDaBaDoo", "Fellow.Travelers.S01E07.720p.ALL4.WEB-DL.AAC2.0.H.264-WeBaDaBaDoo"} {
+		if MatchMetadata(a, MetadataFromDownload(models.Download{Title: title})).Matched {
+			t.Fatal("different release matched")
+		}
+	}
+}

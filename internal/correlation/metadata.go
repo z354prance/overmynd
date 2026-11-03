@@ -31,8 +31,14 @@ func MetadataFromAttention(item models.AttentionItem) MetadataIdentity {
 }
 
 func MetadataFromDownload(item models.Download) MetadataIdentity {
+	// TorBoxarr keeps the submission extension; ARR typically omits it.
+	// Strip only that suffix, retaining episode, quality and release-group details.
+	title := item.Title
+	if strings.EqualFold(path.Ext(title), ".nzb") {
+		title = strings.TrimSuffix(title, path.Ext(title))
+	}
 	return MetadataIdentity{
-		Title: normalizeTitle(item.Title),
+		Title: normalizeTitle(title),
 	}
 }
 

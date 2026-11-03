@@ -234,7 +234,7 @@ function visiblePipelineItem(item) {
   const downloads = pipelineRecords(item, "download", state.downloads);
   const clients = downloads.filter(d => ["nzbget", "qbittorrent", "torboxarr"].includes(d.source));
   const records = clients.length ? clients : downloads;
-  return !records.length || !records.every(pendingDownload);
+  return records.length > 0 && !records.every(pendingDownload);
 }
 
 function showProgressCards(seasons) {
@@ -1128,16 +1128,21 @@ async function getJSON(path) {
 
 async function refreshDashboard() {
   try {
-    const [health, activity, playback, services, missing, downloads, processing] = await Promise.all([
+    const [health, activity, playback, services, missing] = await Promise.all([
       getJSON("/health"),
       getJSON("/api/v1/activity"),
       getJSON("/api/v1/playback"),
       getJSON("/api/v1/public/services"),
       getJSON("/api/v1/missing"),
-      getJSON("/api/v1/downloads"),
-      getJSON("/api/v1/processing"),
+
     ]);
 
+    // Use the same poll that produced the lifecycle references. The fallback
+    // supports an older server during updates without mixing current snapshots.
+    const [downloads, processing] = await Promise.all([
+      activity.download_snapshot || getJSON("/api/v1/downloads"),
+      activity.processing_snapshot || getJSON("/api/v1/processing"),
+    ]);
     state.activity = activity.lifecycles || [];
     state.seasons = activity.seasons || [];
     state.playback = playback.sessions || [];

@@ -9,8 +9,11 @@ const assert=require('node:assert/strict');
    {id:'arr',source:'sonarr',source_service_id:1,title:'Test.S01E01',size:104857600,size_left:0,status:'completed'}];
   let jobs=[];
   let lifecycles=[{id:'test',title:'Test',kind:'episode',stage:'downloaded',references:[ref('download','torboxarr','local'),ref('download','sonarr','arr')]}];
+  let snapshot = null;
+  let downloadPolls = 0;
   await page.route('**/api/v1/**',r=>{
-   const payloads={'/api/v1/activity':{lifecycles,seasons:[]},'/api/v1/downloads':{downloads},'/api/v1/processing':{jobs},'/api/v1/missing':{items:[]},'/api/v1/playback':{sessions:[]},'/api/v1/recently-added':{items:[],errors:[]},'/api/v1/auth/status':{authenticated:false,setup_required:false}};
+   if (new URL(r.request().url()).pathname === '/api/v1/downloads') downloadPolls++;
+   const payloads={'/api/v1/activity':{lifecycles,seasons:[],...(snapshot || {})},'/api/v1/downloads':{downloads},'/api/v1/processing':{jobs},'/api/v1/missing':{items:[]},'/api/v1/playback':{sessions:[]},'/api/v1/recently-added':{items:[],errors:[]},'/api/v1/auth/status':{authenticated:false,setup_required:false}};
    return r.fulfill({json:payloads[new URL(r.request().url()).pathname]||[]});
   });
   await page.goto(process.env.OVERMYND_TEST_URL || 'http://127.0.0.1:18080');
@@ -52,6 +55,16 @@ const assert=require('node:assert/strict');
   assert(!(await cards.textContent()).includes('TorBox to Unraid'));
   assert.equal(await page.evaluate(()=>serviceUsesLogin('torboxarr')),false);
   assert.equal(await page.locator('#serviceType option[value=torboxarr]').count(),1);
+  // A stale independent endpoint must not override a queued snapshot.
+  lifecycles=[{id:'queued-snapshot',title:'Queued',kind:'episode',stage:'downloading',references:[ref('download','torboxarr','queued')]}];
+  downloads=[{id:'queued',source:'torboxarr',source_service_id:1,status:'downloading',size:100,size_left:50}];
+  snapshot={download_snapshot:{downloads:[{...downloads[0],status:'queued'}],errors:[]},processing_snapshot:{jobs:[],errors:[]}};
+  const pollsBefore=downloadPolls;
+  await page.evaluate(()=>refreshDashboard());assert.equal(await cards.count(),0);assert.equal(downloadPolls,pollsBefore);
+  snapshot.download_snapshot.downloads[0].status='downloading';
+  await page.evaluate(()=>refreshDashboard());assert.equal(await cards.count(),1);
+  snapshot.download_snapshot.downloads=[];
+  await page.evaluate(()=>refreshDashboard());assert.equal(await cards.count(),0);
   assert.deepEqual(errors,[]);
   console.log('PASS: TorBoxarr local transfer, optional metrics, ARR deduplication, pending filter, Tdarr transition, responsive UI');
  } finally {await browser.close();}
