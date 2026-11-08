@@ -83,14 +83,14 @@ body .dashboard-footer { border-top: 1px solid var(--border); }
   body .panel-header { padding: 12px; }
 }
 
-/* Text-first xivix terminal layout. Poster search results remain available in the request dialog. */
+/* Text-first terminal layout. Poster search results remain available in the request dialog. */
 :root { --bg:#0d0d0c; --panel:#0e0f0e; --panel-soft:#111210; --border:#30322f; --border-soft:#242623; --accent:#45bba9; --terminal-link:#c49a6c; }
 body .panel-header { min-height:0; padding:12px 16px; background:#1b1c1a; }
 body .panel-header h2 { font-size:14px; text-transform:lowercase; }
 body .panel-header h2::before { content:none; }
 body .dashboard-brand img { display:block; width:42px; height:42px; }
 body .dashboard-brand h1 { display:none; }
-body .dashboard-brand::after { content:"~/xivix/overmynd > status"; font-size:13px; color:var(--accent); }
+body .dashboard-brand::after { content:"~/overmynd > status"; font-size:13px; color:var(--accent); }
 body .dashboard-brand { flex-direction:row; flex-wrap:wrap; gap:8px 14px; }
 body :is(.service-primary-button,.service-secondary-button,.service-close-button) { border-color:transparent; background:transparent; padding:8px; }
 body :is(.service-primary-button,.service-secondary-button,.service-close-button)::before { content:"[ " / ""; }

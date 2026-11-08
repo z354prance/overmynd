@@ -10,7 +10,7 @@ import (
 
 func (a *API) accessStatus(w http.ResponseWriter, r *http.Request) {
 	s, e := a.access.Settings()
-	writeJSON(w, 200, map[string]bool{"enabled": e == nil && s.Enabled})
+	writeJSON(w, 200, map[string]any{"enabled": e == nil && s.Enabled, "provider": s.Provider})
 }
 func (a *API) accessSettings(w http.ResponseWriter, r *http.Request) {
 	s, e := a.access.Settings()
@@ -88,7 +88,7 @@ func (a *API) accessSetup(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 400, e)
 		return
 	}
-	writeJSON(w, 200, map[string]string{"message": "Your account is ready. You can now sign in to Emby."})
+	writeJSON(w, 200, map[string]string{"message": "Your account is ready. You can now sign in to your media server."})
 }
 func (a *API) accessAction(w http.ResponseWriter, r *http.Request) {
 	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(120 * time.Second))

@@ -14,7 +14,7 @@ func TestAccessAdminBoundary(t *testing.T) {
 		}
 	}
 	w := request(t, h, "", "GET", "/api/v1/access/status", "")
-	if w.Code != 200 || strings.TrimSpace(w.Body.String()) != `{"enabled":false}` {
+	if w.Code != 200 || strings.TrimSpace(w.Body.String()) != `{"enabled":false,"provider":""}` {
 		t.Fatal(w.Code, w.Body)
 	}
 	w = request(t, h, "", "POST", "/api/v1/access/request", `{"name":"Alice","email":"alice@example.com","username":"alice","connect_username":"alice-connect"}`)

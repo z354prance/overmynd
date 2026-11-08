@@ -14,10 +14,10 @@ import (
 func readTemplate(ctx context.Context, s Settings) (embyUser, error) {
 	var template embyUser
 	if err := emby(ctx, s, "GET", "/Users/"+s.TemplateID, nil, &template); err != nil {
-		return template, errors.New("unable to read the Emby template user")
+		return template, errors.New("unable to read the media server template user")
 	}
 	if template.ID != s.TemplateID || template.Policy == nil || template.Policy["IsDisabled"] != true || template.Policy["IsAdministrator"] != false {
-		return template, errors.New("template must be a disabled, non-administrator Emby user")
+		return template, errors.New("template must be a disabled, non-administrator media server user")
 	}
 	if _, ok := template.Policy["EnableAllFolders"].(bool); !ok {
 		return template, errors.New("template did not report its library access policy")
@@ -118,16 +118,16 @@ func settingsDifference(expected, actual map[string]any, policy bool) string {
 func verifySettings(ctx context.Context, s Settings, r Request, policy, config map[string]any) error {
 	var saved embyUser
 	if err := emby(ctx, s, "GET", "/Users/"+r.EmbyID, nil, &saved); err != nil {
-		return errors.New("unable to read back Emby permissions")
+		return errors.New("unable to read back media server permissions")
 	}
 	if saved.ID != r.EmbyID || !strings.EqualFold(saved.Name, r.Username) {
-		return errors.New("Emby account identity changed")
+		return errors.New("media server account identity changed")
 	}
 	if field := settingsDifference(policy, saved.Policy, true); field != "" {
-		return fmt.Errorf("Emby did not preserve template policy: %s", field)
+		return fmt.Errorf("media server did not preserve template policy: %s", field)
 	}
 	if field := settingsDifference(config, saved.Configuration, false); field != "" {
-		return fmt.Errorf("Emby did not preserve template configuration: %s", field)
+		return fmt.Errorf("media server did not preserve template configuration: %s", field)
 	}
 	return nil
 }
@@ -155,17 +155,21 @@ func quarantine(s Settings, r Request, baseline map[string]any) error {
 	policy["EnableMediaPlayback"] = false
 	policy["EnableRemoteAccess"] = false
 	if err := emby(ctx, s, "POST", "/Users/"+r.EmbyID+"/Policy", policy, nil); err != nil {
-		return errors.New("could not disable the Emby user; disable it manually in Emby")
+		return errors.New("could not disable the media server user; disable it manually in media server")
 	}
 	var user embyUser
 	if err := emby(ctx, s, "GET", "/Users/"+r.EmbyID, nil, &user); err != nil || user.Policy["IsDisabled"] != true || user.Policy["IsAdministrator"] != false {
-		return errors.New("could not verify the user is disabled; disable it manually in Emby")
+		return errors.New("could not verify the user is disabled; disable it manually in media server")
 	}
 	return nil
 }
 
 func applyTemplate(ctx context.Context, s Settings, r Request, template embyUser) (map[string]any, map[string]any, error) {
 	policy, config := templateSettings(template, true)
+	if isJellyfin(s) {
+		delete(policy, "IsHiddenRemotely")
+		delete(config, "ProfilePin")
+	}
 	err := emby(ctx, s, "POST", "/Users/"+r.EmbyID+"/Policy", policy, nil)
 	if err == nil {
 		err = emby(ctx, s, "POST", "/Users/"+r.EmbyID+"/Configuration", config, nil)
@@ -205,10 +209,10 @@ func (m *Manager) ReapplyTemplate(ctx context.Context, id int64) error {
 	}
 	var user embyUser
 	if e = emby(ctx, s, "GET", "/Users/"+r.EmbyID, nil, &user); e != nil {
-		return errors.New("unable to read the provisioned Emby user")
+		return errors.New("unable to read the provisioned media server user")
 	}
 	if user.ID != r.EmbyID || !strings.EqualFold(user.Name, r.Username) || user.Policy["IsAdministrator"] != false {
-		return errors.New("Emby account identity or administrator permissions changed; inspect it manually")
+		return errors.New("media server account identity or administrator permissions changed; inspect it manually")
 	}
 	if _, e = m.db.Exec("UPDATE access_requests SET status='incomplete',token_hash='',token_expires=0,error='Reapplying template',updated_at=? WHERE id=?", time.Now().UTC().Format(time.RFC3339), id); e != nil {
 		return e

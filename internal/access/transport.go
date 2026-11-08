@@ -27,7 +27,7 @@ type embyUser struct {
 
 type embyStatusError int
 
-func (e embyStatusError) Error() string { return fmt.Sprintf("Emby returned HTTP %d", int(e)) }
+func (e embyStatusError) Error() string { return fmt.Sprintf("media server returned HTTP %d", int(e)) }
 
 func emby(ctx context.Context, s Settings, method, path string, body, out any) error {
 	var payload []byte
@@ -62,9 +62,12 @@ func emby(ctx context.Context, s Settings, method, path string, body, out any) e
 func embyAttempt(ctx context.Context, s Settings, method, path string, payload []byte, out any) (bool, error) {
 	req, err := http.NewRequestWithContext(ctx, method, strings.TrimRight(s.EmbyURL, "/")+path, bytes.NewReader(payload))
 	if err != nil {
-		return false, errors.New("invalid Emby URL")
+		return false, errors.New("invalid media server URL")
 	}
 	req.Header.Set("X-Emby-Token", s.EmbyKey)
+	if isJellyfin(s) {
+		req.Header.Set("Authorization", `MediaBrowser Token="`+s.EmbyKey+`"`)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	client := http.Client{Timeout: 15 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
@@ -73,7 +76,7 @@ func embyAttempt(ctx context.Context, s Settings, method, path string, payload [
 		var networkError net.Error
 		var operationError *net.OpError
 		transient := (errors.As(err, &networkError) && networkError.Timeout()) || errors.As(err, &operationError) || errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF)
-		return transient, errors.New("Emby connection failed")
+		return transient, errors.New("media server connection failed")
 	}
 	defer res.Body.Close()
 	if res.StatusCode < 200 || res.StatusCode >= 300 {

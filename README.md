@@ -88,12 +88,21 @@ Season overview cards are pinned ahead of individual active items. They use Sona
 
 Recently Added groups episodes by Tracearr's server/show identity before selecting six cards. Movies remain separate. Each show has an expandable episode list; the feed is paged until six distinct entries of each media type are found or history ends, so a large episode batch cannot crowd out older shows. Episode lists cover fetched history, not the complete library. A safety limit of 20 pages per media type reports when older entries may be missing. Entries lacking show identity remain separate.
 
-## Emby access requests
+## Media server access requests
 
-Optional, approval-based access requests with direct Emby provisioning and email
+Optional, approval-based access requests with direct Emby or Jellyfin provisioning and email
 notifications are available in Settings. Wizarr is not required. See
 [setup and testing instructions](docs/access-requests.md).
 
 ### TorBoxarr transfers
 
 Both TorBoxarr SABnzbd-compatible Usenet and qBittorrent-compatible torrent local transfers are supported. See [setup and reported metrics](docs/torboxarr.md).
+
+## Branding and donations
+
+The terminal header uses `~/overmynd > status`. Under Settings > Donations,
+administrators can set the pop-out heading, PayPal and Cash App URLs, and one custom
+link with a label. Only HTTPS links without embedded credentials are accepted.
+Donation links are public, persist in `/config`, and can be changed only by an
+administrator. Leave all URLs blank to hide Donate. No personal payment links are
+bundled by default. Existing installations can re-enter their preferred links.

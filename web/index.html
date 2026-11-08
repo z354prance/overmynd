@@ -19,7 +19,7 @@
 
         <div class="topbar-meta"><nav class="header-actions" aria-label="Media and access"><button id="openMediaRequest" type="button" class="service-secondary-button">Request media</button>
           <button id="pendingApprovals" type="button" class="service-secondary-button" popovertarget="approvalPopover" hidden></button>
-          <button id="openDonate" type="button" class="service-secondary-button" popovertarget="donatePopover">Donate</button>
+          <button id="openDonate" hidden type="button" class="service-secondary-button" popovertarget="donatePopover">Donate</button>
           </nav><div class="header-status"><div id="storageSummary" class="storage-summary" aria-label="Library sizes and remaining storage" hidden></div><button id="requestAccessButton" class="service-secondary-button" type="button" hidden>need access?</button>
           <span id="lastUpdated">Waiting for data</span>
 
@@ -304,7 +304,19 @@
           </form>
           <p id="authMessage" class="auth-message" role="status" aria-live="polite"></p>
         </section>
-        <section class="panel settings-panel request-settings" id="requestSettingsPanel" hidden>
+        <section class="panel settings-panel" id="donationSettingsPanel" hidden>
+<h2>Donations</h2>
+<form id="donationSettingsForm" class="auth-form">
+<p>Leave links blank to hide Donate. Links are public; only administrators can change them.</p>
+<label class="service-form-field"><span>Heading</span><input name="title" maxlength="80" placeholder="Support this server"></label>
+<label class="service-form-field"><span>PayPal URL</span><input name="paypal_url" type="url" placeholder="https://paypal.me/yourname"></label>
+<label class="service-form-field"><span>Cash App URL</span><input name="cashapp_url" type="url" placeholder="https://cash.app/$yourname"></label>
+<label class="service-form-field"><span>Other link label</span><input name="custom_label" maxlength="40"></label>
+<label class="service-form-field"><span>Other donation URL</span><input name="custom_url" type="url" placeholder="https://"></label>
+<button class="service-primary-button" type="submit">Save donation links</button>
+<p id="donationSettingsMessage" role="status"></p>
+</form></section>
+<section class="panel settings-panel request-settings" id="requestSettingsPanel" hidden>
           <div class="panel-header"><div><h2>Public media requests</h2></div></div>
           <form id="requestSettingsForm" class="auth-form">
             <label class="service-enabled-field"><input type="checkbox" id="requestsEnabled"><span>Allow requests without signing in</span></label>
@@ -318,15 +330,17 @@
         <section class="panel settings-panel" id="accessAdminPanel" hidden>
           <div class="panel-header"><h2>Server access requests</h2></div>
           <div class="access-admin-content">
-            <p>Approve new Emby users here. Requests never create an account until you approve them.</p>
+            <p>Approve new media server users here. Requests never create an account until you approve them.</p>
             <details><summary>Access and email settings</summary>
-              <p>Create a disabled, non-administrator template user in Emby with the library permissions new users should inherit. Copy its user ID from the Emby user page URL. Keep that template disabled.</p>
+              <p>Create a disabled, non-administrator template user in your selected media server with the library permissions new users should inherit. Copy its user ID from the server user page URL. Keep that template disabled.</p>
               <form id="accessSettingsForm" class="access-settings-grid">
                 <label class="service-enabled-field"><input name="enabled" type="checkbox"><span>Enable public access requests</span></label>
 <label class="service-form-field"><span>Public Overmynd URL</span><input name="public_url" type="url" placeholder="https://overmynd.example.com" autocomplete="off"></label>
-<label class="service-form-field"><span>Emby server URL</span><input name="emby_url" type="url" placeholder="http://server:8096" autocomplete="off"></label>
-<label class="service-form-field"><span>Emby API key</span><input name="emby_key" type="password" placeholder="Leave blank to keep saved key" autocomplete="off"></label>
-<label class="service-form-field"><span>Disabled template user ID</span><input name="template_id" type="text" placeholder="Emby user ID" autocomplete="off"></label>
+<label class="service-form-field"><span>Server type</span><select name="provider"><option value="emby">Emby</option><option value="jellyfin">Jellyfin</option></select></label>
+<label class="service-form-field"><span>Public media server URL (required for Jellyfin emails)</span><input name="server_public_url" type="url" placeholder="https://watch.example.com" autocomplete="off"></label>
+<label class="service-form-field"><span>Media server URL (internal)</span><input name="emby_url" type="url" placeholder="http://server:8096" autocomplete="off"></label>
+<label class="service-form-field"><span>Media server API key</span><input name="emby_key" type="password" placeholder="Leave blank to keep saved key" autocomplete="off"></label>
+<label class="service-form-field"><span>Disabled template user ID</span><input name="template_id" type="text" placeholder="Template user ID" autocomplete="off"></label>
 <label class="service-form-field"><span>SMTP hostname</span><input name="smtp_host" type="text" placeholder="From your email provider" autocomplete="off"></label>
 <label class="service-form-field"><span>SMTP port</span><input name="smtp_port" type="number" placeholder="465" autocomplete="off" min="1" max="65535"></label>
 <label class="service-form-field"><span>SMTP mailbox login</span><input name="smtp_user" type="text" placeholder="Mailbox username" autocomplete="off"></label>
@@ -531,27 +545,25 @@
     <div id="cardDetailsContent"></div>
   </dialog>
 <div id="donatePopover" popover="auto" aria-labelledby="donateHeading">
-    <h2 id="donateHeading">Support XIVIX</h2>
-    <p>Thank you for your support.</p>
-    <a href="https://paypal.me/z354prance" target="_blank" rel="noopener noreferrer">PayPal <span aria-hidden="true">&#8599;</span></a>
-    <a href="https://cash.app/$PayLuffie" target="_blank" rel="noopener noreferrer">Cash App <span aria-hidden="true">&#8599;</span></a>
+    <h2 id="donateHeading">Support this server</h2>
+    <div id="donationLinks"></div>
   </div>
 <dialog id="accessRequestDialog" class="request-dialog access-dialog" aria-labelledby="accessRequestTitle">
     <header><h2 id="accessRequestTitle">Request server access</h2><button type="button" class="service-secondary-button" data-close-access>Close</button></header>
-    <p>First, <a href="https://emby.media/connect.html" target="_blank" rel="noopener noreferrer">create and verify your Emby Connect account</a>, or use one you already have. Return here with its username. We never ask for your Connect password.</p>
+    <p id="accessConnectHelp">First, <a href="https://emby.media/connect.html" target="_blank" rel="noopener noreferrer">create and verify your Emby Connect account</a>, or use one you already have. Return here with its username. We never ask for your Connect password.</p>
     <form id="accessRequestForm">
       <label class="service-form-field"><span>Your name</span><input name="name" autocomplete="name" required maxlength="100"></label>
       <label class="service-form-field"><span>Email for updates</span><input name="email" type="email" autocomplete="email" required maxlength="254"></label>
       <label class="service-form-field"><span>Preferred server username</span><input name="username" autocomplete="off" required minlength="3" maxlength="64" pattern="[a-zA-Z0-9][a-zA-Z0-9_.\-]{2,63}" title="3-64 letters, numbers, dots, underscores, or dashes"></label>
-      <label class="service-form-field"><span>Emby Connect username</span><input name="connect_username" autocomplete="off" required maxlength="100"></label>
+      <label id="accessConnectField" class="service-form-field"><span>Emby Connect username</span><input name="connect_username" autocomplete="off" required maxlength="100"></label>
       <p class="service-field-help">Your request is held for approval. If approved, we will email a link to finish setting up your server account.</p>
       <button class="service-primary-button" type="submit">Submit for approval</button>
     </form>
     <p id="accessRequestMessage" role="status"></p>
   </dialog>
   <dialog id="accessSetupDialog" class="request-dialog access-dialog" aria-labelledby="accessSetupTitle">
-    <header><h2 id="accessSetupTitle">Finish your Emby setup</h2><button type="button" class="service-secondary-button" data-close-access>Close</button></header>
-    <p>Confirm any Emby Connect linking email first. Choose a separate password for your local server account below.</p>
+    <header><h2 id="accessSetupTitle">Finish your server setup</h2><button type="button" class="service-secondary-button" data-close-access>Close</button></header>
+    <p><span id="accessSetupHelp">For Emby, confirm any Connect linking email first. Choose a password for your server account below.</span></p>
     <form id="accessSetupForm">
       <label class="service-form-field"><span>New server password</span><input name="password" type="password" autocomplete="new-password" required minlength="12" maxlength="256"></label>
       <label class="service-form-field"><span>Confirm password</span><input name="confirm" type="password" autocomplete="new-password" required minlength="12" maxlength="256"></label>

@@ -10,6 +10,9 @@ import (
 // Verification must not POST /Connect/Link: that creates a link and can reject
 // an already linked account or send another invitation.
 func verifyConnect(ctx context.Context, s Settings, r Request, user embyUser) error {
+	if isJellyfin(s) {
+		return nil
+	}
 	if user.ConnectLinkType != "LinkedUser" || strings.TrimSpace(user.ConnectUserName) == "" {
 		return errors.New("Emby has not confirmed your Connect link yet; confirm the linking email, then retry")
 	}

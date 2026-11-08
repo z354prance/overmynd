@@ -10,8 +10,38 @@
     controls.forEach(b => { b.disabled = true; });
     try { await action(); } finally { controls.forEach(b => { b.disabled = false; }); }
   }
+  async function loadDonations(admin = false) {
+    const d = await serviceAPIRequest("/api/v1/donations", {});
+    const links = el("donationLinks"); links.replaceChildren();
+    el("donateHeading").textContent = d.title || "Support this server";
+    for (const [label, url] of [["PayPal", d.paypal_url], ["Cash App", d.cashapp_url], [d.custom_label, d.custom_url]]) {
+      if (!url) continue;
+      const a = document.createElement("a"); a.textContent = label; a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer"; links.append(a);
+    }
+    el("openDonate").hidden = !links.children.length;
+    if (admin && state.authenticated) for (const input of el("donationSettingsForm").elements) if (input.name) input.value = d[input.name] || "";
+  }
+  el("donationSettingsForm").addEventListener("submit", event => {
+    event.preventDefault();
+    busy(event.currentTarget, async () => {
+      try {
+        await serviceAPIRequest("/api/v1/donations", {method:"PUT", body:JSON.stringify(Object.fromEntries(new FormData(event.currentTarget)))});
+        await loadDonations(); message("donationSettingsMessage", "Donation links saved.");
+      } catch (error) { message("donationSettingsMessage", error.message); }
+    });
+  });
+  loadDonations().catch(() => { el("openDonate").hidden = true; });
   async function availability() {
-    try { el("requestAccessButton").hidden = !(await api("status")).enabled; }
+    try {
+      const status = await api("status");
+      el("requestAccessButton").hidden = !status.enabled;
+      const jellyfin = status.provider === "jellyfin";
+      el("accessConnectHelp").hidden = jellyfin;
+      el("accessConnectField").hidden = jellyfin;
+      const connect = el("accessRequestForm").elements.connect_username;
+      connect.required = !jellyfin; connect.disabled = jellyfin;
+      el("accessSetupHelp").textContent = jellyfin ? "Choose a password for your Jellyfin account below." : "Confirm any Emby Connect linking email first. Choose a separate password for your local server account below.";
+    }
     catch { el("requestAccessButton").hidden = true; }
   }
   el("requestAccessButton").addEventListener("click", () => {
@@ -79,7 +109,7 @@
     for (const item of items) {
       const card = document.createElement("article"); card.className = "access-queue-card";
       const title = document.createElement("h4"); title.textContent = `${item.name} - ${statuses[item.status] || item.status}`; card.append(title);
-      const info = document.createElement("p"); info.textContent = `${item.email} | Server: ${item.username} | Connect: ${item.connect_username}`; card.append(info);
+      const info = document.createElement("p"); info.textContent = `${item.email} | Server: ${item.username}${item.connect_username ? ` | Connect: ${item.connect_username}` : ""}`; card.append(info);
       for (const text of [item.error, item.mail_error]) {
         if (text) { const p = document.createElement("p"); p.className = "access-error"; p.textContent = text; card.append(p); }
       }
@@ -87,7 +117,7 @@
       const options = item.status === "pending" ? [["approve", "Approve"], ["decline", "Decline"], ["resend", "Resend notices"]]
         : item.status === "incomplete" ? [["approve", "Retry setup"]]
         : ["awaiting_setup", "active", "declined"].includes(item.status) ? [["resend", item.status === "awaiting_setup" ? "Send fresh setup link" : item.status === "active" ? "Resend sign-in instructions" : "Resend notice"]] : [];
-      if (item.emby_id && ["incomplete", "awaiting_setup", "active"].includes(item.status)) options.push(["reapply-template", "Reapply template"], ["reset", "Reset after Emby deletion"]);
+      if (item.emby_id && ["incomplete", "awaiting_setup", "active"].includes(item.status)) options.push(["reapply-template", "Reapply template"], ["reset", "Reset after server deletion"]);
       for (const [action, label] of options) {
         const button = document.createElement("button"); button.type = "button"; button.className = "service-secondary-button"; button.textContent = label;
         button.addEventListener("click", () => busy(card, async () => {
@@ -107,6 +137,7 @@
           const label = document.createElement("label"); label.className = "service-form-field";
           const span = document.createElement("span"); span.textContent = title;
           const input = document.createElement("input"); input.name = name; input.type = type; input.value = value; input.required = true;
+          if (name === "connect_username" && !item.connect_username) { input.required = false; label.hidden = true; }
           label.append(span, input); form.append(label);
         }
         const save = document.createElement("button"); save.type = "submit"; save.className = "service-secondary-button"; save.textContent = "Save correction"; form.append(save);
@@ -134,6 +165,8 @@
   window.refreshAccessAdmin = async () => {
     const generation = ++authGeneration;
     el("accessAdminPanel").hidden = !state.authenticated;
+ el("donationSettingsPanel").hidden = !state.authenticated;
+ if (state.authenticated) loadDonations(true).catch(() => {});
     el("accessQueue").replaceChildren();
     el("accessSettingsForm").reset();
     message("accessAdminMessage", "");
@@ -145,9 +178,9 @@
       for (const control of form.elements) {
         if (!control.name) continue;
         if (control.type === "checkbox") control.checked = Boolean(settings[control.name]);
-        else if (control.type !== "password") control.value = settings[control.name] ?? "";
+        else if (control.type !== "password") control.value = settings[control.name] ?? (control.name === "provider" ? "emby" : "");
       }
-      form.elements.emby_key.placeholder = settings.has_emby_key ? "Saved - leave blank to keep" : "Emby API key";
+      form.elements.emby_key.placeholder = settings.has_emby_key ? "Saved - leave blank to keep" : "Media server API key";
       form.elements.smtp_password.placeholder = settings.has_smtp_password ? "Saved - leave blank to keep" : "Mailbox password";
       await loadQueue();
     } catch (error) { if (state.authenticated && generation === authGeneration) message("accessAdminMessage", error.message); }

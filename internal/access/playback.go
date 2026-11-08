@@ -23,7 +23,7 @@ func (m *Manager) FilterPlayback(ctx context.Context, sessions []models.Playback
 		return sessions
 	}
 	settings, err := m.Settings()
-	if err != nil {
+	if err != nil || isJellyfin(settings) {
 		settings = Settings{}
 	}
 	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)

@@ -1,4 +1,47 @@
-# Approval-based Emby access
+# Approval-based media server access
+
+Each installation chooses **Emby** (default) or **Jellyfin** in Settings > Access and
+email settings. Existing configurations continue using Emby. The dashboard reads
+Jellyfin playback and library additions through Tracearr; configure Jellyfin in
+Tracearr and connect that Tracearr integration under Services.
+
+## Jellyfin setup
+
+1. Select Jellyfin and enter its internal server URL and API key in the media server
+   fields. Enter the public HTTPS Jellyfin URL separately for sign-in emails.
+2. Create a disabled, non-administrator Jellyfin template account with the desired
+   library permissions and preferences. Enter its user ID as the template ID.
+3. Configure secure SMTP, sender, administrator email and the public HTTPS Overmynd
+   URL, then enable access requests and send a test email.
+4. Applicants submit their name, notification email and desired username. No Emby
+   Connect account is requested. Submission does not create a server account.
+5. After administrator approval, Overmynd creates an account with an unpredictable
+   temporary password, disables it and applies and reads back template permissions
+   and configuration. Jellyfin does not support Emby's template-copy creation API;
+   Overmynd explicitly copies and verifies these settings instead.
+6. The recipient receives a single-use, 24-hour setup link, chooses a password and
+   becomes active only after permissions are verified again. A completion email
+   explains the server URL, username, supported clients and Quick Connect. The
+   administrator can resend sign-in instructions after activation.
+
+The password is never stored by Overmynd or included in email. Failed permission
+verification leaves the account disabled and requires administrator attention.
+Transient repeatable operations receive the same bounded retry as Emby; account
+creation is never blindly retried. Test approval, restricted library access,
+activation and email delivery against your installed Jellyfin version before
+accepting public requests. Automated checks simulate both server APIs.
+
+The provider/server address cannot be changed while non-declined requests exist,
+including pending requests. Use a separate Overmynd configuration for a different
+server; do not repoint existing accounts. The internal JSON field names
+`emby_url`, `emby_key` and `emby_id` remain for backward compatibility and refer to
+the selected provider. Emby library privacy filtering continues to apply to Emby
+sessions only; it never resolves Emby sessions against a configured Jellyfin server.
+
+Jellyfin API reference: [user controller](https://github.com/jellyfin/jellyfin/blob/master/Jellyfin.Api/Controllers/UserController.cs).
+
+## Emby setup
+
 
 Overmynd can handle server access requests directly. Wizarr is not needed. This
 feature is off by default and does not change public media observation or Seerr

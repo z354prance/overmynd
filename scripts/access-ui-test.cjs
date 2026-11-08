@@ -6,18 +6,19 @@ const assert = require('node:assert/strict');
     const page = await browser.newPage({viewport:{width:1280,height:900}});
     const errors=[]; page.on('pageerror',e=>errors.push(e.message));
     const submitted=[]; const actions=[];
-    let authenticated=false, saved;
+    let authenticated=false, saved, provider="emby", donations={};
     const pending={id:1,name:'Alice <script>alert(1)</script>',email:'alice@example.com',username:'alice',connect_username:'alice-connect',status:'pending'};
     await page.route('**/api/v1/**',route=>{
       const request=route.request(),path=new URL(request.url()).pathname;
       if(request.method()!=='GET') assert.equal(request.headers()['x-overmynd-request'],'1');
+      if(path==='/api/v1/donations') { if(request.method()==='PUT') donations=request.postDataJSON(); return route.fulfill({json:donations}); }
       if(path==='/api/v1/access/request'){submitted.push(request.postDataJSON());return route.fulfill({status:202,json:{message:'Submitted for approval. Watch your email.'}});}
       if(path==='/api/v1/access/setup'){submitted.push(request.postDataJSON());return route.fulfill({json:{message:'Your account is ready.'}});}
       if(path==='/api/v1/access/settings' && request.method()==='PUT'){saved=request.postDataJSON();return route.fulfill({json:{...saved,emby_key:undefined,smtp_password:undefined}});}
       if(path.startsWith('/api/v1/access/requests/')){actions.push(path);if(path.endsWith('/correct')) Object.assign(pending,request.postDataJSON());else if(path.endsWith('/reset')) {pending.status='pending';pending.emby_id='';}else {pending.status='awaiting_setup';pending.emby_id='created';}return route.fulfill({json:{message:'Request updated'}});}
       const values={
         '/api/v1/auth/status':{authenticated,setup_required:false,username:'admin'},
-        '/api/v1/access/status':{enabled:true},
+        '/api/v1/access/status':{enabled:true,provider},
         '/api/v1/access/settings':{enabled:true,public_url:'https://overmynd.example',emby_url:'http://emby:8096',template_id:'template',smtp_host:'smtp.example',smtp_port:465,smtp_security:'tls',smtp_user:'mailbox',from:'access@example.com',admin_email:'admin@example.com',has_emby_key:true,has_smtp_password:true},
         '/api/v1/access/requests':{requests:[pending]},
         '/api/v1/access/test-email':{message:'Test email sent'},
@@ -75,7 +76,7 @@ const assert = require('node:assert/strict');
     await page.getByRole('button',{name:'Reapply template',exact:true}).click();
     await page.locator('#accessAdminMessage').filter({hasText:'Template settings verified'}).waitFor();
     assert.equal(actions.at(-1),'/api/v1/access/requests/1/reapply-template');
-    await page.getByRole('button',{name:'Reset after Emby deletion',exact:true}).click();
+    await page.getByRole('button',{name:'Reset after server deletion',exact:true}).click();
     await page.locator('#accessQueue button').filter({hasText:/^Approve$/}).waitFor();
     assert.equal(actions.at(-1),'/api/v1/access/requests/1/reset');
     pending.status='active';
@@ -96,6 +97,22 @@ const assert = require('node:assert/strict');
     await page.keyboard.press('Escape');
     authenticated=false;await page.evaluate(()=>applyAuth({authenticated:false}));
     assert.equal(await page.locator('#accessQueue').textContent(),'');assert.equal(await page.locator('#accessAdminPanel').isVisible(),false);
+    provider='jellyfin'; await page.reload();
+    await page.locator('#requestAccessButton').click();
+    assert(await page.locator('#accessConnectField').isHidden());
+    assert.equal(await page.locator('#accessRequestForm [name=connect_username]').isDisabled(),true);
+    await page.locator('#accessRequestDialog [data-close-access]').click();
+    authenticated=true; await page.evaluate(()=>applyAuth({authenticated:true,username:'admin'}));
+    await page.locator('[data-view=settings]').click();
+    const donationForm=page.locator('#donationSettingsForm');
+    await donationForm.locator('[name=title]').fill('Support our server');
+    await donationForm.locator('[name=paypal_url]').fill('https://paypal.me/example');
+    await donationForm.locator('button').click();
+    await page.locator('#donationSettingsMessage').filter({hasText:'saved'}).waitFor();
+    await page.locator('[data-view=dashboard]').click();
+    await page.locator('#openDonate').click();
+    assert.equal(await page.locator('#donationLinks a').getAttribute('href'),'https://paypal.me/example');
+    assert.equal(await page.locator('#donateHeading').textContent(),'Support our server');
     assert.deepEqual(errors,[]);console.log('Access request, approval, setup, privacy and mobile checks passed');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

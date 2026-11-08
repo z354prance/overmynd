@@ -14,6 +14,7 @@ import (
 )
 
 type fixture struct {
+	jellyfin           bool
 	refuseDisable      bool
 	templatePolicy     map[string]any
 	templateConfig     map[string]any
@@ -82,11 +83,15 @@ func testManager(t *testing.T) *fixture {
 			}
 		case "POST /Users/New":
 			var body struct {
-				Name, CopyFromUserId string
-				UserCopyOptions      []string
+				Name, CopyFromUserId, Password string
+				UserCopyOptions                []string
 			}
 			json.NewDecoder(r.Body).Decode(&body)
-			if body.Name != "alice" || body.CopyFromUserId != "template" || len(body.UserCopyOptions) != 2 || body.UserCopyOptions[0] != "UserPolicy" || body.UserCopyOptions[1] != "UserConfiguration" {
+			if f.jellyfin {
+				if body.Name != "alice" || len(body.Password) < 32 || body.CopyFromUserId != "" {
+					t.Error("Jellyfin creation requires a secret initial password")
+				}
+			} else if body.Name != "alice" || body.CopyFromUserId != "template" || len(body.UserCopyOptions) != 2 || body.UserCopyOptions[0] != "UserPolicy" || body.UserCopyOptions[1] != "UserConfiguration" {
 				t.Error("unsafe user creation")
 			}
 			// Simulate a server that copies the disabled flag but leaves broad defaults.
@@ -119,6 +124,9 @@ func testManager(t *testing.T) *fixture {
 			json.NewDecoder(r.Body).Decode(&body)
 			f.passwords = append(f.passwords, body["NewPw"])
 		case "GET /Connect/Pending":
+			if f.jellyfin {
+				t.Error("Jellyfin must not use Connect")
+			}
 			if f.pendingHTTP != 0 {
 				http.Error(w, "upstream error", f.pendingHTTP)
 				return
@@ -133,6 +141,9 @@ func testManager(t *testing.T) *fixture {
 				w.Write([]byte(`[]`))
 			}
 		case "POST /Users/created/Connect/Link":
+			if f.jellyfin {
+				t.Error("Jellyfin must not link Connect")
+			}
 			f.linkCalls++
 			if r.URL.Query().Get("ConnectUsername") != "alice-connect" {
 				t.Error("wrong Connect account")

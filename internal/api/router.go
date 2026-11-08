@@ -50,6 +50,8 @@ func NewRouter(
 	}
 
 	// Public application and observability endpoints.
+	mux.HandleFunc("GET /api/v1/donations", api.donations)
+	mux.HandleFunc("PUT /api/v1/donations", api.requireAdmin(api.saveDonations))
 	mux.HandleFunc("GET /health", health)
 	mux.HandleFunc("GET /api/v1/status", status)
 	mux.HandleFunc("GET /api/v1/missing", api.missing)

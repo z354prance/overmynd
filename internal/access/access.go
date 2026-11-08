@@ -18,6 +18,8 @@ import (
 )
 
 type Settings struct {
+	Provider        string `json:"provider"`
+	ServerPublicURL string `json:"server_public_url"`
 	Enabled         bool   `json:"enabled"`
 	PublicURL       string `json:"public_url"`
 	EmbyURL         string `json:"emby_url"`
@@ -101,6 +103,15 @@ func (m *Manager) Save(s Settings) error {
 	if e != nil {
 		return e
 	}
+	if s.Provider == "" {
+		s.Provider = "emby"
+	}
+	if s.Provider != "emby" && s.Provider != "jellyfin" {
+		return errors.New("choose Emby or Jellyfin")
+	}
+	if s.Enabled && s.Provider == "jellyfin" && !validURL(s.ServerPublicURL, true) {
+		return errors.New("enter the public HTTPS Jellyfin server URL for sign-in instructions")
+	}
 	if s.EmbyKey == "" {
 		s.EmbyKey = old.EmbyKey
 	}
@@ -110,18 +121,18 @@ func (m *Manager) Save(s Settings) error {
 	s.EmbyURL = strings.TrimRight(strings.TrimSpace(s.EmbyURL), "/")
 	s.PublicURL = strings.TrimRight(strings.TrimSpace(s.PublicURL), "/")
 	if s.Enabled && (!validURL(s.PublicURL, true) || !validURL(s.EmbyURL, false) || s.EmbyKey == "" || !idPattern.MatchString(s.TemplateID) || s.SMTPHost == "" || s.SMTPPort < 1 || s.SMTPPort > 65535 || (s.SMTPSecurity != "tls" && s.SMTPSecurity != "starttls") || !address(s.From) || !address(s.AdminEmail) || s.SMTPUser == "" || s.SMTPPassword == "") {
-		return errors.New("complete the HTTPS public URL, Emby template, and secure SMTP settings before enabling access requests")
+		return errors.New("complete the HTTPS public URL, media server template, and secure SMTP settings before enabling access requests")
 	}
 	if strings.ContainsAny(s.SMTPHost, "\r\n/: ") {
 		return errors.New("invalid SMTP hostname")
 	}
-	if old.EmbyURL != "" && s.EmbyURL != old.EmbyURL {
+	if (old.EmbyURL != "" && s.EmbyURL != old.EmbyURL) || isJellyfin(s) != isJellyfin(old) {
 		var n int
-		if e = m.db.QueryRow("SELECT COUNT(*) FROM access_requests WHERE emby_id<>'' OR status='provisioning'").Scan(&n); e != nil {
+		if e = m.db.QueryRow("SELECT COUNT(*) FROM access_requests WHERE status<>'declined'").Scan(&n); e != nil {
 			return e
 		}
 		if n > 0 {
-			return errors.New("Emby server cannot be changed while provisioned requests exist")
+			return errors.New("server address or provider cannot be changed while access requests exist")
 		}
 	}
 	b, e := json.Marshal(s)
@@ -160,8 +171,15 @@ func (m *Manager) Correct(id int64, email, connect string) error {
 	defer m.mu.Unlock()
 	email = strings.ToLower(strings.TrimSpace(email))
 	connect = strings.TrimSpace(connect)
-	if !address(email) || len(email) > 254 || len(connect) < 1 || len(connect) > 100 || strings.ContainsAny(connect, "\r\n") {
-		return errors.New("enter a valid email and Emby Connect username")
+	settings, err := m.Settings()
+	if err != nil {
+		return err
+	}
+	if isJellyfin(settings) {
+		connect = ""
+	}
+	if !address(email) || len(email) > 254 || (!isJellyfin(settings) && len(connect) < 1) || len(connect) > 100 || strings.ContainsAny(connect, "\r\n") {
+		return errors.New("enter a valid notification email and, for Emby, a Connect username")
 	}
 	var duplicates int
 	if e := m.db.QueryRow("SELECT COUNT(*) FROM access_requests WHERE email=? AND id<>?", email, id).Scan(&duplicates); e != nil {
@@ -197,8 +215,11 @@ func (m *Manager) Submit(r Request) error {
 	r.Email = strings.ToLower(strings.TrimSpace(r.Email))
 	r.Username = strings.TrimSpace(r.Username)
 	r.Connect = strings.TrimSpace(r.Connect)
-	if len(r.Name) < 1 || len(r.Name) > 100 || strings.ContainsAny(r.Name, "\r\n") || !address(r.Email) || len(r.Email) > 254 || !usernamePattern.MatchString(r.Username) || len(r.Connect) < 1 || len(r.Connect) > 100 || strings.ContainsAny(r.Connect, "\r\n") {
-		return errors.New("enter a name, valid email, a username of 3-64 letters/numbers/dots/dashes, and your Emby Connect username")
+	if isJellyfin(s) {
+		r.Connect = ""
+	}
+	if len(r.Name) < 1 || len(r.Name) > 100 || strings.ContainsAny(r.Name, "\r\n") || !address(r.Email) || len(r.Email) > 254 || !usernamePattern.MatchString(r.Username) || (!isJellyfin(s) && len(r.Connect) < 1) || len(r.Connect) > 100 || strings.ContainsAny(r.Connect, "\r\n") {
+		return errors.New("enter a name, valid email, a username of 3-64 letters/numbers/dots/dashes, and, for Emby, your Connect username")
 	}
 	var n int
 	e = m.db.QueryRow("SELECT COUNT(*) FROM access_requests WHERE email=? COLLATE NOCASE OR username=? COLLATE NOCASE", r.Email, r.Username).Scan(&n)
@@ -306,17 +327,21 @@ func (m *Manager) Approve(ctx context.Context, id int64) error {
 	if r.EmbyID == "" {
 		var users []embyUser
 		if e = emby(ctx, s, "GET", "/Users", nil, &users); e != nil {
-			return m.fail(id, s, "Unable to check existing Emby usernames")
+			return m.fail(id, s, "Unable to check existing media server usernames")
 		}
 		for _, u := range users {
 			if strings.EqualFold(u.Name, r.Username) {
-				return m.fail(id, s, "Username already exists in Emby; no existing account was changed. Resolve the conflict in Emby before retrying")
+				return m.fail(id, s, "Username already exists on the media server; no existing account was changed. Resolve the conflict on the media server before retrying")
 			}
 		}
 		var created embyUser
-		e = emby(ctx, s, "POST", "/Users/New", map[string]any{"Name": r.Username, "CopyFromUserId": s.TemplateID, "UserCopyOptions": []string{"UserPolicy", "UserConfiguration"}}, &created)
+		createBody := map[string]any{"Name": r.Username, "CopyFromUserId": s.TemplateID, "UserCopyOptions": []string{"UserPolicy", "UserConfiguration"}}
+		if isJellyfin(s) {
+			createBody = map[string]any{"Name": r.Username, "Password": secret()}
+		}
+		e = emby(ctx, s, "POST", "/Users/New", createBody, &created)
 		if e != nil || !idPattern.MatchString(created.ID) {
-			return m.fail(id, s, "Emby creation did not return a confirmed user ID. Check Emby for a partially created account before retrying")
+			return m.fail(id, s, "Account creation did not return a confirmed user ID. Check the media server for a partially created account before retrying")
 		}
 		r.EmbyID = created.ID
 		createdNow = true
@@ -326,13 +351,13 @@ func (m *Manager) Approve(ctx context.Context, id int64) error {
 	}
 	var user embyUser
 	if e = emby(ctx, s, "GET", "/Users/"+url.PathEscape(r.EmbyID), nil, &user); e != nil {
-		return m.fail(id, s, "Unable to verify the new Emby user")
+		return m.fail(id, s, "Unable to verify the new media server user")
 	}
 	if user.ID != r.EmbyID || !strings.EqualFold(user.Name, r.Username) {
-		return m.fail(id, s, "Emby user identity changed; inspect it before retrying")
+		return m.fail(id, s, "Media server user identity changed; inspect it before retrying")
 	}
 	if user.Policy == nil {
-		return m.fail(id, s, "Emby did not return the user policy")
+		return m.fail(id, s, "Media server did not return the user policy")
 	}
 	if createdNow && user.Policy["IsDisabled"] != true {
 		if err := quarantine(s, r, user.Policy); err != nil {
@@ -347,9 +372,11 @@ func (m *Manager) Approve(ctx context.Context, id int64) error {
 	if e = emby(ctx, s, "POST", "/Users/"+r.EmbyID+"/Password", map[string]any{"Id": r.EmbyID, "NewPw": secret()}, nil); e != nil {
 		return m.fail(id, s, "Unable to secure the new account with a temporary random password")
 	}
-	var link struct{ IsPending *bool }
-	if e = emby(ctx, s, "POST", "/Users/"+r.EmbyID+"/Connect/Link?ConnectUsername="+url.QueryEscape(r.Connect), nil, &link); e != nil || link.IsPending == nil {
-		return m.fail(id, s, "Emby Connect linking failed; check the requested Connect username")
+	if !isJellyfin(s) {
+		var link struct{ IsPending *bool }
+		if e = emby(ctx, s, "POST", "/Users/"+r.EmbyID+"/Connect/Link?ConnectUsername="+url.QueryEscape(r.Connect), nil, &link); e != nil || link.IsPending == nil {
+			return m.fail(id, s, "Emby Connect linking failed; check the requested Connect username")
+		}
 	}
 	if e = m.setState(id, "awaiting_setup", ""); e != nil {
 		return e
@@ -361,6 +388,10 @@ func (m *Manager) sendSetup(r Request, s Settings) error {
 	_, e := m.db.Exec("UPDATE access_requests SET token_hash=?,token_expires=?,updated_at=? WHERE id=?", hash(token), time.Now().Add(24*time.Hour).Unix(), time.Now().UTC().Format(time.RFC3339), r.ID)
 	if e != nil {
 		return e
+	}
+	if isJellyfin(s) {
+		m.notify(r.ID, s, []notice{{r.Email, "Your access request is approved", "Your Jellyfin account has been created and remains disabled until you choose a password. Use this single-use link within 24 hours:\n\n" + s.PublicURL + "/#access-setup=" + token + "\n\nUsername: " + r.Username + "\nDo not share this link."}})
+		return nil
 	}
 	m.notify(r.ID, s, []notice{{r.Email, "Your access request is approved", "Your Emby user has been created and remains disabled until setup is complete. Confirm any Emby Connect email first, then set your local password using this single-use link (expires in 24 hours):\n\n" + s.PublicURL + "/#access-setup=" + token + "\n\nUsername: " + r.Username + "\nDo not share this link. Overmynd will not ask for your Emby Connect password."}})
 	return nil
@@ -384,7 +415,7 @@ func (m *Manager) Resend(id int64) error {
 	case "declined":
 		m.notify(id, s, []notice{{r.Email, "Access request update", "Your request for server access was not approved. Contact the server owner if you have questions."}})
 	case "active":
-		m.notify(id, s, []notice{completionNotice(r)})
+		m.notify(id, s, []notice{serverCompletionNotice(r, s)})
 	default:
 		return errors.New("resolve the setup error before resending")
 	}
@@ -462,7 +493,7 @@ func (m *Manager) Setup(ctx context.Context, token, password string) error {
 	}()
 	var user embyUser
 	if e = emby(ctx, s, "GET", "/Users/"+r.EmbyID, nil, &user); e != nil || user.Policy == nil {
-		return errors.New("unable to read your Emby account")
+		return errors.New("unable to read your media server account")
 	}
 	if user.ID != r.EmbyID || !strings.EqualFold(user.Name, r.Username) {
 		return errors.New("account identity changed; contact the server owner")
@@ -487,7 +518,7 @@ func (m *Manager) Setup(ctx context.Context, token, password string) error {
 		return e
 	}
 	if e = emby(ctx, s, "POST", "/Users/"+r.EmbyID+"/Password", map[string]any{"Id": r.EmbyID, "NewPw": password}, nil); e != nil {
-		return errors.New("Emby could not set the password; retry or contact the server owner")
+		return errors.New("The media server could not set the password; retry or contact the server owner")
 	}
 	desiredPolicy["IsDisabled"] = false
 	activationAttempted = true
@@ -502,6 +533,6 @@ func (m *Manager) Setup(ctx context.Context, token, password string) error {
 		return e
 	}
 	success = true
-	m.notify(id, s, []notice{completionNotice(r)})
+	m.notify(id, s, []notice{serverCompletionNotice(r, s)})
 	return nil
 }
