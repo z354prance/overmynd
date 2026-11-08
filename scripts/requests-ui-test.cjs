@@ -26,6 +26,7 @@ const assert = require('node:assert/strict');
         return route.fulfill(deny?{status:502,json:{error:'Seerr denied access for the configured request user'}}:{status:201,json:{id:123,status:1}});
       }
       const payloads={
+        '/api/v1/donations':{title:'Support this server',paypal_url:'https://paypal.me/example',cashapp_url:'https://cash.app/$example'},
         '/api/v1/auth/status':{authenticated:false,setup_required:false},
         '/api/v1/services':[{id:4,type:'seerr',name:'Seerr',enabled:true}],
         '/api/v1/request-settings':{enabled:false,service_id:0,user_id:0},
@@ -155,8 +156,8 @@ const assert = require('node:assert/strict');
     assert.deepEqual(savedSettings,{enabled:true,service_id:4,user_id:7});
     await page.locator('#openDonate').click();
     assert(await page.locator('#donatePopover').isVisible());
-    assert.equal(await page.locator('#donatePopover a').first().getAttribute('href'),'https://paypal.me/z354prance');
-    assert.equal(await page.locator('#donatePopover a').nth(1).getAttribute('href'),'https://cash.app/$PayLuffie');
+    assert.equal(await page.locator('#donatePopover a').first().getAttribute('href'),'https://paypal.me/example');
+    assert.equal(await page.locator('#donatePopover a').nth(1).getAttribute('href'),'https://cash.app/$example');
     await page.keyboard.press('Escape');
     assert(!(await page.locator('#donatePopover').isVisible()));
     assert.deepEqual(errors,[]);
