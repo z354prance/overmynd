@@ -1,15 +1,16 @@
 # Unraid template
 
-Overmynd publishes `ghcr.io/z354prance/overmynd:auth-completion` for Linux amd64
-(Unraid). Each push to `auth-completion` publishes only after all CI checks pass.
-No merge to main is required. Exact builds are also tagged `sha-<full-commit-sha>`.
+Overmynd publishes `ghcr.io/z354prance/overmynd:latest` for Linux amd64
+(Unraid). Each push to `main` publishes `latest` and `main` only after all CI checks pass.
+Development builds use `auth-completion`. Exact builds are tagged `sha-<full-commit-sha>`.
+See [Docker instructions](../docs/docker.md) for Docker Compose and command-line installation.
 
 ## Switch an existing container (once)
 
 In Unraid Docker > Overmynd > Edit, change **Repository** to:
 
 ```text
-ghcr.io/z354prance/overmynd:auth-completion
+ghcr.io/z354prance/overmynd:latest
 ```
 
 Keep your existing network/custom IP, port, environment variables and path mappings,
@@ -40,7 +41,7 @@ without credentials. Verify an anonymous pull before switching the running conta
 The template includes the project icon. If you installed an earlier template, open the existing container's **Edit Ã¢â€ â€™ Advanced View**, set **Icon URL** to the following, and click **Apply**:
 
 ```text
-https://raw.githubusercontent.com/z354prance/overmynd/auth-completion/unraid/overmynd-icon-v2.png
+https://raw.githubusercontent.com/z354prance/overmynd/main/unraid/overmynd-icon-v2.png
 ```
 
 Refresh the Docker page afterward. You do not need to rebuild the application image or replace your saved configuration to add the icon.

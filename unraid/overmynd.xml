@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Container version="2">
   <Name>overmynd</Name>
-  <Repository>ghcr.io/z354prance/overmynd:auth-completion</Repository>
+  <Repository>ghcr.io/z354prance/overmynd:latest</Repository>
   <Registry>https://github.com/z354prance/overmynd/pkgs/container/overmynd</Registry>
   <Network>bridge</Network>
   <MyIP/>
@@ -11,9 +11,9 @@
   <Project>https://github.com/z354prance/overmynd</Project>
   <Overview>Overmynd media dashboard with public playback, progress, and optional Seerr requests. Administration requires sign-in. Pulls the published image from GitHub Container Registry. Use Unraid Force Update to install new builds. Existing settings are preserved in /mnt/user/appdata/overmynd/config.</Overview>
   <Category>MediaApp:Other</Category>
-  <Icon>https://raw.githubusercontent.com/z354prance/overmynd/auth-completion/unraid/overmynd-icon-v2.png</Icon>
+  <Icon>https://raw.githubusercontent.com/z354prance/overmynd/main/unraid/overmynd-icon-v2.png</Icon>
   <WebUI>http://[IP]:[PORT:8080]</WebUI>
-  <TemplateURL>https://raw.githubusercontent.com/z354prance/overmynd/auth-completion/unraid/overmynd.xml</TemplateURL>
+  <TemplateURL>https://raw.githubusercontent.com/z354prance/overmynd/main/unraid/overmynd.xml</TemplateURL>
   <ExtraParams/>
   <PostArgs/>
   <Config Name="WebUI Port" Target="8080" Default="18080" Mode="tcp" Description="Overmynd dashboard port" Type="Port" Display="always" Required="true" Mask="false">18080</Config>

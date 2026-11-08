@@ -37,11 +37,11 @@ The `web/` assets mirror `internal/webui/web/`, which is embedded into the execu
 Update both together; CI checks parity, Go tests with the race detector, browser
 authentication flows at 320–1440 px, and the Docker build.
 
-To test on Unraid, pull `auth-completion` and build the Dockerfile. Keep the existing
-`/config` mount (back it up first); the container runs as UID/GID 1000 and needs write
-access. Verify public dashboard access while signed out, administrator setup or login
-under Settings, service edits, logout, and HTTPS proxy access if used. PR #1 remains
-a draft until deployment validation is complete.
+## Docker installation
+
+Use the published image `ghcr.io/z354prance/overmynd:latest`. See the
+[Docker setup, updates, backups, and rollback instructions](docs/docker.md), or the
+[Unraid instructions](unraid/README.md). Configuration and accounts persist in `/config`.
 
 ## Public Seerr requests
 
@@ -76,7 +76,7 @@ route accepts only signed Tracearr image paths and never forwards API credential
 
 ## Unraid management
 
-Use the [Unraid template and installation instructions](unraid/README.md) to manage the container through Unraid with the existing configuration directory and port pre-filled. The template uses the locally built image.
+Use the [Unraid template and installation instructions](unraid/README.md) to manage the container through Unraid with the existing configuration directory and port pre-filled. The template uses the published stable image.
 
 ### Recently Added
 
@@ -96,4 +96,4 @@ notifications are available in Settings. Wizarr is not required. See
 
 ### TorBoxarr transfers
 
-TorBoxarr SABnzbd-compatible local transfers are supported. See [setup and reported metrics](docs/torboxarr.md).
+Both TorBoxarr SABnzbd-compatible Usenet and qBittorrent-compatible torrent local transfers are supported. See [setup and reported metrics](docs/torboxarr.md).
