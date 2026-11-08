@@ -142,3 +142,57 @@ func TestSeasonProgressExcludesFutureEpisodes(t *testing.T) {
 		t.Fatal("airtime boundary omitted", got)
 	}
 }
+
+func TestRemovedSeriesTrackingRequiresConfirmedAbsence(t *testing.T) {
+	for _, tc := range []struct {
+		name            string
+		detail          int
+		catalogue       string
+		catalogueStatus int
+		removed         bool
+	}{
+		{"deleted", 404, `[]`, 200, true},
+		{"still listed", 404, `[{"id":24}]`, 200, false},
+		{"server error", 500, `[]`, 200, false},
+		{"catalogue failure", 404, `[]`, 503, false},
+		{"invalid catalogue", 404, `null`, 200, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/api/v3/series/24" {
+					w.WriteHeader(tc.detail)
+					return
+				}
+				if r.URL.Path == "/api/v3/series" {
+					w.WriteHeader(tc.catalogueStatus)
+					fmt.Fprint(w, tc.catalogue)
+					return
+				}
+				t.Errorf("unexpected endpoint %s", r.URL.Path)
+				w.WriteHeader(404)
+			}))
+			defer server.Close()
+			m := testManager(t)
+			service, err := m.Create(Input{Type: models.ServiceSonarr, Name: "Sonarr", Enabled: true, BaseURL: server.URL, Credential: "secret"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			key := fmt.Sprintf("tracked-show:%d:24", service.ID)
+			if _, err = m.db.DB.Exec("INSERT INTO settings(key,value,updated_at) VALUES(?, 'true', datetime('now'))", key); err != nil {
+				t.Fatal(err)
+			}
+			_, errs := m.seasonProgress(context.Background(), nil)
+			var n int
+			m.db.DB.QueryRow("SELECT COUNT(*) FROM settings WHERE key=?", key).Scan(&n)
+			if tc.removed {
+				if n != 0 || len(errs) != 0 {
+					t.Fatal(n, errs)
+				}
+			} else {
+				if n != 1 || len(errs) != 1 {
+					t.Fatal(n, errs)
+				}
+			}
+		})
+	}
+}

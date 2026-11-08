@@ -2,10 +2,12 @@ package services
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"github.com/z354prance/overmynd/internal/integrations"
 	"github.com/z354prance/overmynd/internal/integrations/arr"
 	"github.com/z354prance/overmynd/internal/models"
+	"net/http"
 	"sort"
 	"strings"
 	"time"
@@ -136,25 +138,32 @@ func (m *Manager) seasonProgress(ctx context.Context, downloads []models.Downloa
 		}
 		client := integrations.NewHTTPClient()
 		arrClient := arr.NewClient("v3")
-		endpoint, err := arrClient.Endpoint(service.BaseURL, fmt.Sprintf("episode?seriesId=%d", group.series))
+		endpoint, err := arrClient.Endpoint(service.BaseURL, fmt.Sprintf("series/%d", group.series))
 		if err != nil {
 			errors = append(errors, serviceError(service, err))
-			continue
-		}
-		var episodes []seasonEpisode
-		if err = client.GetJSON(ctx, endpoint, map[string]string{"X-Api-Key": credential}, &episodes); err != nil {
-			errors = append(errors, serviceError(service, fmt.Errorf("unable to read Sonarr import progress")))
-			continue
-		}
-		endpoint, err = arrClient.Endpoint(service.BaseURL, fmt.Sprintf("series/%d", group.series))
-		if err != nil {
 			continue
 		}
 		var series struct {
 			Title string `json:"title"`
 		}
 		if err = client.GetJSON(ctx, endpoint, map[string]string{"X-Api-Key": credential}, &series); err != nil {
-			errors = append(errors, serviceError(service, fmt.Errorf("unable to read Sonarr series details")))
+			if confirmedRemovedSeries(ctx, client, arrClient, service.BaseURL, credential, group.series, err) {
+				if _, deleteErr := m.db.DB.ExecContext(ctx, "DELETE FROM settings WHERE key = ?", fmt.Sprintf("tracked-show:%d:%d", group.service, group.series)); deleteErr != nil {
+					errors = append(errors, serviceError(service, fmt.Errorf("unable to clear removed series tracking")))
+				}
+				continue
+			}
+			errors = append(errors, serviceError(service, sonarrReadError("series details", group.series, err)))
+			continue
+		}
+		endpoint, err = arrClient.Endpoint(service.BaseURL, fmt.Sprintf("episode?seriesId=%d", group.series))
+		if err != nil {
+			errors = append(errors, serviceError(service, err))
+			continue
+		}
+		var episodes []seasonEpisode
+		if err = client.GetJSON(ctx, endpoint, map[string]string{"X-Api-Key": credential}, &episodes); err != nil {
+			errors = append(errors, serviceError(service, sonarrReadError("import progress", group.series, err)))
 			continue
 		}
 
@@ -183,4 +192,39 @@ func (m *Manager) seasonProgress(ctx context.Context, downloads []models.Downloa
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
 	return result, errors
+}
+
+// A detail 404 alone may be a bad proxy route. Confirm absence in a valid catalogue
+// before forgetting an enrolled show. All other failures preserve tracking.
+func confirmedRemovedSeries(ctx context.Context, client *integrations.HTTPClient, arrClient *arr.Client, base, key string, id int64, cause error) bool {
+	var status *integrations.HTTPStatusError
+	if !stderrors.As(cause, &status) || status.StatusCode != http.StatusNotFound {
+		return false
+	}
+	endpoint, err := arrClient.Endpoint(base, "series")
+	if err != nil {
+		return false
+	}
+	var catalogue []struct {
+		ID int64 `json:"id"`
+	}
+	if err = client.GetJSON(ctx, endpoint, map[string]string{"X-Api-Key": key}, &catalogue); err != nil || catalogue == nil {
+		return false
+	}
+	for _, item := range catalogue {
+		if item.ID <= 0 || item.ID == id {
+			return false
+		}
+	}
+	return true
+}
+func sonarrReadError(part string, id int64, cause error) error {
+	var status *integrations.HTTPStatusError
+	if stderrors.As(cause, &status) {
+		return fmt.Errorf("unable to read Sonarr %s for series %d (HTTP %d)", part, id, status.StatusCode)
+	}
+	if stderrors.Is(cause, context.DeadlineExceeded) {
+		return fmt.Errorf("unable to read Sonarr %s for series %d (request timed out)", part, id)
+	}
+	return fmt.Errorf("unable to read Sonarr %s for series %d (connection or response error)", part, id)
 }

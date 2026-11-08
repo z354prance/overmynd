@@ -11,6 +11,15 @@ import (
 	"time"
 )
 
+type HTTPStatusError struct {
+	StatusCode int
+	Message    string
+}
+
+func (e *HTTPStatusError) Error() string {
+	return fmt.Sprintf("remote service returned %d: %s", e.StatusCode, e.Message)
+}
+
 const maxResponseSize = 10 << 20
 
 type HTTPClient struct {
@@ -91,11 +100,7 @@ func (c *HTTPClient) GetJSON(
 			message = http.StatusText(resp.StatusCode)
 		}
 
-		return fmt.Errorf(
-			"remote service returned %d: %s",
-			resp.StatusCode,
-			message,
-		)
+		return &HTTPStatusError{StatusCode: resp.StatusCode, Message: message}
 	}
 
 	reader := io.LimitReader(resp.Body, maxResponseSize)
