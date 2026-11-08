@@ -9,3 +9,6 @@ README.md
 *.db
 *.db-shm
 *.db-wal
+
+# Local test runtime and caches
+.test-*

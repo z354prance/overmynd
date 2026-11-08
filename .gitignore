@@ -22,3 +22,6 @@ tdarr-active-workers.json
 .vscode/
 .idea/
 *.before-*
+
+# Local test runtime and caches
+.test-*

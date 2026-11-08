@@ -61,3 +61,22 @@ func TestServiceInputAPIKey(t *testing.T) {
 		)
 	}
 }
+
+func TestTorBoxarrCredentialTypes(t *testing.T) {
+	sab, err := serviceInput(serviceRequest{Type: models.ServiceTorBoxarr, Credential: "sab-secret"})
+	if err != nil || sab.Credential != "sab-secret" {
+		t.Fatal("SAB credential changed")
+	}
+	torrent, err := serviceInput(serviceRequest{Type: models.ServiceTorBoxarrTorrent, Username: "admin", Password: "torrent-secret"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	auth, err := integrations.DecodeUsernamePassword(torrent.Credential)
+	if err != nil || auth.Username != "admin" || auth.Password != "torrent-secret" {
+		t.Fatal("torrent login not encoded")
+	}
+	blank, err := serviceInput(serviceRequest{Type: models.ServiceTorBoxarrTorrent})
+	if err != nil || blank.Credential != "" {
+		t.Fatal("blank edit must preserve saved credentials")
+	}
+}

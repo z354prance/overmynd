@@ -79,7 +79,7 @@ function pipelineProgress(item) {
   if (item.stage === "downloading") {
     const downloads = pipelineRecords(item, "download", state.downloads);
     // Prefer the download client's byte counts over an ARR copy of the same queue.
-    const clients = downloads.filter((d) => ["qbittorrent", "nzbget", "torboxarr"].includes(d.source));
+    const clients = downloads.filter((d) => ["qbittorrent", "nzbget", "torboxarr", "torboxarr_torrent"].includes(d.source));
     const records = clients.length ? clients : downloads;
     sources = records;
     const measured = records.filter((d) => Number.isFinite(Number(d.size)) && Number(d.size) > 0);
@@ -89,7 +89,7 @@ function pipelineProgress(item) {
       percent = 100 * (total - remaining) / total;
       detail = `${formatBytes(total - remaining)} of ${formatBytes(total)}`;
     }
-    if (records.length === 1 && records[0].source === "torboxarr") {
+    if (records.length === 1 && isTorBoxarr(records[0].source)) {
       const transfer = records[0];
       if (percent === null && typeof transfer.progress === "number") percent = transfer.progress;
       detail = `TorBox to Unraid - ${detail}`;
@@ -97,7 +97,7 @@ function pipelineProgress(item) {
       if (typeof transfer.speed === "number" && transfer.speed >= 0) detail += ` - ${formatBytes(transfer.speed)}/s`;
     }
     paused = records.some((d) => /paused|queued/i.test(d.status || ""));
-    if (paused && !records.some(d => d.source === "torboxarr")) label = "Download paused / queued";
+    if (paused && !records.some(d => isTorBoxarr(d.source))) label = "Download paused / queued";
     if (records.length === 1 && records[0].time_left && !paused) detail += ` · ${records[0].time_left} remaining`;
   } else if (item.stage === "processing") {
     const reportedJobs = pipelineRecords(item, "processing", state.processing);
@@ -202,7 +202,7 @@ function isSeriesProgress(item) {
   // Count distinct downloader records, not ARR mirrors of the same transfer.
   const bySource = new Map();
   for (const record of pipelineRecords(item, "download", state.downloads)) {
-    if (!["nzbget", "qbittorrent", "torboxarr"].includes(record.source)) continue;
+    if (!["nzbget", "qbittorrent", "torboxarr", "torboxarr_torrent"].includes(record.source)) continue;
     const key = `${record.source}:${record.source_service_id}`;
     if (!bySource.has(key)) bySource.set(key, new Set());
     bySource.get(key).add(String(record.id));
@@ -232,7 +232,7 @@ function visiblePipelineItem(item) {
   if (!["importing", "processing", "downloading"].includes(item.stage)) return false;
   if (isSeriesProgress(item) || item.stage !== "downloading") return true;
   const downloads = pipelineRecords(item, "download", state.downloads);
-  const clients = downloads.filter(d => ["nzbget", "qbittorrent", "torboxarr"].includes(d.source));
+  const clients = downloads.filter(d => ["nzbget", "qbittorrent", "torboxarr", "torboxarr_torrent"].includes(d.source));
   const records = clients.length ? clients : downloads;
   return records.length > 0 && !records.every(pendingDownload);
 }
@@ -268,10 +268,10 @@ function processingSupersedesDownload(download, jobs) {
 function individualProgressCards(item) {
   const jobs = pipelineRecords(item, "processing", state.processing);
   const downloads = pipelineRecords(item, "download", state.downloads);
-  const clients = downloads.filter(d => ["nzbget", "qbittorrent", "torboxarr"].includes(d.source));
+  const clients = downloads.filter(d => ["nzbget", "qbittorrent", "torboxarr", "torboxarr_torrent"].includes(d.source));
   const transfers = clients.length ? clients : downloads;
   if (jobs.length + transfers.length <= 1) {
-    if (!jobs.length && transfers.length === 1 && transfers[0].source === "torboxarr") return [{...item, stage:"downloading"}];
+    if (!jobs.length && transfers.length === 1 && isTorBoxarr(transfers[0].source)) return [{...item, stage:"downloading"}];
     return [item];
   }
   const card = (record, type, stage) => ({
@@ -809,7 +809,7 @@ function updateDownloadStatusOptions() {
 
   const statuses = [...new Set(
     state.downloads
-      .filter((item) => ["qbittorrent", "nzbget", "torboxarr"].includes(item.source))
+      .filter((item) => ["qbittorrent", "nzbget", "torboxarr", "torboxarr_torrent"].includes(item.source))
       .map((item) => item.status)
       .filter(Boolean)
   )].sort();
@@ -834,7 +834,7 @@ function filteredDownloads() {
   const status = $("downloadStatus").value;
 
   return state.downloads.filter((item) => {
-    if (!["qbittorrent", "nzbget", "torboxarr"].includes(item.source)) {
+    if (!["qbittorrent", "nzbget", "torboxarr", "torboxarr_torrent"].includes(item.source)) {
       return false;
     }
 
@@ -1527,8 +1527,10 @@ function renderMissing() {
     $(id).addEventListener("change", renderMissing);
   });
 
+function isTorBoxarr(type) { return ["torboxarr", "torboxarr_torrent"].includes(type); }
+
 function serviceUsesLogin(type) {
-  return type === "qbittorrent" || type === "nzbget";
+  return type === "qbittorrent" || type === "nzbget" || type === "torboxarr_torrent";
 }
 
 function serviceNeedsNoCredential(type) {
@@ -1544,7 +1546,8 @@ function serviceDefaultName(type) {
     tdarr: "Tdarr",
     qbittorrent: "qBittorrent",
     nzbget: "NZBGet",
-    torboxarr: "TorBoxarr",
+    torboxarr: "TorBoxarr Usenet",
+    torboxarr_torrent: "TorBoxarr Torrents",
     tracearr: "Tracearr",
   };
 
@@ -1649,6 +1652,8 @@ function renderServiceManagement() {
 function updateServiceCredentialFields() {
   const type = $("serviceType").value;
   const editing = Boolean($("serviceID").value);
+  $("serviceBaseURL").placeholder = isTorBoxarr(type) ? "http://10.0.0.77:8085" : "http://192.168.1.10:7878";
+  $("serviceCredentialLabel").textContent = type === "torboxarr" ? "SABnzbd API key" : "API Key / Token";
 
   const apiFields = $("serviceAPIKeyFields");
   const loginFields = $("serviceLoginFields");
@@ -1668,6 +1673,7 @@ function updateServiceCredentialFields() {
     $("serviceLoginHelp").textContent = editing
       ? "Leave username and password blank to keep the saved credentials."
       : "Enter the username and password used by this service.";
+    if (type === "torboxarr_torrent") $("serviceLoginHelp").textContent = "Use the TorBoxarr qBittorrent login configured in Sonarr/Radarr (usually username admin)." + (editing ? " Leave both blank to keep the saved login." : "");
   } else {
     apiFields.hidden = false;
     loginFields.hidden = true;
@@ -1675,6 +1681,7 @@ function updateServiceCredentialFields() {
     $("serviceCredentialHelp").textContent = editing
       ? "Leave this blank to keep the saved credential."
       : "Enter the API key or access token for this service.";
+    if (type === "torboxarr") $("serviceCredentialHelp").textContent = "Use TORBOXARR_SAB_API_KEY from TorBoxarr, also used by Sonarr/Radarr's SABnzbd connection." + (editing ? " Leave blank to keep the saved key." : "");
   }
 }
 

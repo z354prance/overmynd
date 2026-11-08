@@ -99,6 +99,7 @@ func main() {
 		qbittorrent.New(),
 		nzbget.New(),
 		torboxarr.New(),
+		torboxarr.NewTorrent(),
 		seerr.New(),
 		tracearr.New(),
 		tdarr.New(),

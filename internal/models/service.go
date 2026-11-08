@@ -5,15 +5,16 @@ import "time"
 type ServiceType string
 
 const (
-	ServiceTracearr    ServiceType = "tracearr"
-	ServiceRadarr      ServiceType = "radarr"
-	ServiceSonarr      ServiceType = "sonarr"
-	ServiceLidarr      ServiceType = "lidarr"
-	ServiceSeerr       ServiceType = "seerr"
-	ServiceTdarr       ServiceType = "tdarr"
-	ServiceQBittorrent ServiceType = "qbittorrent"
-	ServiceNZBGet      ServiceType = "nzbget"
-	ServiceTorBoxarr   ServiceType = "torboxarr"
+	ServiceTracearr         ServiceType = "tracearr"
+	ServiceRadarr           ServiceType = "radarr"
+	ServiceSonarr           ServiceType = "sonarr"
+	ServiceLidarr           ServiceType = "lidarr"
+	ServiceSeerr            ServiceType = "seerr"
+	ServiceTdarr            ServiceType = "tdarr"
+	ServiceQBittorrent      ServiceType = "qbittorrent"
+	ServiceNZBGet           ServiceType = "nzbget"
+	ServiceTorBoxarr        ServiceType = "torboxarr"
+	ServiceTorBoxarrTorrent ServiceType = "torboxarr_torrent"
 )
 
 var SupportedServices = []ServiceType{
@@ -26,6 +27,7 @@ var SupportedServices = []ServiceType{
 	ServiceQBittorrent,
 	ServiceNZBGet,
 	ServiceTorBoxarr,
+	ServiceTorBoxarrTorrent,
 }
 
 type Service struct {

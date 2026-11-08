@@ -232,7 +232,7 @@ func serviceInput(request serviceRequest) (services.Input, error) {
 
 	switch request.Type {
 	case models.ServiceQBittorrent,
-		models.ServiceNZBGet:
+		models.ServiceNZBGet, models.ServiceTorBoxarrTorrent:
 		if request.Username != "" || request.Password != "" {
 			encoded, err := integrations.EncodeUsernamePassword(
 				request.Username,
