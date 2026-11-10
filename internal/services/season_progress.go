@@ -38,6 +38,10 @@ func countSeasonProgress(episodes []seasonEpisode, queued map[int64]bool) map[in
 }
 
 func countSeasonProgressAt(episodes []seasonEpisode, queued map[int64]bool, now time.Time) map[int]SeasonProgress {
+	return countSeasonProgressWithRuntime(episodes, queued, now, 0)
+}
+
+func countSeasonProgressWithRuntime(episodes []seasonEpisode, queued map[int64]bool, now time.Time, runtime int) map[int]SeasonProgress {
 	active := queued[0] // A matched Tdarr job keeps the series active after its queue entries leave Sonarr.
 	for _, ep := range episodes {
 		if queued[ep.ID] {
@@ -50,13 +54,10 @@ func countSeasonProgressAt(episodes []seasonEpisode, queued map[int64]bool, now 
 			continue
 		}
 		// Imported files and actual queued releases count even if Sonarr's air
-		// date is still ahead. Unknown dates retain the existing behavior.
+		// date is still ahead. Undated episodes are not missing in Sonarr.
 		if !ep.HasFile && !queued[ep.ID] {
 			aired, err := time.Parse(time.RFC3339, ep.AirDateUTC)
-			if err != nil {
-				aired, err = time.Parse("2006-01-02", ep.AirDate)
-			}
-			if err == nil && aired.After(now) {
+			if err != nil || aired.Add(time.Duration(max(runtime, 0))*time.Minute).After(now) {
 				continue
 			}
 		}
@@ -144,7 +145,8 @@ func (m *Manager) seasonProgress(ctx context.Context, downloads []models.Downloa
 			continue
 		}
 		var series struct {
-			Title string `json:"title"`
+			Title   string `json:"title"`
+			Runtime int    `json:"runtime"`
 		}
 		if err = client.GetJSON(ctx, endpoint, map[string]string{"X-Api-Key": credential}, &series); err != nil {
 			if confirmedRemovedSeries(ctx, client, arrClient, service.BaseURL, credential, group.series, err) {
@@ -167,8 +169,8 @@ func (m *Manager) seasonProgress(ctx context.Context, downloads []models.Downloa
 			continue
 		}
 
-		counts := countSeasonProgress(episodes, queued)
-		complete := len(counts) > 0
+		counts := countSeasonProgressWithRuntime(episodes, queued, time.Now(), series.Runtime)
+		complete := len(episodes) > 0
 		for _, count := range counts {
 			if count.Imported < count.Total {
 				complete = false

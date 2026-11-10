@@ -11,7 +11,7 @@ import (
 )
 
 func TestSeasonProgressCountsImportedMonitoredEpisodes(t *testing.T) {
-	episodes := []seasonEpisode{{ID: 1, Season: 1, Monitored: true, HasFile: true}, {ID: 2, Season: 1, Monitored: true}, {ID: 3, Season: 1, Monitored: false, HasFile: true}, {ID: 4, Season: 2, Monitored: true}}
+	episodes := []seasonEpisode{{ID: 1, Season: 1, Monitored: true, HasFile: true}, {ID: 2, Season: 1, Monitored: true, AirDateUTC: "2020-01-01T00:00:00Z"}, {ID: 3, Season: 1, Monitored: false, HasFile: true}, {ID: 4, Season: 2, Monitored: true, AirDateUTC: "2020-01-01T00:00:00Z"}}
 	got := countSeasonProgress(episodes, map[int64]bool{2: true})
 	if len(got) != 2 || got[1].Imported != 1 || got[1].Total != 2 {
 		t.Fatal(got)
@@ -36,7 +36,7 @@ func TestSeasonProgressReadsSonarrFiles(t *testing.T) {
 			if r.URL.Query().Get("seriesId") != "24" {
 				t.Error("wrong series")
 			}
-			fmt.Fprint(w, `[{"id":1,"seasonNumber":1,"monitored":true,"hasFile":true},{"id":2,"seasonNumber":1,"monitored":true,"hasFile":false}]`)
+			fmt.Fprint(w, `[{"id":1,"seasonNumber":1,"monitored":true,"hasFile":true},{"id":2,"seasonNumber":1,"monitored":true,"hasFile":false,"airDateUtc":"2020-01-01T00:00:00Z"}]`)
 		case "/api/v3/series/24":
 			fmt.Fprint(w, `{"title":"24"}`)
 		default:
@@ -58,7 +58,7 @@ func TestSeasonProgressReadsSonarrFiles(t *testing.T) {
 func TestActiveShowIncludesCompletedAndNonQueuedSeasons(t *testing.T) {
 	episodes := []seasonEpisode{}
 	for season := 1; season <= 9; season++ {
-		episodes = append(episodes, seasonEpisode{ID: int64(season), Season: season, Monitored: true, HasFile: season == 1})
+		episodes = append(episodes, seasonEpisode{ID: int64(season), Season: season, Monitored: true, HasFile: season == 1, AirDateUTC: "2020-01-01T00:00:00Z"})
 	}
 	// Only season 9 has a queue record in this snapshot.
 	got := countSeasonProgress(episodes, map[int64]bool{9: true})
@@ -81,7 +81,7 @@ func TestSeriesOverviewPersistsUntilSonarrImportsAllEpisodes(t *testing.T) {
 		case "/api/v3/series/24":
 			fmt.Fprint(w, `{"title":"MacGyver (2016)"}`)
 		case "/api/v3/episode":
-			fmt.Fprintf(w, `[{"id":1,"seasonNumber":1,"monitored":true,"hasFile":true},{"id":2,"seasonNumber":2,"monitored":true,"hasFile":%t},{"id":3,"seasonNumber":2,"monitored":true,"hasFile":false,"airDateUtc":"2099-10-29T04:00:00Z"}]`, complete)
+			fmt.Fprintf(w, `[{"id":1,"seasonNumber":1,"monitored":true,"hasFile":true},{"id":2,"seasonNumber":2,"monitored":true,"hasFile":%t,"airDateUtc":"2020-01-01T00:00:00Z"},{"id":3,"seasonNumber":2,"monitored":true,"hasFile":false,"airDateUtc":"2099-10-29T04:00:00Z"},{"id":4,"seasonNumber":3,"monitored":true,"hasFile":false}]`, complete)
 		default:
 			w.WriteHeader(404)
 		}
@@ -194,5 +194,44 @@ func TestRemovedSeriesTrackingRequiresConfirmedAbsence(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestSeasonProgressDoesNotTreatUndatedEpisodesAsMissing(t *testing.T) {
+	now := time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC)
+	episodes := []seasonEpisode{
+		{ID: 1, Season: 1, Monitored: true, HasFile: true},
+		{ID: 2, Season: 2, Monitored: true},
+		{ID: 3, Season: 2, Monitored: true, AirDateUTC: "not-a-date"},
+		{ID: 4, Season: 2, Monitored: true, AirDate: "2020-01-01"},
+		{ID: 5, Season: 2, Monitored: true, AirDateUTC: "2026-12-01T00:00:00Z"},
+		{ID: 6, Season: 1, Monitored: true, AirDateUTC: "2026-11-01T00:00:00Z"},
+	}
+	got := countSeasonProgressAt(episodes, map[int64]bool{0: true}, now)
+	if len(got) != 1 || got[1].Total != 2 || got[1].Imported != 1 {
+		t.Fatal(got)
+	}
+	got = countSeasonProgressAt(episodes, map[int64]bool{0: true, 2: true}, now)
+	if got[2].Total != 1 {
+		t.Fatal("active undated release omitted", got)
+	}
+	episodes[1].HasFile = true
+	got = countSeasonProgressAt(episodes, map[int64]bool{0: true}, now)
+	if got[2].Imported != 1 || got[2].Total != 1 {
+		t.Fatal("imported undated episode omitted", got)
+	}
+}
+
+func TestSeasonProgressWaitsUntilBroadcastEnds(t *testing.T) {
+	now := time.Date(2026, 11, 9, 12, 30, 0, 0, time.UTC)
+	episodes := []seasonEpisode{{ID: 1, Season: 1, Monitored: true, AirDateUTC: "2026-11-09T12:00:00Z"}}
+	if got := countSeasonProgressWithRuntime(episodes, map[int64]bool{0: true}, now, 60); len(got) != 0 {
+		t.Fatal("airing episode counted as missing", got)
+	}
+	if got := countSeasonProgressWithRuntime(episodes, map[int64]bool{0: true}, now.Add(30*time.Minute), 60); got[1].Total != 1 {
+		t.Fatal("finished broadcast omitted", got)
+	}
+	if got := countSeasonProgressWithRuntime(episodes, map[int64]bool{1: true}, now, 60); got[1].Total != 1 {
+		t.Fatal("queued early release omitted", got)
 	}
 }

@@ -89,10 +89,9 @@ cannot be recalled; reload open dashboards after enabling the filter.
 A series that enters the download/import pipeline, or is identified from an active
 or failed Tdarr episode job, is remembered in the configuration database. Its overview
 stays after queue entries disappear and across restarts, until Sonarr reports files
-for every released monitored episode. Pending-only Tdarr jobs and the missing-series library
+for every released monitored episode. Episodes still airing wait until the series runtime has elapsed. Pending-only Tdarr jobs and the missing-series library
 are not used to enroll shows. Counts always come from Sonarr, not download percentages.
 Missing released monitored episodes keep an enrolled series unfinished. Future
 episodes without files are excluded unless already in the download queue. Imported
-early releases still count; missing or invalid air dates retain the existing counting
-behavior. Unmonitored episodes do not count. Tdarr recovery matches an exact normalized show title (including
+early releases still count; missing or invalid UTC air dates do not count as missing unless already queued or imported. Unmonitored episodes do not count. Tdarr recovery matches an exact normalized show title (including
 year when present) before episode coordinates, avoiding ambiguous title matches.
