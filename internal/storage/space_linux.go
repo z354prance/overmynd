@@ -2,12 +2,13 @@
 
 package storage
 
-import "golang.org/x/sys/unix"
+import "syscall"
 
 func available(path string) (uint64, uint64, error) {
-	var stat unix.Statfs_t
-	if err := unix.Statfs(path, &stat); err != nil {
+	var stat syscall.Statfs_t
+	if err := syscall.Statfs(path, &stat); err != nil {
 		return 0, 0, err
 	}
-	return stat.Bavail * uint64(stat.Bsize), stat.Blocks * uint64(stat.Bsize), nil
+	bs := uint64(stat.Bsize)
+	return uint64(stat.Bavail) * bs, uint64(stat.Blocks) * bs, nil
 }

@@ -1,0 +1,50 @@
+/* Wire progress, shared by the public page and admin. */
+:root{--r-red:#f27b89;--r-orange:#edb26b;--r-yellow:#e5d875;--r-green:#6dcc9d;--r-blue:#70b9ed;--r-purple:#ad92ec;--r-pink:#dd91cd;--rainbow:linear-gradient(90deg,#f27b89 0,#edb26b 20%,#e5d875 36%,#6dcc9d 52%,#70b9ed 70%,#ad92ec 86%,#dd91cd 100%);--dimprompt:#5a5c5a;--grey:#c9cdc6;--muted:#a4ada5}
+/* ---------- wire progress ---------- */
+.wire { --g:#6dcc9d; display:flex; width:100%; align-items:flex-start; font-size:10px; color:var(--dimprompt); }
+.wire .st { flex:1 1 0; min-width:0; }
+.wire .st:last-child { flex:0 0 auto; }
+.wire .wr { display:flex; align-items:center; height:14px; }
+.wire .nd { flex:none; display:block; width:9px; height:9px; border-radius:50%; border:2px solid #3a3d3a; background:#0d0d0c; box-sizing:border-box; }
+.wire .ln { position:relative; flex:1; display:block; height:2px; margin:0 2px; background:transparent; }
+.wire .ln.todo { background:repeating-linear-gradient(90deg,#3a3d3a 0 4px,transparent 4px 8px); }
+.wire .st.done .nd, .wire .st.done .ln { background-color:var(--g); border-color:var(--g); }
+.wire .st.done .ln { background:var(--g); }
+.wire .lb { display:block; margin-top:3px; white-space:nowrap; overflow:visible; }
+.wire .st.done .lb { color:#8a8d8a; } .wire .st.cur .lb { color:var(--grey); }
+.wire .ln .fill { position:absolute; left:0; top:0; bottom:0; background:var(--rainbow); background-repeat:no-repeat; border-radius:1px; }
+.wire .ln .rest { position:absolute; left:var(--p,0%); right:0; top:0; bottom:0; background:repeating-linear-gradient(90deg,#ad92ec 0 4px,transparent 4px 8px); background-size:16px 2px; opacity:.55; }
+.wire .ln .dot { position:absolute; top:50%; width:7px; height:7px; margin:-3.5px 0 0 -3.5px; border-radius:50%; background:#fff; box-shadow:0 0 6px 2px #f27b8955; }
+.wire.w-run .ln .rest { animation:wflow .8s linear infinite; }
+@keyframes wflow { to { background-position-x:16px; } }
+.wire .ln .fill, .wire .ln .rest { height:2px; }
+.wire .ln.act { height:3px; }
+.wire .ln.act .fill { height:3px; }
+/* current node, by state */
+.wire .st.cur .nd { border-color:var(--r-blue); background:var(--r-blue); }
+.wire.w-wait .st.cur .nd { border-color:var(--r-purple); background:var(--r-purple); animation:wpulse 2.8s ease-in-out infinite; }
+.wire.w-wait .ln.act .rest { opacity:1; animation:wpulse 2.8s ease-in-out infinite; }
+@keyframes wpulse { 0%,100% { opacity:1; } 50% { opacity:.25; } }
+.wire.w-stall .st.cur .nd { border-color:var(--r-yellow); background:var(--r-yellow); animation:wblink 1.4s steps(1) infinite; }
+.wire.w-stall .ln.act .fill { background:var(--r-yellow); animation:wblink 1.4s steps(1) infinite; }
+.wire.w-stall .ln.act .rest { background:repeating-linear-gradient(90deg,#5c5a30 0 4px,transparent 4px 8px); opacity:1; }
+@keyframes wblink { 0%,100% { opacity:1; } 50% { opacity:.15; } }
+.wire.w-fail .st.cur .nd { border-color:var(--r-red); background:var(--r-red); animation:wflick 1.6s steps(1) infinite; }
+.wire.w-fail .ln.act .fill { background:var(--r-red); animation:wflick 1.6s steps(1) infinite; }
+.wire.w-fail .ln.act .rest { background:repeating-linear-gradient(90deg,#5c3036 0 4px,transparent 4px 8px); opacity:1; }
+@keyframes wflick { 0%,100% { opacity:1; } 45% { opacity:1; } 46% { opacity:.35; } 50% { opacity:1; } 55% { opacity:.2; } 60% { opacity:1; } }
+.wire.w-done .st .nd { background:var(--g); border-color:var(--g); }
+/* now playing */
+.wire-play { align-items:center; gap:0; }
+.wire-play .nd.done { background:var(--g); border-color:var(--g); }
+.wire-play .nd.end { background:#0d0d0c; border-color:#8a8d8a; }
+.wire-play .ln { margin:0 3px; }
+.wire-play .pct { margin-left:10px; min-width:3ch; text-align:right; color:var(--muted); font-size:11px; }
+.wire-play.unknown .ln { background:repeating-linear-gradient(90deg,#3a3d3a 0 4px,transparent 4px 8px); }
+@media (prefers-reduced-motion:reduce) { .wire *, .wire { animation:none !important; } }
+
+.wire.w-fail .st.done .ln.bad{background:var(--r-red);animation:wflick 1.6s steps(1) infinite}
+.wire.w-fail .st.cur .lb{color:var(--r-red)}
+.wire .lb .pc{display:block;font-weight:400;font-size:10px;line-height:1.2;margin-top:1px}
+.wire .lb{overflow:hidden;text-overflow:ellipsis;padding-right:4px}
+.wire .st:last-child .lb{padding-right:0}

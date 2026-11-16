@@ -1,108 +1,119 @@
-# Overmynd
+<p align="center"><img src="assets/undermynd-logo.svg" width="160" alt="Undermynd"></p>
 
-A unified, read-only observability dashboard for self-hosted media automation stacks.
+# Undermynd
 
-## Planned integrations
+One container that owns the whole download-to-library path for Sonarr, Radarr and Lidarr.
 
-- Tracearr
-- Radarr
-- Sonarr
-- Lidarr
-- Seerr
-- Tdarr
-- qBittorrent
-- NZBGet
+- Acts as their **qBittorrent** download client, so a grab keeps the same download ID from request to import.
+- Hands the grab to a local qBittorrent (TorBox, NZBGet, a fake SABnzbd and a Tdarr hand-off are also built; RSS is next), keeps only the media files, moves them atomically into the complete folder, confirms the arr's import, then cleans up everything it created.
+- A public status page for your users, and a sign-in-protected admin side, in one app on one address.
+- Standard library only. One static binary of about 7 MB, about 7 MB of memory at idle.
 
-## Media lifecycle
+## Status
 
-Seerr -> ARR -> qBittorrent/NZBGet -> Tdarr -> ARR Import -> Library -> Tracearr
-# Authentication and deployment
+| Phase | Scope | State |
+|---|---|---|
+| 1 Core | Job table and state machine, fake qBittorrent API, local qBittorrent backend, staging, hand-back, import confirmation, cleanup, status page, admin sign-in | **built and tested** |
+| 2 TorBox | Usenet and torrents (limiter, batched polling, resumable pull, tracked delete) | built and tested against a stand-in; not yet run against real TorBox |
+| 3 Transcode | Folder hand-off to a dedicated Tdarr library, verification gate | folder hand-off built and tested against a simulated Tdarr; not yet run against real Tdarr |
+| 4 Usenet | Fake SABnzbd, TorBox usenet backend, NZBGet fallback | built and tested against stand-ins; not yet run against real TorBox, NZBGet or an arr |
+| 5 RSS | Feeds, regex rules, first-poll baseline, dedupe, magnet/torrent/NZB items | built and tested against a stand-in feed |
+| 6 Hardening | Notifications, API tokens, more admin actions | partly (reconciler, retries and cleanup are in) |
+| 7 Overmynd merge | Requests, access requests, playback | not started |
 
-Observability APIs are public and read-only. Services and Settings
-provide administrator setup, login, logout, and authenticated configuration. Complete
-initial setup on a trusted network before exposing a new instance. Concurrent setup
-requests can create only one administrator.
+The design is in `docs/`.
 
-All state-changing API requests, including setup, login, logout and connection tests,
-require `X-Overmynd-Request: 1`. Browser clients send this automatically; command-line
-clients must send it, plus their session cookie for administrator routes. Cross-origin browser writes are
-rejected; CORS access is not enabled. JSON request bodies are limited to 64 KiB.
+## Run
 
-For HTTPS reverse proxies, preserve the external `Host` (including any port), overwrite
-`X-Forwarded-Proto` with the actual client scheme, and restrict direct backend access.
-This allows secure session cookies and origin checking behind the proxy. Direct HTTP
-on a trusted Unraid LAN is supported. Use HTTPS outside that trusted network.
+Use the Unraid template in `unraid/undermynd.xml`, or:
 
-The `web/` assets mirror `internal/webui/web/`, which is embedded into the executable.
-Update both together; CI checks parity, Go tests with the race detector, browser
-authentication flows at 320–1440 px, and the Docker build.
+```
+docker run -d --name undermynd -p 8080:8080 -p 8081:8081 \
+  -v /mnt/user/appdata/undermynd/config:/config -v /mnt/user/data:/data \
+  -e PUID=99 -e PGID=100 ghcr.io/z354prance/undermynd:latest
+```
 
-## Docker installation
+1. Read the container log. On first start it prints the **download client login** for the arrs and a **setup key**.
+2. Open `http://host:8080/admin`, enter the setup key, choose a password, scan the authenticator secret, confirm a code, and save the recovery codes.
+3. Under *settings*: set each category's arr URL and API key (the arr that confirms the import), and the local qBittorrent URL and login.
+4. In Sonarr, Radarr and Lidarr add a **qBittorrent** download client: host = this machine, port = **8081**, the login from step 1, and the category (`radarr`, `tv-sonarr`, `lidarr`).
 
-Use the published image `ghcr.io/z354prance/overmynd:latest`. See the
-[Docker setup, updates, backups, and rollback instructions](docs/docker.md), or the
-[Unraid instructions](unraid/README.md). Configuration and accounts persist in `/config`.
+Mount the same `/data` in Undermynd, qBittorrent, the arrs and Tdarr, on one cache-only share, so every move is a rename.
 
-## Public Seerr requests
+## Ports
 
-The dashboard request box is an explicit, opt-in exception to admin-only control:
-visitors can search and submit requests without an Overmynd account. Configuration
-is still administrator-only, and requests are disabled until configured.
+| Port | Purpose | Exposure |
+|---|---|---|
+| 8080 | Public status page, and the admin pages under `/admin` behind a password and TOTP | Reverse proxy, open to users |
+| 8081 | Download client API for the arrs | LAN only. Never expose it. |
 
-1. Add an enabled Seerr integration with its URL and API key under Services.
-2. In Seerr, choose a dedicated user and set its request permissions, quotas, and
-   auto-approval permissions. Leave auto-approval off if requests need review.
-3. Sign into Overmynd, open Settings, and find Public media requests. Select the
-   Seerr integration, enter the numeric user ID from that user's Seerr profile URL,
-   enable public requests, and save. Saving verifies the selected Seerr identity.
-4. Sign out and search from the dashboard. Movie requests require confirmation;
-   TV requests explicitly confirm all seasons. Seerr decides approval using the
-   configured user's current permissions. Requests stay off the active-media cards
-   until downloading or processing starts.
+Behind a reverse proxy set `UNDERMYND_TRUST_PROXY=true` so the real client IP is used for sign-in throttling and the origin check.
 
-Overmynd keeps the API key on the server and sends Seerr's `X-API-User` header on
-every search/request. It never accepts a requester ID, approval override, or quota
-bypass from public callers. A missing or unavailable configured user fails closed.
-Submissions are limited to 10 per minute per direct client IP; visitors behind the
-same reverse proxy share this additional limit. Seerr's own quotas also apply.
+## Folders
 
-API reference: [Seerr request endpoint](https://docs.seerr.dev/api/create-new-request/)
-and [Seerr user middleware](https://github.com/seerr-team/seerr/blob/develop/server/middleware/auth.ts).
+```
+/data/undermynd/client/<job>/     local qBittorrent saves here (removed after the media is staged)
+/data/undermynd/staging/<job>/    media files only
+/data/complete/<category>/<release>/   what the arr imports from; removed after the import is confirmed
+```
 
-Navigation opens with the menu button and closes on selection, Escape, or a backdrop
-click. Now Playing and Playback load Tracearr's relative image-proxy URLs through a
-restricted Overmynd route; missing artwork displays a play placeholder. The image
-route accepts only signed Tracearr image paths and never forwards API credentials.
+## Security notes
 
-## Unraid management
+- The public side reads only a public view (title, state group, progress). No paths, IDs, reasons or settings.
+- Every admin route and API call passes one session check before any handler runs. State-changing calls also need a custom header and a same-origin check.
+- Sign-in needs the password **and** a TOTP code (or a one-time recovery code), with backoff on repeated failures. The error never says which part was wrong.
+- Stored secrets (arr API keys, qBittorrent password, the client login) are encrypted with AES-256-GCM using a key in `/config/secret.key`, and no API returns them.
+- First-run setup needs the setup key from the log, so nobody who merely reaches the page can claim the account.
+- Passwords use PBKDF2-HMAC-SHA256 (600,000 rounds), from the Go standard library.
 
-Use the [Unraid template and installation instructions](unraid/README.md) to manage the container through Unraid with the existing configuration directory and port pre-filled. The template uses the published stable image.
+## Known gaps
 
-### Recently Added
+- The arr history check (`downloadId` + import event) is written from the arr API as documented and tested against a stand-in; confirm it against your real Sonarr, Radarr and Lidarr. Set `UNDERMYND_LOG_REQUESTS=1` to log every call the arrs make to the fake client and compare.
+- The job file is a small JSON file written atomically after every change, not SQLite, because this build uses only the standard library.
+- The release folder in `complete/` is named after the release (not the job ID) so the arrs can parse it.
 
-The dashboard reuses the progress-card layout for the six newest confirmed movie or episode additions, marked Ready at 100%. It reads the existing Tracearr integration's `/api/v2/public/recently-added` feed every 30 seconds, combining movie and episode results by the library's added date. It needs a Tracearr version supporting that endpoint and library sync enabled. No extra credentials or public write access are introduced.
+## Branding
 
-Disappearing download or Tdarr jobs are not treated as proof of success. Recently Added reflects Tracearr's library confirmation and can lag until its next library sync; it is a library-backed list rather than a persistent history of Overmynd's active cards. Missing/unsupported feeds show an explanatory message without interrupting other dashboard sections. Import is omitted from the progress step indicator; import warnings remain available as diagnostic information.
+Logo files are in `assets/`; the Unraid icon is `unraid/undermynd-icon.png`.
 
-Season overview cards are pinned ahead of individual active items. They use Sonarr's `hasFile` status: imported monitored episodes divided by all monitored episodes in that season, excluding unaired or undated episodes unless already queued or imported. Sonarr queue episode IDs select active shows. Each show card includes all seasons with monitored episodes, including completed seasons and seasons without individual queue entries. The card disappears when the show no longer has queue entries. Download completion and Tdarr completion do not increment the import count. Existing imported files count toward completion (this is not a quality-upgrade progress meter). Individual download/processing cards keep their own source progress.
+## Usenet (SABnzbd side)
 
-Recently Added groups episodes by Tracearr's server/show identity before selecting six cards. Movies remain separate. Each show has an expandable episode list; the feed is paged until six distinct entries of each media type are found or history ends, so a large episode batch cannot crowd out older shows. Episode lists cover fetched history, not the complete library. A safety limit of 20 pages per media type reports when older entries may be missing. Entries lacking show identity remain separate.
+Add Undermynd to Sonarr/Radarr/Lidarr as a **SABnzbd** client on the machine port (host 18081 by default).
+The **API key is the client password** (shown once in the log on first run, rotatable in the admin page).
+Usenet goes to TorBox when a token is set, otherwise to NZBGet when its address is set.
 
-## Media server access requests
+## Tdarr hand-off
 
-Optional, approval-based access requests with direct Emby or Jellyfin provisioning and email
-notifications are available in Settings. Wizarr is not required. See
-[setup and testing instructions](docs/access-requests.md).
+For categories with transcode on, finished videos go to the Tdarr **input folder** and Undermynd collects the result from the **output folder**. Create a dedicated Tdarr library that reads the input folder and writes folder-to-folder into the output folder. Undermynd never touches any other library.
 
-### TorBoxarr transfers
+With a Tdarr address (and API key, if Tdarr has authentication on) and the library's ID set on the Transcode tab, Undermynd also:
+- asks Tdarr to scan just that job's folder, so timing does not depend on a folder watcher;
+- shows the node, worker and percentage while a worker holds the file (`get-nodes`, and `cruddb` file records, the same calls Overmynd uses);
+- fails the job at once when Tdarr marks the file errored, and treats a worker with no progress for the stall time as failed;
+- keeps at most N jobs with Tdarr at once (default 6); the rest wait, which is not a failure;
+- hands back the original when Tdarr decides a file needs no work.
 
-Both TorBoxarr SABnzbd-compatible Usenet and qBittorrent-compatible torrent local transfers are supported. See [setup and reported metrics](docs/torboxarr.md).
+Per category, a failed transcode either fails the grab (default, so the arr blocklists and searches again) or keeps the original.
+The output is accepted only when it has stopped growing, passes a size check and has a valid container header. The design asked for an ffprobe duration check too, which needs ffprobe in the image and is not built yet.
+Without a Tdarr address everything still works from the folders alone, but failures are only noticed when the timeout runs out.
 
-## Branding and donations
+## Folder layout
 
-The terminal header uses `~/overmynd > status`. Under Settings > Donations,
-administrators can set the pop-out heading, PayPal and Cash App URLs, and one custom
-link with a label. Only HTTPS links without embedded credentials are accepted.
-Donation links are public, persist in `/config`, and can be changed only by an
-administrator. Leave all URLs blank to hide Donate. No personal payment links are
-bundled by default. Existing installations can re-enter their preferred links.
+By default everything lives under the one `/data` mount: work files in `/data/undermynd`, hand-back folders in `/data/complete/<category>`.
+If your layout differs, set `UNDERMYND_WORK` (staging, Tdarr hand-off, local client) and `UNDERMYND_COMPLETE` (what the arrs import from).
+Keep both inside one mount of one cache-only share so every move is a rename.
+
+
+## Log
+
+Admin → Log shows the last 2000 lines of the container log since Undermynd started, with a filter box (a job id, `tdarr`, `failed`) and a follow switch. The one-time setup key is never kept in it.
+
+## Resolution check
+
+When a download finishes, Undermynd reads the real frame size of each video from its container header and asks the arr (Sonarr or Radarr, through the download's history) what quality it grabbed the release as. If the video is below that step (2160, 1080, 720, 480), such as a release labelled 1080p that is really 480p, the job fails and the arr is told to blocklist the release and search again. Wider-than-tall crops count by width, so a 1920x800 film is 1080p. If the arr cannot say, cannot be reached, or the frame size cannot be read, the download goes on as normal. Turn it off under Admin → System → Timing ("check resolution against the arr").
+
+## Re-encoding files already in the library
+
+The admin **Re-encode** tab lists videos in `Movies`, `Episodes` and `Anime` under the media share (`UNDERMYND_STORAGE_ROOT`, mounted at `/media`) that are not AV1 and arrived since a date you choose. The codec is read from the file's own header, so nothing needs ffprobe. Picked files are copied to staging, sent through the same Tdarr flow as a new grab, and the result is checked (valid container, read back as AV1) before it is written beside the original and moved over it. If Tdarr fails, produces anything that is not AV1, or the library file changes meanwhile, the library file is left as it was. These jobs never touch Sonarr or Radarr and are not shown on the public page; run a rescan in Sonarr or Radarr afterwards so it picks up the new files.
+
+This is the only thing that writes to the media share, so the share has to be mounted read-write.

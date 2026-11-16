@@ -95,7 +95,7 @@ func embyAttempt(ctx context.Context, s Settings, method, path string, payload [
 	return false, nil
 }
 
-func sendMail(s Settings, to, subject, body string) error {
+func sendMail(s Settings, to, subject string, l letter) error {
 	if !address(to) || !address(s.From) || strings.ContainsAny(subject, "\r\n") || s.SMTPHost == "" || s.SMTPPort < 1 || s.SMTPPort > 65535 {
 		return errors.New("invalid email settings")
 	}
@@ -143,7 +143,10 @@ func sendMail(s Settings, to, subject, body string) error {
 	if err != nil {
 		return err
 	}
-	message := "From: " + s.From + "\r\nTo: " + to + "\r\nSubject: " + subject + "\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n" + strings.ReplaceAll(strings.ReplaceAll(body, "\r\n", "\n"), "\n", "\r\n") + "\r\n"
+	message, err := message(s, to, subject, l)
+	if err != nil {
+		return err
+	}
 	if _, err = io.WriteString(writer, message); err != nil {
 		return err
 	}

@@ -2,6 +2,8 @@
 package storage
 
 import (
+	"context"
+	"encoding/json"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -24,27 +26,85 @@ type Snapshot struct {
 type Monitor struct {
 	mu    sync.Mutex
 	root  string
-	last  time.Time
+	path  string // where the last scan is saved; empty means memory only
 	value Snapshot
 }
 
 func New(root string) *Monitor { return &Monitor{root: root, value: Snapshot{Enabled: root != ""}} }
 
-// Snapshot starts at most one scan per 30 minutes; readers never walk the disk.
+// Persist saves every finished scan to path and loads the last saved scan now,
+// so a restart shows the previous sizes straight away instead of an empty bar.
+func (m *Monitor) Persist(path string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.path = path
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	var saved Snapshot
+	if json.Unmarshal(b, &saved) != nil || saved.UpdatedAt.IsZero() {
+		return
+	}
+	saved.Enabled, saved.Scanning = m.root != "", false
+	m.value = saved
+}
+
+// Snapshot returns the last scan. Readers never walk the disk and never start a scan.
 func (m *Monitor) Snapshot() Snapshot {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.root != "" && !m.value.Scanning && (m.last.IsZero() || time.Since(m.last) >= 30*time.Minute) {
-		m.value.Scanning = true
-		go func() {
-			result := scan(m.root)
-			m.mu.Lock()
-			m.value = result
-			m.last = time.Now()
-			m.mu.Unlock()
-		}()
+	v := m.value
+	v.Categories = append([]Category(nil), v.Categories...)
+	return v
+}
+
+// Run scans in the background: at once when there is no saved scan or it is older than
+// the interval, then once every interval. The interval is read each time so a settings
+// change takes effect without a restart.
+func (m *Monitor) Run(ctx context.Context, interval func() time.Duration) {
+	if m.root == "" {
+		return
 	}
-	return m.value
+	for {
+		every := interval()
+		if every < time.Minute {
+			every = time.Minute
+		}
+		m.mu.Lock()
+		last := m.value.UpdatedAt
+		m.mu.Unlock()
+		wait := every - time.Since(last)
+		if last.IsZero() || wait <= 0 {
+			m.scanNow()
+			wait = every
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(wait):
+		}
+	}
+}
+
+func (m *Monitor) scanNow() {
+	m.mu.Lock()
+	m.value.Scanning = true
+	m.mu.Unlock()
+	result := scan(m.root)
+	m.mu.Lock()
+	m.value = result
+	path := m.path
+	m.mu.Unlock()
+	if path == "" {
+		return
+	}
+	if b, err := json.Marshal(result); err == nil {
+		tmp := path + ".tmp"
+		if os.WriteFile(tmp, b, 0o600) == nil {
+			_ = os.Rename(tmp, path)
+		}
+	}
 }
 func scan(root string) Snapshot {
 	result := Snapshot{Enabled: true, UpdatedAt: time.Now().UTC()}

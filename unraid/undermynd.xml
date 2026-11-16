@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Container version="2">
+  <Name>undermynd</Name>
+  <Repository>ghcr.io/z354prance/undermynd:latest</Repository>
+  <Registry>https://github.com/z354prance/undermynd/pkgs/container/undermynd</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/z354prance/undermynd/issues</Support>
+  <Project>https://github.com/z354prance/undermynd</Project>
+  <Overview>Download and transcode orchestrator for Sonarr, Radarr and Lidarr. Acts as their qBittorrent and SABnzbd download client, downloads through TorBox (or hands off to qBittorrent / NZBGet), sends video through Tdarr, hands the finished file back for import, and cleans up. Includes built-in RSS auto-download and a public status page for your users. The public pages are open, the admin pages sit behind a password and second factor on the same address, and the machine port is for your arrs only and must never be exposed outside your LAN. Settings are kept in /mnt/user/appdata/undermynd/config.</Overview>
+  <Category>MediaApp:Other Downloaders:</Category>
+  <Icon>https://raw.githubusercontent.com/z354prance/undermynd/main/unraid/undermynd-icon.png</Icon>
+  <WebUI>http://[IP]:[PORT:8080]</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/z354prance/undermynd/main/unraid/undermynd.xml</TemplateURL>
+  <ExtraParams/>
+  <PostArgs/>
+  <Config Name="Web port" Target="8080" Default="18080" Mode="tcp" Description="Public status page for your users, and the admin interface under /admin behind a password and second factor. Publish through your reverse proxy." Type="Port" Display="always" Required="true" Mask="false">18080</Config>
+  <Config Name="Machine port (LAN only)" Target="8081" Default="18081" Mode="tcp" Description="Download client API used by Sonarr, Radarr and Lidarr (qBittorrent and SABnzbd compatible). Never expose this outside your LAN." Type="Port" Display="always" Required="true" Mask="false">18081</Config>
+  <Config Name="Configuration" Target="/config" Default="/mnt/user/appdata/undermynd/config" Mode="rw" Description="Persistent database, settings and administrator account." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/undermynd/config</Config>
+  <Config Name="Downloads share" Target="/data" Default="/mnt/user/Downloads" Mode="rw" Description="The share that holds both your download side and your final Complete folder. Mount it as /data. Sonarr, Radarr, Lidarr and Tdarr must see the same paths (see the README)." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/Downloads</Config>
+  <Config Name="Work folder" Target="UNDERMYND_WORK" Default="/data/Downloader/undermynd" Mode="" Description="Where Undermynd keeps staging, the Tdarr hand-off folders and the local client downloads. Create a Tdarr library on tdarr/in and tdarr/out inside it." Type="Variable" Display="always" Required="false" Mask="false">/data/Downloader/undermynd</Config>
+  <Config Name="Complete folder" Target="UNDERMYND_COMPLETE" Default="/data/Complete" Mode="" Description="The folder the arrs import from; one subfolder per category is created." Type="Variable" Display="always" Required="false" Mask="false">/data/Complete</Config>
+  <Config Name="Media share" Target="/media" Default="/mnt/user/Media" Mode="rw" Description="Your media library share. Used for the storage readout on the status page (free space and Movies, Episodes, Anime, Music and Books sizes) and by the Re-encode tab, which replaces a Movies, Episodes or Anime file with its AV1 version once Tdarr has made it and it has been checked. Nothing else is written here." Type="Path" Display="always" Required="false" Mask="false">/mnt/user/Media</Config>
+  <Config Name="Storage root" Target="UNDERMYND_STORAGE_ROOT" Default="/media" Mode="" Description="Folder inside the container that holds the library folders Movies, Episodes, Anime, Music and Books. Leave empty to hide the storage readout." Type="Variable" Display="always" Required="false" Mask="false">/media</Config>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User ID the app runs as (Unraid: 99 for nobody)." Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group ID the app runs as (Unraid: 100 for users)." Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
+  <Config Name="Timezone" Target="TZ" Default="America/Chicago" Mode="" Description="Container timezone." Type="Variable" Display="advanced" Required="false" Mask="false">America/Chicago</Config>
+</Container>
