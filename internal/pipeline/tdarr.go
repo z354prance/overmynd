@@ -25,7 +25,7 @@ func (e *Engine) tdarrOut(id string) string { return filepath.Join(e.Cfg.Get().T
 
 // sendToTdarr moves the staged videos into the Tdarr input folder. Sidecar files
 // (subtitles) stay in staging. It returns false when there is nothing for Tdarr to do.
-func (e *Engine) sendToTdarr(j job.Job) bool {
+func (e *Engine) sendToTdarr(ctx context.Context, j job.Job) bool {
 	var videos []string
 	for _, f := range j.Files {
 		if isVideo(f) {
@@ -35,13 +35,13 @@ func (e *Engine) sendToTdarr(j job.Job) bool {
 	if len(videos) == 0 {
 		return false
 	}
-	inFlight, err := e.tdarrInFlight(context.Background())
+	inFlight, err := e.tdarrInFlight(ctx)
 	if err != nil {
 		e.Log.Printf("Tdarr hand-off stopped: repository read failed: %v", err)
 		return true
 	}
 	if max := e.Cfg.Get().Tdarr.MaxInFlight; max > 0 && inFlight >= max {
-		_, _ = e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
+		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			c.Reason = fmt.Sprintf("waiting for a free Tdarr slot (limit %d)", max)
 			c.NextRun = e.Now().Add(30 * time.Second)
 			return nil
@@ -54,7 +54,7 @@ func (e *Engine) sendToTdarr(j job.Job) bool {
 			return true
 		}
 	}
-	_, _ = e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
+	_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 		c.TranscodeSig = ""
 		c.LastProgress = e.Now()
 		c.Move(job.QueuedTranscode, fmt.Sprintf("%d video(s) waiting in the Tdarr input folder", len(videos)), e.Now())
@@ -62,7 +62,7 @@ func (e *Engine) sendToTdarr(j job.Job) bool {
 	})
 	e.Log.Printf("job %s sent to Tdarr", short(j.ID))
 	if cli, lib := e.tdarrClient(), e.Cfg.Get().Tdarr.LibraryID; cli != nil && lib != "" {
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 		defer cancel()
 		if err := cli.Scan(ctx, lib, e.Cfg.Get().Tdarr.InDir); err != nil {
 			e.Log.Printf("job %s tdarr scan request: %v (the library's folder watcher will still find it)", short(j.ID), err)

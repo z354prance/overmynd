@@ -38,7 +38,7 @@ func TestTdarrReadFailureLeavesStagingAlone(t *testing.T) {
 		t.Fatal(err)
 	}
 	e := NewRepository(capacityFailure{cause: errors.New("unavailable")}, cfg, nil)
-	if !e.sendToTdarr(job.Job{ID: "job", StagingDir: staging, Files: []string{"episode.mkv"}}) {
+	if !e.sendToTdarr(context.Background(), job.Job{ID: "job", StagingDir: staging, Files: []string{"episode.mkv"}}) {
 		t.Fatal("must not skip processing on storage error")
 	}
 	if _, err = os.Stat(src); err != nil {

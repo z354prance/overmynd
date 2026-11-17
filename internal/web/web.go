@@ -508,7 +508,7 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) system(w http.ResponseWriter, r *http.Request) {
-	info, err := s.Engine.System()
+	info, err := s.Engine.SystemContext(r.Context())
 	if err != nil {
 		jsonErr(w, http.StatusServiceUnavailable, "job storage is unavailable")
 		return
@@ -561,7 +561,7 @@ func (s *Server) jobAction(w http.ResponseWriter, r *http.Request) {
 		err = s.Engine.FailJob(id)
 	case "cleanup":
 		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(120 * time.Second))
-		err = s.Engine.CleanupNow(id)
+		err = s.Engine.CleanupNowContext(r.Context(), id)
 	default:
 		jsonErr(w, http.StatusNotFound, "unknown action")
 		return

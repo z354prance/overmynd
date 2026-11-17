@@ -38,5 +38,13 @@ func (a legacyAdapter) Update(ctx context.Context, id string, fn func(*job.Job) 
 	if err := ctx.Err(); err != nil {
 		return job.Job{}, err
 	}
-	return a.source.Update(id, fn)
+	return a.source.Update(id, func(j *job.Job) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := fn(j); err != nil {
+			return err
+		}
+		return ctx.Err()
+	})
 }

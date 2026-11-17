@@ -185,7 +185,7 @@ func (a *API) addFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) submit(w http.ResponseWriter, r *http.Request, name string, nzb []byte) {
-	j, err := a.Engine.SubmitNZB(pipeline.SubmitNZBRequest{Category: a.category(r), Name: name, NZB: nzb})
+	j, err := a.Engine.SubmitNZBContext(r.Context(), pipeline.SubmitNZBRequest{Category: a.category(r), Name: name, NZB: nzb})
 	if err != nil {
 		a.Log.Printf("sabapi: NZB rejected: %v", err)
 		writeJSON(w, map[string]any{"status": false, "error": err.Error()})

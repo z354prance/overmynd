@@ -46,6 +46,12 @@ func ReencodeID(path string) string {
 // SubmitReencode queues one library file for re-encoding. It returns the existing job
 // when the same file is already being worked on.
 func (e *Engine) SubmitReencode(path string) (job.Job, error) {
+	return e.SubmitReencodeContext(context.Background(), path)
+}
+func (e *Engine) SubmitReencodeContext(ctx context.Context, path string) (job.Job, error) {
+	if err := ctx.Err(); err != nil {
+		return job.Job{}, err
+	}
 	if len(e.LibraryRoots) == 0 {
 		return job.Job{}, errors.New("no media library is set (UNDERMYND_STORAGE_ROOT)")
 	}
@@ -63,7 +69,7 @@ func (e *Engine) SubmitReencode(path string) (job.Job, error) {
 	id := ReencodeID(clean)
 	e.submitMu.Lock()
 	defer e.submitMu.Unlock()
-	cur, readErr := e.Store.Get(context.Background(), id)
+	cur, readErr := e.Store.Get(ctx, id)
 	if readErr != nil && !errors.Is(readErr, store.ErrNotFound) {
 		return job.Job{}, fmt.Errorf("read job before reencode: %w", readErr)
 	}
@@ -75,7 +81,7 @@ func (e *Engine) SubmitReencode(path string) (job.Job, error) {
 		State: job.Received, Size: fi.Size(), Original: clean, OriginalSize: fi.Size(), OriginalMod: fi.ModTime().UnixNano(),
 		Created: now, Updated: now, StateChanged: now, LastProgress: now}
 	j.History = []job.Transition{{At: now, To: job.Received, Reason: "queued for re-encoding to AV1"}}
-	if err := e.Store.Put(context.Background(), j); err != nil {
+	if err := e.Store.Put(ctx, j); err != nil {
 		return job.Job{}, err
 	}
 	e.Log.Printf("job %s queued: re-encode %s", short(id), clean)

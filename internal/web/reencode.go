@@ -77,7 +77,7 @@ func (s *Server) reencodeQueue(w http.ResponseWriter, r *http.Request) {
 	}
 	queued, skipped := 0, []string{}
 	for _, p := range in.Paths {
-		if _, err := s.Engine.SubmitReencode(p); err != nil {
+		if _, err := s.Engine.SubmitReencodeContext(r.Context(), p); err != nil {
 			skipped = append(skipped, filepath.Base(p)+": "+err.Error())
 			continue
 		}

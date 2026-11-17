@@ -104,3 +104,21 @@ func TestSQLiteClosedReadStopsIntake(t *testing.T) {
 		t.Fatalf("closed SQLite was treated as missing: %v", err)
 	}
 }
+
+func TestCancelledIntakeDoesNotTouchStorage(t *testing.T) {
+	e, repo := brokenEngine(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := e.SubmitContext(ctx, pipeline.SubmitRequest{}); !errors.Is(err, context.Canceled) {
+		t.Fatal(err)
+	}
+	if _, err := e.SubmitNZBContext(ctx, pipeline.SubmitNZBRequest{}); !errors.Is(err, context.Canceled) {
+		t.Fatal(err)
+	}
+	if _, err := e.SubmitReencodeContext(ctx, "unused"); !errors.Is(err, context.Canceled) {
+		t.Fatal(err)
+	}
+	if repo.reads != 0 || repo.writes != 0 {
+		t.Fatalf("cancelled intake touched storage: %+v", repo)
+	}
+}

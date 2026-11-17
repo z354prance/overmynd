@@ -136,7 +136,7 @@ func (a *API) add(w http.ResponseWriter, r *http.Request) {
 	category := r.FormValue("category")
 	added, bad := 0, 0
 	for _, u := range strings.Fields(strings.ReplaceAll(r.FormValue("urls"), "|", "\n")) {
-		if _, err := a.Engine.Submit(pipeline.SubmitRequest{Category: category, Magnet: u}); err != nil {
+		if _, err := a.Engine.SubmitContext(r.Context(), pipeline.SubmitRequest{Category: category, Magnet: u}); err != nil {
 			a.Log.Printf("machine: add url rejected: %v", err)
 			bad++
 		} else {
@@ -153,7 +153,7 @@ func (a *API) add(w http.ResponseWriter, r *http.Request) {
 			data, err := io.ReadAll(io.LimitReader(f, 16<<20))
 			f.Close()
 			if err == nil {
-				_, err = a.Engine.Submit(pipeline.SubmitRequest{Category: category, Torrent: data})
+				_, err = a.Engine.SubmitContext(r.Context(), pipeline.SubmitRequest{Category: category, Torrent: data})
 			}
 			if err != nil {
 				a.Log.Printf("machine: add file rejected: %v", err)

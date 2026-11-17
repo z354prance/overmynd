@@ -64,12 +64,13 @@ func (e *Engine) disk(path string) DiskUse {
 }
 
 // System gathers the numbers for the admin System view.
-func (e *Engine) System() (SystemInfo, error) {
+func (e *Engine) System() (SystemInfo, error) { return e.SystemContext(context.Background()) }
+func (e *Engine) SystemContext(ctx context.Context) (SystemInfo, error) {
 	var si SystemInfo
 	s := e.Cfg.Get()
 	si.Paused = s.IntakePaused
 	si.Counts = map[string]int{}
-	jobs, err := e.Store.List(context.Background())
+	jobs, err := e.Store.List(ctx)
 	if err != nil {
 		return si, err
 	}
@@ -91,7 +92,7 @@ func (e *Engine) System() (SystemInfo, error) {
 			}
 		}
 	}
-	si.Tdarr.InFlight, err = e.tdarrInFlight(context.Background())
+	si.Tdarr.InFlight, err = e.tdarrInFlight(ctx)
 	if err != nil {
 		return si, err
 	}

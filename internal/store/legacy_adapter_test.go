@@ -42,3 +42,21 @@ func TestLegacyAdapterPreservesMissingAndCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestLegacyAdapterCancelledUpdateDoesNotPublish(t *testing.T) {
+	source, err := Open(filepath.Join(t.TempDir(), "jobs.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = source.Put(job.Job{ID: "keep", State: job.Received}); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	_, err = FromLegacy(source).Update(ctx, "keep", func(j *job.Job) error { j.State = job.Failed; cancel(); return nil })
+	if !errors.Is(err, context.Canceled) {
+		t.Fatal(err)
+	}
+	if j, ok := source.Get("keep"); !ok || j.State != job.Received {
+		t.Fatal("cancelled update was published", j)
+	}
+}

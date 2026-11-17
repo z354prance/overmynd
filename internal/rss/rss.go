@@ -299,7 +299,7 @@ func (p *Poller) add(ctx context.Context, r config.Rule, it item) error {
 	link := it.link()
 	switch {
 	case strings.HasPrefix(link, "magnet:"):
-		_, err := p.Engine.Submit(pipeline.SubmitRequest{Source: "rss", Category: r.Category, Magnet: link})
+		_, err := p.Engine.SubmitContext(ctx, pipeline.SubmitRequest{Source: "rss", Category: r.Category, Magnet: link})
 		return err
 	case strings.HasPrefix(link, "http://"), strings.HasPrefix(link, "https://"):
 		data, err := p.fetch(ctx, link, 50<<20)
@@ -308,11 +308,11 @@ func (p *Poller) add(ctx context.Context, r config.Rule, it item) error {
 		}
 		head := data[:min(len(data), 2048)]
 		if bytes.Contains(head, []byte("<nzb")) {
-			_, err = p.Engine.SubmitNZB(pipeline.SubmitNZBRequest{Source: "rss", Category: r.Category, Name: it.Title, NZB: data})
+			_, err = p.Engine.SubmitNZBContext(ctx, pipeline.SubmitNZBRequest{Source: "rss", Category: r.Category, Name: it.Title, NZB: data})
 			return err
 		}
 		if len(data) > 0 && data[0] == 'd' {
-			_, err = p.Engine.Submit(pipeline.SubmitRequest{Source: "rss", Category: r.Category, Torrent: data})
+			_, err = p.Engine.SubmitContext(ctx, pipeline.SubmitRequest{Source: "rss", Category: r.Category, Torrent: data})
 			return err
 		}
 		return errors.New("the link is neither a torrent nor an NZB")

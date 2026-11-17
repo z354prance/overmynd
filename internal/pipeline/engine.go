@@ -205,6 +205,12 @@ type SubmitRequest struct {
 // Submit creates (or returns) the job for a grab. The job ID is the infohash,
 // so it matches the download ID the arr records.
 func (e *Engine) Submit(req SubmitRequest) (job.Job, error) {
+	return e.SubmitContext(context.Background(), req)
+}
+func (e *Engine) SubmitContext(ctx context.Context, req SubmitRequest) (job.Job, error) {
+	if err := ctx.Err(); err != nil {
+		return job.Job{}, err
+	}
 	var id, name string
 	var size int64
 	var err error
@@ -224,7 +230,7 @@ func (e *Engine) Submit(req SubmitRequest) (job.Job, error) {
 	}
 	e.submitMu.Lock()
 	defer e.submitMu.Unlock()
-	cur, readErr := e.Store.Get(context.Background(), id)
+	cur, readErr := e.Store.Get(ctx, id)
 	if readErr != nil && !errors.Is(readErr, store.ErrNotFound) {
 		return job.Job{}, fmt.Errorf("read job before submission: %w", readErr)
 	}
@@ -255,7 +261,7 @@ func (e *Engine) Submit(req SubmitRequest) (job.Job, error) {
 		j.Magnet = req.Magnet
 	}
 	j.History = []job.Transition{{At: now, To: job.Received, Reason: "grab received from " + j.Source}}
-	if err := e.Store.Put(context.Background(), j); err != nil {
+	if err := e.Store.Put(ctx, j); err != nil {
 		return job.Job{}, err
 	}
 	e.Log.Printf("job %s received (%s, category %s)", short(id), name, req.Category)
@@ -298,6 +304,12 @@ func nzbSize(nzb []byte) int64 {
 // SubmitNZB creates (or returns) the job for a usenet grab. The returned ID is
 // what the arr records as the download ID.
 func (e *Engine) SubmitNZB(req SubmitNZBRequest) (job.Job, error) {
+	return e.SubmitNZBContext(context.Background(), req)
+}
+func (e *Engine) SubmitNZBContext(ctx context.Context, req SubmitNZBRequest) (job.Job, error) {
+	if err := ctx.Err(); err != nil {
+		return job.Job{}, err
+	}
 	if len(req.NZB) == 0 || !strings.Contains(string(req.NZB[:min(len(req.NZB), 2048)]), "<nzb") {
 		return job.Job{}, errors.New("not an NZB file")
 	}
@@ -308,7 +320,7 @@ func (e *Engine) SubmitNZB(req SubmitNZBRequest) (job.Job, error) {
 	}
 	e.submitMu.Lock()
 	defer e.submitMu.Unlock()
-	cur, readErr := e.Store.Get(context.Background(), id)
+	cur, readErr := e.Store.Get(ctx, id)
 	if readErr != nil && !errors.Is(readErr, store.ErrNotFound) {
 		return job.Job{}, fmt.Errorf("read job before submission: %w", readErr)
 	}
@@ -335,7 +347,7 @@ func (e *Engine) SubmitNZB(req SubmitNZBRequest) (job.Job, error) {
 		j.Source = req.Source
 	}
 	j.History = []job.Transition{{At: now, To: job.Received, Reason: "grab received from " + j.Source}}
-	if err := e.Store.Put(context.Background(), j); err != nil {
+	if err := e.Store.Put(ctx, j); err != nil {
 		return job.Job{}, err
 	}
 	e.Log.Printf("job %s received (usenet %s, category %s)", short(id), name, req.Category)
@@ -406,20 +418,21 @@ func (e *Engine) FailJob(id string) error {
 
 // CleanupNow runs a finished or failed job's cleanup right now and reports what
 // went wrong, so the admin button shows a result instead of silently queueing it.
-func (e *Engine) CleanupNow(id string) error {
-	j, err := e.Store.Get(context.Background(), id)
+func (e *Engine) CleanupNow(id string) error { return e.CleanupNowContext(context.Background(), id) }
+func (e *Engine) CleanupNowContext(ctx context.Context, id string) error {
+	j, err := e.Store.Get(ctx, id)
 	if err != nil {
 		return fmt.Errorf("read job before cleanup: %w", err)
 	}
 	if j.State != job.Imported && j.State != job.Failed {
 		return errors.New("cleanup runs only for imported or failed jobs")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
 	if err := e.cleanupFiles(ctx, j); err != nil {
 		return fmt.Errorf("cleanup did not finish: %w", err)
 	}
-	_, err = e.Store.Update(context.Background(), id, func(c *job.Job) error {
+	_, err = e.Store.Update(ctx, id, func(c *job.Job) error {
 		switch c.State {
 		case job.Failed:
 			c.FailCleaned, c.Attempts, c.NextRun = true, 0, time.Time{}
@@ -500,7 +513,7 @@ func (e *Engine) step(ctx context.Context, j job.Job) {
 		e.doDownload(ctx, j)
 	case job.Downloaded:
 		if j.Source == "reencode" {
-			e.sendToTdarr(j)
+			e.sendToTdarr(ctx, j)
 			return
 		}
 		e.doDownloaded(ctx, j)
@@ -763,7 +776,7 @@ func (e *Engine) doDownloaded(ctx context.Context, j job.Job) {
 		return
 	}
 	cat, _ := e.Cfg.Get().Category(j.Category)
-	if cat.Transcode && e.sendToTdarr(j) {
+	if cat.Transcode && e.sendToTdarr(ctx, j) {
 		return
 	}
 	e.handBack(j)
