@@ -1,44 +1,16 @@
-FROM golang:1.25-alpine AS builder
-
+# syntax=docker/dockerfile:1
+FROM golang:1.24-alpine AS build
+RUN apk add --no-cache ca-certificates
 WORKDIR /src
+COPY go.mod ./
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/overmynd ./cmd/overmynd
 
-COPY go.mod go.sum ./
-
-RUN go mod download
-
-COPY cmd ./cmd
-COPY internal ./internal
-
-RUN CGO_ENABLED=0 GOOS=linux go build \
-    -trimpath \
-    -ldflags="-s -w" \
-    -o /out/overmynd \
-    ./cmd/overmynd
-
-FROM alpine:3.22
-
-RUN apk add --no-cache ca-certificates tzdata \
-    && addgroup -S -g 1000 overmynd \
-    && adduser -S -D -H -u 1000 -G overmynd overmynd \
-    && mkdir -p /config \
-    && chown overmynd:overmynd /config
-
-COPY --from=builder /out/overmynd /usr/local/bin/overmynd
-
-USER overmynd
-
+FROM scratch
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=build /out/overmynd /overmynd
+ENV UNDERMYND_CONFIG=/config UNDERMYND_DATA=/data PUID=99 PGID=100
+EXPOSE 8080 8081
 VOLUME ["/config"]
-
-EXPOSE 8080
-
-ENV OVERMYND_ADDR=:8080
-ENV OVERMYND_CONFIG_DIR=/config
-
-HEALTHCHECK \
-    --interval=30s \
-    --timeout=5s \
-    --start-period=5s \
-    --retries=3 \
-    CMD wget -q -O /dev/null http://127.0.0.1:8080/health || exit 1
-
-ENTRYPOINT ["/usr/local/bin/overmynd"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s CMD ["/overmynd", "healthcheck"]
+ENTRYPOINT ["/overmynd"]

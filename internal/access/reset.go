@@ -49,6 +49,7 @@ func (m *Manager) ResetDeleted(ctx context.Context, id int64) error {
 			return errors.New("the media server user or username still exists; no request was reset")
 		}
 	}
-	_, e = m.db.Exec("UPDATE access_requests SET status='pending',emby_id='',token_hash='',token_expires=0,error='',mail_error='',updated_at=? WHERE id=?", time.Now().UTC().Format(time.RFC3339), id)
-	return e
+	return m.update(id, func(x *rec) {
+		x.Status, x.EmbyID, x.TokenHash, x.TokenExpires, x.Error, x.MailError = "pending", "", "", 0, "", ""
+	})
 }
