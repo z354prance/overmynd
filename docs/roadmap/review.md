@@ -1,5 +1,7 @@
 # Overmynd roadmap review
 
+Historical review. The [active roadmap](README.md) supersedes the sequencing below.
+
 Review date: 2026-11-16. Reviewed against the Undermynd snapshot 0f46f7b now copied
 and renamed into Overmynd main. The original supplied roadmaps are preserved beside
 this review. This document recommends changes; it does not implement the overhaul.

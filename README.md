@@ -5,6 +5,10 @@
 Rework baseline: copied from Undermynd for the upcoming Overmynd overhaul.
 Automatic Docker publication is paused; this is not yet a switch-over release.
 
+Start with the [active rework roadmap](docs/roadmap/README.md) and
+[implementation handoff](docs/roadmap/handoff.md). The feature descriptions below
+describe the inherited baseline, not completed rework milestones.
+
 One container that owns the whole download-to-library path for Sonarr, Radarr and Lidarr.
 
 - Acts as their **qBittorrent** download client, so a grab keeps the same download ID from request to import.
