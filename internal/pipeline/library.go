@@ -53,11 +53,14 @@ func (e *Engine) placeInLibrary(ctx context.Context, j job.Job, cat config.Categ
 			e.retry2(j, err)
 			return
 		}
-		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
+		if _, writeErr := e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			c.Flag = ""
 			c.Move(job.Cleaned, fmt.Sprintf("placed %d file(s) in %s", placed, root), now)
 			return nil
-		})
+		}); writeErr != nil {
+			e.Log.Printf("job state update failed: %v", writeErr)
+			return
+		}
 		return
 	}
 	// Some files could not be placed: keep everything in the complete folder as it is.
@@ -66,10 +69,13 @@ func (e *Engine) placeInLibrary(ctx context.Context, j job.Job, cat config.Categ
 		return
 	}
 	why := fmt.Sprintf("placed %d, left in %s: %s", placed, j.CompleteDir, strings.Join(dedupe(left), "; "))
-	_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
+	if _, writeErr := e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 		c.Move(job.Cleaned, why, now)
 		return nil
-	})
+	}); writeErr != nil {
+		e.Log.Printf("job state update failed: %v", writeErr)
+		return
+	}
 	e.Log.Printf("job %s %s", short(j.ID), why)
 }
 

@@ -78,3 +78,19 @@ func TestFailedRetryResetDoesNotUseAnEmptyJob(t *testing.T) {
 		t.Fatal("continued after failed retry commit", repo.writes)
 	}
 }
+
+func TestPassthroughDoesNotHandBackAfterFailedCommit(t *testing.T) {
+	root := t.TempDir()
+	cfg, err := config.Load(config.Env{ConfigDir: filepath.Join(root, "config"), DataDir: filepath.Join(root, "data")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := &rejectedUpdate{}
+	e := NewRepository(repo, cfg, nil)
+	if err = e.passthrough(job.Job{ID: "keep-id", Name: "Example", Category: "tv"}); err == nil {
+		t.Fatal("failed state commit was acknowledged")
+	}
+	if repo.writes != 1 {
+		t.Fatal("continued into hand-back after failed save", repo.writes)
+	}
+}

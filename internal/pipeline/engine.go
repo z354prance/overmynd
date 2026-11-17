@@ -546,12 +546,15 @@ func (e *Engine) retry(j job.Job, err error, max int, what string) {
 		return
 	}
 	if errors.Is(err, backend.ErrBusy) {
-		_, _ = e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
+		if _, writeErr := e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
 			c.Reason = err.Error() + " (waiting)"
 			c.NextRun = e.Now().Add(time.Minute)
 			c.Updated = e.Now()
 			return nil
-		})
+		}); writeErr != nil {
+			e.Log.Printf("job state update failed: %v", writeErr)
+			return
+		}
 		return
 	}
 	if j.Attempts+1 >= max {
@@ -559,33 +562,42 @@ func (e *Engine) retry(j job.Job, err error, max int, what string) {
 		return
 	}
 	wait := time.Duration(15*(j.Attempts+1)) * time.Second
-	_, _ = e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
+	if _, writeErr := e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
 		c.Attempts++
 		c.Reason = fmt.Sprintf("%s: %v (retrying)", what, err)
 		c.NextRun = e.Now().Add(wait)
 		c.Updated = e.Now()
 		return nil
-	})
+	}); writeErr != nil {
+		e.Log.Printf("job state update failed: %v", writeErr)
+		return
+	}
 }
 
 func (e *Engine) fail(j job.Job, reason string) {
 	e.Log.Printf("job %s failed: %s", short(j.ID), reason)
-	_, _ = e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
+	if _, writeErr := e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
 		if c.State == job.Cleaned {
 			return nil
 		}
 		c.Move(job.Failed, reason, e.Now())
 		return nil
-	})
+	}); writeErr != nil {
+		e.Log.Printf("job state update failed: %v", writeErr)
+		return
+	}
 }
 
 func (e *Engine) doSubmit(ctx context.Context, j job.Job) {
 	if e.Cfg.Get().IntakePaused {
-		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
+		if _, writeErr := e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			c.Reason = "intake is paused"
 			c.NextRun = e.Now().Add(15 * time.Second)
 			return nil
-		})
+		}); writeErr != nil {
+			e.Log.Printf("job state update failed: %v", writeErr)
+			return
+		}
 		return
 	}
 	b, err := e.pick(j)
@@ -598,12 +610,15 @@ func (e *Engine) doSubmit(ctx context.Context, j job.Job) {
 		e.retry(j, err, 4, "submit to client")
 		return
 	}
-	_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
+	if _, writeErr := e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 		c.Backend, c.RemoteID, c.SavePath = b.Name(), rid, save
 		c.LastProgress = e.Now()
 		c.Move(job.Submitted, "sent to "+c.Backend, e.Now())
 		return nil
-	})
+	}); writeErr != nil {
+		e.Log.Printf("job state update failed: %v", writeErr)
+		return
+	}
 }
 
 // inactiveGrace is how long an inactive, motionless TorBox item is given before it is retried.
@@ -637,11 +652,14 @@ func (e *Engine) doDownload(ctx context.Context, j job.Job) {
 	case backend.Errored:
 		e.failStalled(ctx, j, it.Error)
 	case backend.Complete:
-		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
+		if _, writeErr := e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			c.Progress = 1
 			c.Move(job.Downloaded, "download finished", now)
 			return nil
-		})
+		}); writeErr != nil {
+			e.Log.Printf("job state update failed: %v", writeErr)
+			return
+		}
 	default:
 		stall := time.Duration(e.Cfg.Get().StallMinutes) * time.Minute
 		moved := it.Progress > j.Progress
@@ -659,7 +677,7 @@ func (e *Engine) doDownload(ctx context.Context, j job.Job) {
 			e.failStalled(ctx, j, fmt.Sprintf("no progress for %d minutes", int(stall.Minutes())))
 			return
 		}
-		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
+		if _, writeErr := e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			if moved {
 				c.Progress, c.LastProgress = it.Progress, now
 			}
@@ -668,7 +686,10 @@ func (e *Engine) doDownload(ctx context.Context, j job.Job) {
 			}
 			c.Updated = now
 			return nil
-		})
+		}); writeErr != nil {
+			e.Log.Printf("job state update failed: %v", writeErr)
+			return
+		}
 	}
 }
 
@@ -719,7 +740,10 @@ func (e *Engine) doDownloaded(ctx context.Context, j job.Job) {
 			e.retry(j, err, 10, "locate files")
 			return
 		}
-		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error { c.SavePath = dir; return nil })
+		if _, writeErr := e.Store.Update(ctx, j.ID, func(c *job.Job) error { c.SavePath = dir; return nil }); writeErr != nil {
+			e.Log.Printf("job state update failed: %v", writeErr)
+			return
+		}
 		j.SavePath = dir
 	}
 	if len(j.Files) == 0 {
@@ -758,10 +782,13 @@ func (e *Engine) doDownloaded(ctx context.Context, j job.Job) {
 			}
 			rel = append(rel, r)
 		}
-		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
+		if _, writeErr := e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			c.StagingDir, c.Files, c.Updated = staging, rel, e.Now()
 			return nil
-		})
+		}); writeErr != nil {
+			e.Log.Printf("job state update failed: %v", writeErr)
+			return
+		}
 		j.StagingDir, j.Files = staging, rel
 	}
 	// The local copy is verified: remove the client item and everything it left.
@@ -820,11 +847,14 @@ func (e *Engine) handBack(j job.Job) {
 		return
 	}
 	e.openUpLog(dest)
-	_, _ = e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
+	if _, writeErr := e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
 		c.CompleteDir, c.StagingDir = dest, ""
 		c.Move(job.Ready, "moved to "+dest, e.Now())
 		return nil
-	})
+	}); writeErr != nil {
+		e.Log.Printf("job state update failed: %v", writeErr)
+		return
+	}
 	e.Log.Printf("job %s ready at %s", short(j.ID), dest)
 }
 
@@ -847,18 +877,24 @@ func (e *Engine) doReady(ctx context.Context, j job.Job) {
 			e.retry2(j, err)
 			return
 		}
-		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
+		if _, writeErr := e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			c.Move(job.Cleaned, "delivered to "+c.CompleteDir, now)
 			return nil
-		})
+		}); writeErr != nil {
+			e.Log.Printf("job state update failed: %v", writeErr)
+			return
+		}
 		e.Log.Printf("job %s delivered to %s", short(j.ID), j.CompleteDir)
 		return
 	}
 	if j.ArrDeleted {
-		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
+		if _, writeErr := e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			c.Move(job.Imported, "the arr removed the item after import", now)
 			return nil
-		})
+		}); writeErr != nil {
+			e.Log.Printf("job state update failed: %v", writeErr)
+			return
+		}
 		return
 	}
 	s := e.Cfg.Get()
@@ -870,10 +906,13 @@ func (e *Engine) doReady(ctx context.Context, j job.Job) {
 		case err != nil:
 			e.Log.Printf("job %s import check: %v", short(j.ID), err)
 		case ok:
-			_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
+			if _, writeErr := e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 				c.Move(job.Imported, "import event found in the arr's history", now)
 				return nil
-			})
+			}); writeErr != nil {
+				e.Log.Printf("job state update failed: %v", writeErr)
+				return
+			}
 			return
 		default:
 			if n, has := chk.(interface{ Note() string }); has {
@@ -885,10 +924,13 @@ func (e *Engine) doReady(ctx context.Context, j job.Job) {
 	// none are left a while after the job was ready, the import happened even when
 	// the history call did not show it.
 	if j.CompleteDir != "" && now.Sub(j.StateChanged) > time.Minute && !hasMedia(j.CompleteDir) {
-		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
+		if _, writeErr := e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			c.Move(job.Imported, "the files left the complete folder, so the arr moved them", now)
 			return nil
-		})
+		}); writeErr != nil {
+			e.Log.Printf("job state update failed: %v", writeErr)
+			return
+		}
 		e.Log.Printf("job %s: no media left in %s, treating it as imported", short(j.ID), j.CompleteDir)
 		return
 	}
@@ -896,7 +938,10 @@ func (e *Engine) doReady(ctx context.Context, j job.Job) {
 	if h := int(now.Sub(j.StateChanged).Hours()); h >= s.FlagImportHours {
 		flag = fmt.Sprintf("waiting for the arr to import for %d hours", h)
 	}
-	_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error { c.NextRun, c.Flag = next, flag; return nil })
+	if _, writeErr := e.Store.Update(ctx, j.ID, func(c *job.Job) error { c.NextRun, c.Flag = next, flag; return nil }); writeErr != nil {
+		e.Log.Printf("job state update failed: %v", writeErr)
+		return
+	}
 }
 
 func (e *Engine) removeBackendItem(ctx context.Context, j job.Job) error {
@@ -1016,10 +1061,13 @@ func (e *Engine) doCleanup(ctx context.Context, j job.Job) {
 		e.retry2(j, err)
 		return
 	}
-	_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
+	if _, writeErr := e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 		c.Move(job.Cleaned, "staging, complete and client items confirmed gone", e.Now())
 		return nil
-	})
+	}); writeErr != nil {
+		e.Log.Printf("job state update failed: %v", writeErr)
+		return
+	}
 	e.Log.Printf("job %s cleaned", short(j.ID))
 }
 
@@ -1030,7 +1078,7 @@ func (e *Engine) retry2(j job.Job, err error) {
 	if wait > 10*time.Minute {
 		wait = 10 * time.Minute
 	}
-	_, _ = e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
+	if _, writeErr := e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
 		c.Attempts++
 		if c.State != job.Failed { // a failed job keeps the reason it failed
 			c.Reason = "cleanup: " + err.Error() + " (retrying)"
@@ -1038,7 +1086,10 @@ func (e *Engine) retry2(j job.Job, err error) {
 		c.NextRun = e.Now().Add(wait)
 		c.Updated = e.Now()
 		return nil
-	})
+	}); writeErr != nil {
+		e.Log.Printf("job state update failed: %v", writeErr)
+		return
+	}
 }
 
 func (e *Engine) doFailed(ctx context.Context, j job.Job) {
@@ -1048,7 +1099,10 @@ func (e *Engine) doFailed(ctx context.Context, j job.Job) {
 			return
 		}
 		j.FailCleaned = true
-		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error { c.FailCleaned, c.Attempts, c.NextRun = true, 0, time.Time{}; return nil })
+		if _, writeErr := e.Store.Update(ctx, j.ID, func(c *job.Job) error { c.FailCleaned, c.Attempts, c.NextRun = true, 0, time.Time{}; return nil }); writeErr != nil {
+			e.Log.Printf("job state update failed: %v", writeErr)
+			return
+		}
 	}
 	// Do not wait for the arr's own failed-download handling (it may be switched
 	// off, or the item may already be gone from its queue): tell it directly, so it
@@ -1083,12 +1137,15 @@ func (e *Engine) doFailed(ctx context.Context, j job.Job) {
 }
 
 func (e *Engine) endFailed(j job.Job, why string) {
-	_, _ = e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
+	if _, writeErr := e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
 		c.ArrNotified = true
 		c.Attempts, c.NextRun = 0, time.Time{}
 		c.Move(job.Cleaned, why, e.Now())
 		return nil
-	})
+	}); writeErr != nil {
+		e.Log.Printf("job state update failed: %v", writeErr)
+		return
+	}
 }
 
 // ---------------------------------------------------------------- files
@@ -1164,11 +1221,14 @@ func (e *Engine) planPull(ctx context.Context, j job.Job, b backend.Backend) {
 		e.fail(j, "no media files in the download")
 		return
 	}
-	_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
+	if _, writeErr := e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 		c.PullTotal, c.PullDone, c.LastProgress = total, 0, e.Now()
 		c.Move(job.Pulling, fmt.Sprintf("copying %d file(s) from %s", len(picked), c.Backend), e.Now())
 		return nil
-	})
+	}); writeErr != nil {
+		e.Log.Printf("job state update failed: %v", writeErr)
+		return
+	}
 }
 
 // doPulling makes sure a background copy is running; it is idempotent, so it
@@ -1244,10 +1304,13 @@ func (e *Engine) runPull(ctx context.Context, id string) {
 			got += n
 			if now := e.Now(); now.Sub(lastSave) > 2*time.Second {
 				lastSave = now
-				_, _ = e.Store.Update(ctx, id, func(c *job.Job) error {
+				if _, writeErr := e.Store.Update(ctx, id, func(c *job.Job) error {
 					c.PullDone, c.LastProgress, c.Updated = base+got, now, now
 					return nil
-				})
+				}); writeErr != nil {
+					e.Log.Printf("job state update failed: %v", writeErr)
+					return
+				}
 			}
 		})
 		if err != nil {
@@ -1265,14 +1328,17 @@ func (e *Engine) runPull(ctx context.Context, id string) {
 		done += rf.Size
 		rel = append(rel, r)
 	}
-	_, _ = e.Store.Update(ctx, id, func(c *job.Job) error {
+	if _, writeErr := e.Store.Update(ctx, id, func(c *job.Job) error {
 		if c.State != job.Pulling {
 			return nil
 		}
 		c.StagingDir, c.Files, c.PullDone = staging, rel, c.PullTotal
 		c.Move(job.Downloaded, "files copied", e.Now())
 		return nil
-	})
+	}); writeErr != nil {
+		e.Log.Printf("job state update failed: %v", writeErr)
+		return
+	}
 }
 
 // noteOnce logs a line for a job only when it differs from the last one, so a

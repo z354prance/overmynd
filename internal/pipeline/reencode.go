@@ -197,15 +197,21 @@ func (e *Engine) runReencodeStage(ctx context.Context, id string) {
 		e.retry(j, err, 6, "create staging")
 		return
 	}
-	_, _ = e.Store.Update(ctx, id, func(c *job.Job) error {
+	if _, writeErr := e.Store.Update(ctx, id, func(c *job.Job) error {
 		c.PullTotal, c.PullDone = c.OriginalSize, 0
 		c.Move(job.Pulling, "copying from the library", e.Now())
 		return nil
-	})
+	}); writeErr != nil {
+		e.Log.Printf("job state update failed: %v", writeErr)
+		return
+	}
 	base := filepath.Base(j.Original)
 	tmp, dst := filepath.Join(staging, ".part"), filepath.Join(staging, base)
 	n, err := copyFileSynced(ctx, j.Original, tmp, func(done int64) {
-		_, _ = e.Store.Update(ctx, id, func(c *job.Job) error { c.PullDone, c.LastProgress = done, e.Now(); return nil })
+		if _, writeErr := e.Store.Update(ctx, id, func(c *job.Job) error { c.PullDone, c.LastProgress = done, e.Now(); return nil }); writeErr != nil {
+			e.Log.Printf("job state update failed: %v", writeErr)
+			return
+		}
 	})
 	if err != nil {
 		if ctx.Err() != nil {
@@ -226,12 +232,15 @@ func (e *Engine) runReencodeStage(ctx context.Context, id string) {
 		e.retry(j, err, 6, "finish the copy")
 		return
 	}
-	_, _ = e.Store.Update(ctx, id, func(c *job.Job) error {
+	if _, writeErr := e.Store.Update(ctx, id, func(c *job.Job) error {
 		c.StagingDir, c.Files, c.PullDone = staging, []string{base}, n
 		c.LastProgress = e.Now()
 		c.Move(job.Downloaded, "copied to staging", e.Now())
 		return nil
-	})
+	}); writeErr != nil {
+		e.Log.Printf("job state update failed: %v", writeErr)
+		return
+	}
 }
 
 // doReencodeSwap replaces the library file with Tdarr's verified output.
@@ -276,7 +285,10 @@ func (e *Engine) doReencodeSwap(ctx context.Context, j job.Job) {
 	// Write the whole new file beside the original first; nothing in the library
 	// changes until it is complete and read back.
 	part := filepath.Join(filepath.Dir(newPath), ".undermynd-"+short(j.ID)+".part")
-	_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error { c.Reason = "writing the AV1 file into the library"; return nil })
+	if _, writeErr := e.Store.Update(ctx, j.ID, func(c *job.Job) error { c.Reason = "writing the AV1 file into the library"; return nil }); writeErr != nil {
+		e.Log.Printf("job state update failed: %v", writeErr)
+		return
+	}
 	n, err := copyFileSynced(ctx, src, part, func(int64) {})
 	if err != nil || n != fileSize(src) {
 		_ = os.Remove(part)
@@ -310,10 +322,13 @@ func (e *Engine) finishReencode(ctx context.Context, j job.Job, why string) {
 		e.retry2(j, err)
 		return
 	}
-	_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
+	if _, writeErr := e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 		c.Move(job.Cleaned, why, e.Now())
 		return nil
-	})
+	}); writeErr != nil {
+		e.Log.Printf("job state update failed: %v", writeErr)
+		return
+	}
 	e.Log.Printf("job %s: %s: %s", short(j.ID), j.Original, why)
 }
 
