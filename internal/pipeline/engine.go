@@ -36,7 +36,7 @@ type DownloadFailer interface {
 }
 
 type Engine struct {
-	Store *store.Store
+	Store store.LegacyRepository
 	Cfg   *config.Config
 	Log   *log.Logger
 	Now   func() time.Time
@@ -67,7 +67,7 @@ type Engine struct {
 	sem     chan struct{}
 }
 
-func New(s *store.Store, c *config.Config, l *log.Logger) *Engine {
+func New(s store.LegacyRepository, c *config.Config, l *log.Logger) *Engine {
 	if l == nil {
 		l = log.New(io.Discard, "", 0)
 	}

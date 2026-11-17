@@ -109,6 +109,7 @@ func (j *Job) Move(to State, reason string, now time.Time) {
 func (j Job) Clone() Job {
 	c := j
 	c.Files = append([]string(nil), j.Files...)
+	c.PastRemoteIDs = append([]string(nil), j.PastRemoteIDs...)
 	c.History = append([]Transition(nil), j.History...)
 	return c
 }

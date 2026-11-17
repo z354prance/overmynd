@@ -43,7 +43,7 @@ const (
 )
 
 type Server struct {
-	Store    *store.Store
+	Store    store.LegacyRepository
 	Engine   *pipeline.Engine
 	Cfg      *config.Config
 	Auth     *auth.Auth
@@ -62,7 +62,7 @@ type Server struct {
 	setupTry map[string]int
 }
 
-func New(s *store.Store, e *pipeline.Engine, c *config.Config, a *auth.Auth, l *log.Logger) *Server {
+func New(s store.LegacyRepository, e *pipeline.Engine, c *config.Config, a *auth.Auth, l *log.Logger) *Server {
 	return &Server{Store: s, Engine: e, Cfg: c, Auth: a, Log: l, setupTry: map[string]int{}}
 }
 

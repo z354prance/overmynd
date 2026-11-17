@@ -64,7 +64,7 @@ type tracked struct {
 
 type Tracker struct {
 	Cfg   *config.Config
-	Store *store.Store
+	Store store.LegacyRepository
 	Log   *log.Logger
 	Now   func() time.Time
 	// ArrFor builds the client for a category; tests replace it.
@@ -81,7 +81,7 @@ type Tracker struct {
 	recent   []Recent
 }
 
-func New(c *config.Config, s *store.Store, l *log.Logger) *Tracker {
+func New(c *config.Config, s store.LegacyRepository, l *log.Logger) *Tracker {
 	t := &Tracker{Cfg: c, Store: s, Log: l, Now: time.Now, path: filepath.Join(c.Env.ConfigDir, "tracked-shows.json"),
 		tracked: map[string]tracked{}, grabs: map[string][]arr.Grab{}, snap: Snapshot{Seasons: []Season{}, Missing: []Missing{}, Errors: []string{}}}
 	t.ArrFor = func(cat config.Category) *arr.Client { return arr.New(cat.Kind, cat.ArrURL, string(cat.ArrAPIKey)) }

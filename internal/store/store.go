@@ -42,13 +42,13 @@ func Open(path string) (*Store, error) {
 	return s, nil
 }
 
-func (s *Store) saveLocked() error {
+func (s *Store) saveLocked(jobs map[string]*job.Job) error {
 	// Drop long-finished jobs so the file stays small.
 	cutoff := s.Now().Add(-7 * 24 * time.Hour)
-	list := make([]*job.Job, 0, len(s.jobs))
-	for id, j := range s.jobs {
+	list := make([]*job.Job, 0, len(jobs))
+	for id, j := range jobs {
 		if j.State == job.Cleaned && j.Updated.Before(cutoff) {
-			delete(s.jobs, id)
+			delete(jobs, id)
 			continue
 		}
 		list = append(list, j)
@@ -106,8 +106,13 @@ func (s *Store) Put(j job.Job) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	c := j.Clone()
-	s.jobs[j.ID] = &c
-	return s.saveLocked()
+	next := s.snapshotLocked()
+	next[j.ID] = &c
+	if err := s.saveLocked(next); err != nil {
+		return err
+	}
+	s.jobs = next
+	return nil
 }
 
 // Update applies fn to the stored job and persists the result. If fn returns an
@@ -123,9 +128,25 @@ func (s *Store) Update(id string, fn func(*job.Job) error) (job.Job, error) {
 	if err := fn(&c); err != nil {
 		return job.Job{}, err
 	}
-	*cur = c
-	if err := s.saveLocked(); err != nil {
+	if c.ID != id {
+		return job.Job{}, errors.New("job ID cannot change")
+	}
+	next := s.snapshotLocked()
+	next[id] = &c
+	if err := s.saveLocked(next); err != nil {
 		return job.Job{}, err
 	}
+	s.jobs = next
 	return c.Clone(), nil
+}
+
+// snapshotLocked makes a private candidate for persistence, including retention.
+// Publishing it only after save succeeds keeps readers behind the commit boundary.
+func (s *Store) snapshotLocked() map[string]*job.Job {
+	next := make(map[string]*job.Job, len(s.jobs))
+	for id, j := range s.jobs {
+		c := j.Clone()
+		next[id] = &c
+	}
+	return next
 }

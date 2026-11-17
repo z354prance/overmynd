@@ -20,7 +20,7 @@ import (
 )
 
 type API struct {
-	Store  *store.Store
+	Store  store.LegacyRepository
 	Engine *pipeline.Engine
 	Cfg    *config.Config
 	Log    *log.Logger
@@ -31,7 +31,7 @@ type API struct {
 	sessions map[string]time.Time
 }
 
-func New(s *store.Store, e *pipeline.Engine, c *config.Config, l *log.Logger) *API {
+func New(s store.LegacyRepository, e *pipeline.Engine, c *config.Config, l *log.Logger) *API {
 	return &API{Store: s, Engine: e, Cfg: c, Log: l, sessions: map[string]time.Time{}, LogRequests: c.Env.LogRequests}
 }
 
