@@ -214,9 +214,7 @@ func (m *Manager) ReapplyTemplate(ctx context.Context, id int64) error {
 	if user.ID != r.EmbyID || !strings.EqualFold(user.Name, r.Username) || user.Policy["IsAdministrator"] != false {
 		return errors.New("media server account identity or administrator permissions changed; inspect it manually")
 	}
-	if e = m.update(id, func(x *rec) {
-		x.Status, x.TokenHash, x.TokenExpires, x.Error = "incomplete", "", 0, "Reapplying template"
-	}); e != nil {
+	if _, e = m.db.Exec("UPDATE access_requests SET status='incomplete',token_hash='',token_expires=0,error='Reapplying template',updated_at=? WHERE id=?", time.Now().UTC().Format(time.RFC3339), id); e != nil {
 		return e
 	}
 	if e = quarantine(s, r, user.Policy); e != nil {

@@ -16,10 +16,7 @@ func verifyConnect(ctx context.Context, s Settings, r Request, user embyUser) er
 	if user.ConnectLinkType != "LinkedUser" || strings.TrimSpace(user.ConnectUserName) == "" {
 		return errors.New("Emby has not confirmed your Connect link yet; confirm the linking email, then retry")
 	}
-	// Requests give the Connect account's email, which Emby may report back as that
-	// account's username. The link only reaches LinkedUser once the owner of that
-	// email confirms Emby's invitation, so a differing name is not a mismatch.
-	if !strings.Contains(r.Connect, "@") && !strings.EqualFold(strings.TrimSpace(user.ConnectUserName), strings.TrimSpace(r.Connect)) {
+	if !strings.EqualFold(strings.TrimSpace(user.ConnectUserName), strings.TrimSpace(r.Connect)) {
 		return errors.New("the linked Emby Connect identity does not match the approved request; contact the server owner")
 	}
 	var pending []json.RawMessage

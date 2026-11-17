@@ -1,4 +1,14 @@
 .git
-.github
-*.md
-unraid
+.gitignore
+config
+docs
+docker
+migrations
+web
+README.md
+*.db
+*.db-shm
+*.db-wal
+
+# Local test runtime and caches
+.test-*
