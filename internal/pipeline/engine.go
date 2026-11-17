@@ -608,7 +608,12 @@ func (e *Engine) doDownload(ctx context.Context, j job.Job) {
 	now := e.Now()
 	if j.Attempts > 0 || strings.HasSuffix(j.Reason, "(retrying)") {
 		// A good answer ends the retry streak and its stale message.
-		j, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error { c.Attempts, c.Reason = 0, ""; return nil })
+		updated, writeErr := e.Store.Update(ctx, j.ID, func(c *job.Job) error { c.Attempts, c.Reason = 0, ""; return nil })
+		if writeErr != nil {
+			e.Log.Printf("download stopped: retry state could not be committed: %v", writeErr)
+			return
+		}
+		j = updated
 	}
 	switch it.Status {
 	case backend.Missing:

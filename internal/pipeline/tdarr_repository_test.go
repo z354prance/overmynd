@@ -3,6 +3,7 @@ package pipeline
 import (
 	"context"
 	"errors"
+	"github.com/z354prance/overmynd/internal/backend"
 	"github.com/z354prance/overmynd/internal/config"
 	"github.com/z354prance/overmynd/internal/job"
 	"github.com/z354prance/overmynd/internal/store"
@@ -45,5 +46,35 @@ func TestTdarrReadFailureLeavesStagingAlone(t *testing.T) {
 	}
 	if _, err = os.Stat(filepath.Join(settings.Tdarr.InDir, "job", "episode.mkv")); !os.IsNotExist(err) {
 		t.Fatal("file handed to Tdarr", err)
+	}
+}
+
+type rejectedUpdate struct {
+	store.Repository
+	writes int
+}
+
+func (r *rejectedUpdate) Update(context.Context, string, func(*job.Job) error) (job.Job, error) {
+	r.writes++
+	return job.Job{}, errors.New("commit failed")
+}
+
+type statusOnly struct{ backend.Backend }
+
+func (statusOnly) Status(context.Context, string) (backend.Item, error) {
+	return backend.Item{Status: backend.Complete}, nil
+}
+func TestFailedRetryResetDoesNotUseAnEmptyJob(t *testing.T) {
+	root := t.TempDir()
+	cfg, err := config.Load(config.Env{ConfigDir: filepath.Join(root, "config"), DataDir: filepath.Join(root, "data")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := &rejectedUpdate{}
+	e := NewRepository(repo, cfg, nil)
+	e.Override = statusOnly{}
+	e.doDownload(context.Background(), job.Job{ID: "keep-id", State: job.Downloading, Attempts: 1})
+	if repo.writes != 1 {
+		t.Fatal("continued after failed retry commit", repo.writes)
 	}
 }
