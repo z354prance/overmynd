@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -23,7 +24,7 @@ import (
 )
 
 type API struct {
-	Store  store.LegacyRepository
+	Store  store.Repository
 	Engine *pipeline.Engine
 	Cfg    *config.Config
 	Log    *log.Logger
@@ -32,6 +33,9 @@ type API struct {
 }
 
 func New(s store.LegacyRepository, e *pipeline.Engine, c *config.Config, l *log.Logger) *API {
+	return NewRepository(store.FromLegacy(s), e, c, l)
+}
+func NewRepository(s store.Repository, e *pipeline.Engine, c *config.Config, l *log.Logger) *API {
 	return &API{Store: s, Engine: e, Cfg: c, Log: l, Fetch: fetchURL}
 }
 
@@ -231,8 +235,12 @@ func queueStatus(j job.Job) string {
 	return "Downloading"
 }
 
-func (a *API) usenet() (queue, hist []job.Job) {
-	for _, j := range a.Store.List() {
+func (a *API) usenet(ctx context.Context) (queue, hist []job.Job, err error) {
+	jobs, err := a.Store.List(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, j := range jobs {
 		if j.Kind != "usenet" {
 			continue
 		}
@@ -254,7 +262,11 @@ func (a *API) queue(w http.ResponseWriter, r *http.Request) {
 		a.deleteIDs(w, r, false)
 		return
 	}
-	q, _ := a.usenet()
+	q, _, err := a.usenet(r.Context())
+	if err != nil {
+		storageError(w)
+		return
+	}
 	slots := make([]map[string]any, 0, len(q))
 	var total, left int64
 	for i, j := range q {
@@ -284,7 +296,11 @@ func (a *API) history(w http.ResponseWriter, r *http.Request) {
 		a.deleteIDs(w, r, true)
 		return
 	}
-	_, h := a.usenet()
+	_, h, err := a.usenet(r.Context())
+	if err != nil {
+		storageError(w)
+		return
+	}
 	slots := make([]map[string]any, 0, len(h))
 	for _, j := range h {
 		status, fail, storage := "Completed", "", j.CompleteDir
@@ -314,15 +330,26 @@ func (a *API) deleteIDs(w http.ResponseWriter, r *http.Request, fromHistory bool
 		return
 	}
 	ok := true
+	var ids []string
 	for _, id := range strings.Split(v, ",") {
 		id = strings.TrimSpace(id)
 		if id == "all" || id == "failed" || id == "completed" {
 			continue // never bulk-clear
 		}
-		j, found := a.Store.Get(id)
-		if !found || j.Kind != "usenet" {
-			continue // already gone: deleting twice is fine
+		j, err := a.Store.Get(r.Context(), id)
+		if errors.Is(err, store.ErrNotFound) {
+			continue
 		}
+		if err != nil {
+			storageError(w)
+			return
+		}
+		if j.Kind != "usenet" {
+			continue
+		}
+		ids = append(ids, id)
+	}
+	for _, id := range ids {
 		if err := a.Engine.ArrDelete(id); err != nil {
 			a.Log.Printf("sabapi: delete %s: %v", id, err)
 			ok = false
@@ -349,4 +376,10 @@ func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+func storageError(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusServiceUnavailable)
+	writeJSON(w, map[string]any{"status": false, "error": "job storage is unavailable"})
 }

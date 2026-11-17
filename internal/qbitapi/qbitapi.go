@@ -6,6 +6,7 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -20,7 +21,7 @@ import (
 )
 
 type API struct {
-	Store  store.LegacyRepository
+	Store  store.Repository
 	Engine *pipeline.Engine
 	Cfg    *config.Config
 	Log    *log.Logger
@@ -32,6 +33,9 @@ type API struct {
 }
 
 func New(s store.LegacyRepository, e *pipeline.Engine, c *config.Config, l *log.Logger) *API {
+	return NewRepository(store.FromLegacy(s), e, c, l)
+}
+func NewRepository(s store.Repository, e *pipeline.Engine, c *config.Config, l *log.Logger) *API {
 	return &API{Store: s, Engine: e, Cfg: c, Log: l, sessions: map[string]time.Time{}, LogRequests: c.Env.LogRequests}
 }
 
@@ -246,7 +250,12 @@ func (a *API) info(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	out := []map[string]any{}
-	for _, j := range a.Store.List() {
+	jobs, err := a.Store.List(r.Context())
+	if err != nil {
+		http.Error(w, "job storage is unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	for _, j := range jobs {
 		if !a.visible(j) {
 			continue
 		}
@@ -261,15 +270,26 @@ func (a *API) info(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, out)
 }
 
-func (a *API) lookup(r *http.Request, key string) (job.Job, bool) {
-	j, found := a.Store.Get(strings.ToLower(r.FormValue(key)))
-	return j, found && a.visible(j)
+func (a *API) lookup(w http.ResponseWriter, r *http.Request, key string) (job.Job, bool) {
+	j, err := a.Store.Get(r.Context(), strings.ToLower(r.FormValue(key)))
+	if errors.Is(err, store.ErrNotFound) {
+		http.NotFound(w, r)
+		return job.Job{}, false
+	}
+	if err != nil {
+		http.Error(w, "job storage is unavailable", http.StatusServiceUnavailable)
+		return job.Job{}, false
+	}
+	if !a.visible(j) {
+		http.NotFound(w, r)
+		return job.Job{}, false
+	}
+	return j, true
 }
 
 func (a *API) properties(w http.ResponseWriter, r *http.Request) {
-	j, found := a.lookup(r, "hash")
+	j, found := a.lookup(w, r, "hash")
 	if !found {
-		http.NotFound(w, r)
 		return
 	}
 	writeJSON(w, map[string]any{
@@ -280,9 +300,8 @@ func (a *API) properties(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) files(w http.ResponseWriter, r *http.Request) {
-	j, found := a.lookup(r, "hash")
+	j, found := a.lookup(w, r, "hash")
 	if !found {
-		http.NotFound(w, r)
 		return
 	}
 	out := []map[string]any{}
@@ -300,8 +319,12 @@ func (a *API) delete(w http.ResponseWriter, r *http.Request) {
 		if h == "" {
 			continue
 		}
-		if err := a.Engine.ArrDelete(h); err != nil && a.LogRequests {
-			a.Log.Printf("machine: delete %s: %v", h, err)
+		if err := a.Engine.ArrDelete(h); err != nil && !errors.Is(err, store.ErrNotFound) {
+			if a.LogRequests {
+				a.Log.Printf("machine: delete %s: %v", h, err)
+			}
+			http.Error(w, "could not update stored job", http.StatusServiceUnavailable)
+			return
 		}
 	}
 	ok(w)
