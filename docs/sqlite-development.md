@@ -47,8 +47,18 @@ callback/commit cancellation, missing versus failed reads, independent competing
 writers, history beyond the display limit and restart recovery of a copying intent.
 These are temporary-file simulations, not a real media import.
 
-Before application cutover: migrate all caller read errors; provide a captured-JSON
-transactional import with validation and migration marker; prove backup/restore;
+`SQLite.ImportSnapshot` accepts already captured JSON bytes and migrates jobs and
+their retained history in one transaction. It rejects null records, duplicate or
+empty IDs, unknown states, inconsistent history and a nonempty destination. A
+SHA-256 marker makes an identical retry a no-op, including after restart; a
+different snapshot is rejected after the first import. The marker and its count
+are committed with the jobs. Preserve the original capture separately. This API
+does not capture a running JSON store, copy settings/secrets, submit downloads or
+switch the executable to SQLite. Snapshot history can only include transitions
+that the original JSON file retained.
+
+Before application cutover: migrate all caller read errors; provide operator-facing
+capture/import tooling and verify a complete backup/restore;
 wire durable intents into an importer with reconciliation; exercise process crashes
 around filesystem finalization. An intent table alone does not solve partial imports.
 Do not copy a live SQLite database file as a backup, and do not read a changing

@@ -87,8 +87,18 @@ SQLite tests additionally prove SQLITE_FULL rollback, SQL failure rollback,
 cancellation, independent concurrent writers, bounded-payload/unbounded-journal
 history and copying-intent restart recovery. These are simulated fixture tests.
 
-Next: propagate error-aware reads through application callers, validate/import an
-immutable captured JSON snapshot transactionally, prove jobs/operational restore,
+Follow-up: the opt-in `SQLite.ImportSnapshot` API now validates captured JSON bytes
+and imports jobs, retained transitions and a SHA-256 migration marker atomically.
+Tests cover restart/idempotent retry, payload/remote-ID preservation, invalid input,
+SQL-failure rollback, cancellation, nonempty destinations and competing imports.
+The original capture remains untouched; no backend submission or application
+cutover occurs. Docker module verification, vet, Linux race tests and the
+CGO-disabled image build were rerun. Local Go caches are excluded from Git and
+Docker contexts. The inherited pipeline race package takes roughly two minutes
+on this host; allow it to finish rather than assuming a hang.
+
+Next: propagate error-aware reads through application callers, add operator-facing
+capture/import tooling, prove jobs/operational backup and restore,
 and connect intents to safe import reconciliation. No SQLite application cutover,
 real-service validation, production import or phase-complete claim has been made.
 Do not start Phase 1B until the Phase 1A gate is evaluated.
