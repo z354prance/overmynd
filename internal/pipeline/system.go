@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"context"
 	"io/fs"
 	"path/filepath"
 	"time"
@@ -63,12 +64,16 @@ func (e *Engine) disk(path string) DiskUse {
 }
 
 // System gathers the numbers for the admin System view.
-func (e *Engine) System() SystemInfo {
+func (e *Engine) System() (SystemInfo, error) {
 	var si SystemInfo
 	s := e.Cfg.Get()
 	si.Paused = s.IntakePaused
 	si.Counts = map[string]int{}
-	for _, j := range e.Store.List() {
+	jobs, err := e.Store.List(context.Background())
+	if err != nil {
+		return si, err
+	}
+	for _, j := range jobs {
 		if j.State != job.Cleaned {
 			si.Counts[job.Group(j.State)]++
 		}
@@ -86,8 +91,12 @@ func (e *Engine) System() SystemInfo {
 			}
 		}
 	}
-	si.Tdarr.InFlight, si.Tdarr.Max, si.Tdarr.API = e.tdarrInFlight(), s.Tdarr.MaxInFlight, s.Tdarr.URL != ""
+	si.Tdarr.InFlight, err = e.tdarrInFlight(context.Background())
+	if err != nil {
+		return si, err
+	}
+	si.Tdarr.Max, si.Tdarr.API = s.Tdarr.MaxInFlight, s.Tdarr.URL != ""
 	si.Work = e.disk(e.Cfg.Env.Work())
 	si.Complete = e.disk(e.Cfg.Env.Complete())
-	return si
+	return si, nil
 }

@@ -35,8 +35,13 @@ func (e *Engine) sendToTdarr(j job.Job) bool {
 	if len(videos) == 0 {
 		return false
 	}
-	if max := e.Cfg.Get().Tdarr.MaxInFlight; max > 0 && e.tdarrInFlight() >= max {
-		_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+	inFlight, err := e.tdarrInFlight(context.Background())
+	if err != nil {
+		e.Log.Printf("Tdarr hand-off stopped: repository read failed: %v", err)
+		return true
+	}
+	if max := e.Cfg.Get().Tdarr.MaxInFlight; max > 0 && inFlight >= max {
+		_, _ = e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
 			c.Reason = fmt.Sprintf("waiting for a free Tdarr slot (limit %d)", max)
 			c.NextRun = e.Now().Add(30 * time.Second)
 			return nil
@@ -49,7 +54,7 @@ func (e *Engine) sendToTdarr(j job.Job) bool {
 			return true
 		}
 	}
-	_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+	_, _ = e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
 		c.TranscodeSig = ""
 		c.LastProgress = e.Now()
 		c.Move(job.QueuedTranscode, fmt.Sprintf("%d video(s) waiting in the Tdarr input folder", len(videos)), e.Now())
@@ -98,15 +103,19 @@ func (e *Engine) tdarrClient() *tdarr.Client {
 }
 
 // tdarrInFlight counts the jobs currently with Tdarr.
-func (e *Engine) tdarrInFlight() int {
+func (e *Engine) tdarrInFlight(ctx context.Context) (int, error) {
 	n := 0
-	for _, j := range e.Store.List() {
+	jobs, err := e.Store.List(ctx)
+	if err != nil {
+		return 0, err
+	}
+	for _, j := range jobs {
 		switch j.State {
 		case job.QueuedTranscode, job.Transcoding, job.Verifying:
 			n++
 		}
 	}
-	return n
+	return n, nil
 }
 
 // tdarrWorkerOn returns the Tdarr worker that currently holds one of this job's files, or nil.
@@ -142,7 +151,7 @@ func (e *Engine) transcodeFailed(j job.Job, why string) {
 	cancel()
 	if w != nil && !e.Now().After(j.StateChanged.Add(time.Duration(e.Cfg.Get().Tdarr.TimeoutMinutes)*time.Minute)) {
 		e.Log.Printf("job %s: %s, but Tdarr worker %s on %s is still on the file (%.0f%%); not handing it back", short(j.ID), why, w.Worker, w.Node, w.Percentage)
-		_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+		_, _ = e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
 			c.Reason = "Tdarr is still encoding"
 			c.NextRun = e.Now().Add(30 * time.Second)
 			return nil
@@ -174,7 +183,7 @@ func (e *Engine) passthrough(j job.Job) error {
 		if err := e.removeTree(e.Cfg.Env.StagingDir(j.ID), e.Cfg.Env.Work()); err != nil {
 			return err
 		}
-		_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+		_, _ = e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
 			c.Move(job.Cleaned, "Tdarr says no change is needed; the library file was left alone", e.Now())
 			return nil
 		})
@@ -191,7 +200,7 @@ func (e *Engine) passthrough(j job.Job) error {
 	if err := e.removeTdarrDirs(j); err != nil {
 		return err
 	}
-	_, _ = e.Store.Update(j.ID, func(c *job.Job) error { c.TranscodeSig = ""; c.Reason = "transcode skipped, original kept"; return nil })
+	_, _ = e.Store.Update(context.Background(), j.ID, func(c *job.Job) error { c.TranscodeSig = ""; c.Reason = "transcode skipped, original kept"; return nil })
 	e.handBack(j)
 	return nil
 }
@@ -266,7 +275,7 @@ func (e *Engine) doTranscode(ctx context.Context, j job.Job) {
 		// Progress is the percentage moving or the encoder reporting frames. A hardware AV1
 		// encode can sit at one percentage for a long while, so the idle limit has a floor.
 		moved := worker.Percentage/100 != j.TranscodeProgress || worker.FPS > 0
-		_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			c.TranscodeProgress, c.TranscodeNode, c.TranscodeWorker = worker.Percentage/100, worker.Node, worker.Worker
 			if moved {
 				c.LastProgress = now
@@ -299,11 +308,11 @@ func (e *Engine) doTranscode(ctx context.Context, j job.Job) {
 			e.transcodeFailed(j, fmt.Sprintf("Tdarr produced no output within %d minutes", s.Tdarr.TimeoutMinutes))
 			return
 		}
-		_, _ = e.Store.Update(j.ID, func(c *job.Job) error { c.NextRun = next; return nil })
+		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error { c.NextRun = next; return nil })
 		return
 	}
 	if j.State == job.QueuedTranscode {
-		_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			c.Move(job.Transcoding, "Tdarr is producing output", now)
 			c.TranscodeSig, c.NextRun = sig.String(), next
 			return nil
@@ -311,7 +320,7 @@ func (e *Engine) doTranscode(ctx context.Context, j job.Job) {
 		return
 	}
 	if found == total && sig.String() == j.TranscodeSig {
-		_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			c.TranscodeProgress = 1
 			c.Move(job.Verifying, "Tdarr output complete", now)
 			return nil
@@ -322,7 +331,7 @@ func (e *Engine) doTranscode(ctx context.Context, j job.Job) {
 		e.transcodeFailed(j, fmt.Sprintf("Tdarr did not finish within %d minutes", s.Tdarr.TimeoutMinutes))
 		return
 	}
-	_, _ = e.Store.Update(j.ID, func(c *job.Job) error { c.TranscodeSig, c.NextRun = sig.String(), next; return nil })
+	_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error { c.TranscodeSig, c.NextRun = sig.String(), next; return nil })
 }
 
 // validContainer checks the file starts like the container its extension claims.
@@ -390,7 +399,7 @@ func (e *Engine) doVerify(ctx context.Context, j job.Job) {
 		e.retry(j, err, 10, "clear Tdarr folders")
 		return
 	}
-	_, _ = e.Store.Update(j.ID, func(c *job.Job) error { c.Files, c.TranscodeSig = newFiles, ""; return nil })
+	_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error { c.Files, c.TranscodeSig = newFiles, ""; return nil })
 	j.Files = newFiles
 	e.handBack(j)
 }

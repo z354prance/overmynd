@@ -53,7 +53,7 @@ func (e *Engine) placeInLibrary(ctx context.Context, j job.Job, cat config.Categ
 			e.retry2(j, err)
 			return
 		}
-		_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			c.Flag = ""
 			c.Move(job.Cleaned, fmt.Sprintf("placed %d file(s) in %s", placed, root), now)
 			return nil
@@ -66,7 +66,7 @@ func (e *Engine) placeInLibrary(ctx context.Context, j job.Job, cat config.Categ
 		return
 	}
 	why := fmt.Sprintf("placed %d, left in %s: %s", placed, j.CompleteDir, strings.Join(dedupe(left), "; "))
-	_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+	_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 		c.Move(job.Cleaned, why, now)
 		return nil
 	})

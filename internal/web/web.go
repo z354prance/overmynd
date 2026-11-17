@@ -477,7 +477,14 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) system(w http.ResponseWriter, r *http.Request) { writeJSON(w, s.Engine.System()) }
+func (s *Server) system(w http.ResponseWriter, r *http.Request) {
+	info, err := s.Engine.System()
+	if err != nil {
+		jsonErr(w, http.StatusServiceUnavailable, "job storage is unavailable")
+		return
+	}
+	writeJSON(w, info)
+}
 
 func (s *Server) setIntake(w http.ResponseWriter, r *http.Request) {
 	var in struct {

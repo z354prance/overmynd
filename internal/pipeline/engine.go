@@ -36,7 +36,7 @@ type DownloadFailer interface {
 }
 
 type Engine struct {
-	Store store.LegacyRepository
+	Store store.Repository
 	Cfg   *config.Config
 	Log   *log.Logger
 	Now   func() time.Time
@@ -68,6 +68,11 @@ type Engine struct {
 }
 
 func New(s store.LegacyRepository, c *config.Config, l *log.Logger) *Engine {
+	return NewRepository(store.FromLegacy(s), c, l)
+}
+
+// NewRepository accepts error-aware storage without selecting SQLite at startup.
+func NewRepository(s store.Repository, c *config.Config, l *log.Logger) *Engine {
 	if l == nil {
 		l = log.New(io.Discard, "", 0)
 	}
@@ -219,7 +224,11 @@ func (e *Engine) Submit(req SubmitRequest) (job.Job, error) {
 	}
 	e.submitMu.Lock()
 	defer e.submitMu.Unlock()
-	if cur, ok := e.Store.Get(id); ok && cur.State != job.Cleaned && cur.State != job.Failed {
+	cur, readErr := e.Store.Get(context.Background(), id)
+	if readErr != nil && !errors.Is(readErr, store.ErrNotFound) {
+		return job.Job{}, fmt.Errorf("read job before submission: %w", readErr)
+	}
+	if readErr == nil && cur.State != job.Cleaned && cur.State != job.Failed {
 		return cur, nil // the arr asked again; same job
 	}
 	now := e.Now()
@@ -246,7 +255,7 @@ func (e *Engine) Submit(req SubmitRequest) (job.Job, error) {
 		j.Magnet = req.Magnet
 	}
 	j.History = []job.Transition{{At: now, To: job.Received, Reason: "grab received from " + j.Source}}
-	if err := e.Store.Put(j); err != nil {
+	if err := e.Store.Put(context.Background(), j); err != nil {
 		return job.Job{}, err
 	}
 	e.Log.Printf("job %s received (%s, category %s)", short(id), name, req.Category)
@@ -299,7 +308,11 @@ func (e *Engine) SubmitNZB(req SubmitNZBRequest) (job.Job, error) {
 	}
 	e.submitMu.Lock()
 	defer e.submitMu.Unlock()
-	if cur, ok := e.Store.Get(id); ok && cur.State != job.Cleaned && cur.State != job.Failed {
+	cur, readErr := e.Store.Get(context.Background(), id)
+	if readErr != nil && !errors.Is(readErr, store.ErrNotFound) {
+		return job.Job{}, fmt.Errorf("read job before submission: %w", readErr)
+	}
+	if readErr == nil && cur.State != job.Cleaned && cur.State != job.Failed {
 		return cur, nil
 	}
 	dir := filepath.Join(e.Cfg.Env.ConfigDir, "nzbs")
@@ -322,7 +335,7 @@ func (e *Engine) SubmitNZB(req SubmitNZBRequest) (job.Job, error) {
 		j.Source = req.Source
 	}
 	j.History = []job.Transition{{At: now, To: job.Received, Reason: "grab received from " + j.Source}}
-	if err := e.Store.Put(j); err != nil {
+	if err := e.Store.Put(context.Background(), j); err != nil {
 		return job.Job{}, err
 	}
 	e.Log.Printf("job %s received (usenet %s, category %s)", short(id), name, req.Category)
@@ -331,7 +344,7 @@ func (e *Engine) SubmitNZB(req SubmitNZBRequest) (job.Job, error) {
 
 // ArrDelete handles the arr's delete call for an item.
 func (e *Engine) ArrDelete(id string) error {
-	_, err := e.Store.Update(id, func(j *job.Job) error {
+	_, err := e.Store.Update(context.Background(), id, func(j *job.Job) error {
 		j.ArrDeleted = true
 		switch j.State {
 		case job.Ready, job.Imported, job.Cleaned, job.Failed:
@@ -347,7 +360,7 @@ func (e *Engine) ArrDelete(id string) error {
 // ------------------------------------------------------------ admin actions
 
 func (e *Engine) Retry(id string) error {
-	_, err := e.Store.Update(id, func(j *job.Job) error {
+	_, err := e.Store.Update(context.Background(), id, func(j *job.Job) error {
 		if j.State != job.Failed {
 			return errors.New("only a failed job can be retried")
 		}
@@ -365,7 +378,7 @@ func (e *Engine) Retry(id string) error {
 }
 
 func (e *Engine) Cancel(id string) error {
-	_, err := e.Store.Update(id, func(j *job.Job) error {
+	_, err := e.Store.Update(context.Background(), id, func(j *job.Job) error {
 		if j.State == job.Cleaned {
 			return nil
 		}
@@ -380,7 +393,7 @@ func (e *Engine) Cancel(id string) error {
 
 // FailJob fails a job on purpose, so the arr sees a failed download and blocklists the release.
 func (e *Engine) FailJob(id string) error {
-	_, err := e.Store.Update(id, func(j *job.Job) error {
+	_, err := e.Store.Update(context.Background(), id, func(j *job.Job) error {
 		switch j.State {
 		case job.Failed, job.Cleaned:
 			return errors.New("the job has already ended")
@@ -394,9 +407,9 @@ func (e *Engine) FailJob(id string) error {
 // CleanupNow runs a finished or failed job's cleanup right now and reports what
 // went wrong, so the admin button shows a result instead of silently queueing it.
 func (e *Engine) CleanupNow(id string) error {
-	j, ok := e.Store.Get(id)
-	if !ok {
-		return errors.New("no such job")
+	j, err := e.Store.Get(context.Background(), id)
+	if err != nil {
+		return fmt.Errorf("read job before cleanup: %w", err)
 	}
 	if j.State != job.Imported && j.State != job.Failed {
 		return errors.New("cleanup runs only for imported or failed jobs")
@@ -406,7 +419,7 @@ func (e *Engine) CleanupNow(id string) error {
 	if err := e.cleanupFiles(ctx, j); err != nil {
 		return fmt.Errorf("cleanup did not finish: %w", err)
 	}
-	_, err := e.Store.Update(id, func(c *job.Job) error {
+	_, err = e.Store.Update(context.Background(), id, func(c *job.Job) error {
 		switch c.State {
 		case job.Failed:
 			c.FailCleaned, c.Attempts, c.NextRun = true, 0, time.Time{}
@@ -419,7 +432,7 @@ func (e *Engine) CleanupNow(id string) error {
 }
 
 func (e *Engine) MarkImported(id string) error {
-	_, err := e.Store.Update(id, func(j *job.Job) error {
+	_, err := e.Store.Update(context.Background(), id, func(j *job.Job) error {
 		if j.State != job.Ready {
 			return errors.New("only a ready job can be marked imported")
 		}
@@ -446,7 +459,12 @@ func (e *Engine) Run(ctx context.Context, every time.Duration) {
 }
 
 func (e *Engine) Tick(ctx context.Context) {
-	for _, j := range e.Store.List() {
+	jobs, err := e.Store.List(ctx)
+	if err != nil {
+		e.Log.Printf("job loop stopped: repository read failed: %v", err)
+		return
+	}
+	for _, j := range jobs {
 		if ctx.Err() != nil {
 			return
 		}
@@ -457,8 +475,12 @@ func (e *Engine) Tick(ctx context.Context) {
 				break
 			}
 			e.step(ctx, j)
-			nj, ok := e.Store.Get(j.ID)
-			if !ok || nj.State == j.State {
+			nj, err := e.Store.Get(ctx, j.ID)
+			if err != nil {
+				e.Log.Printf("job loop stopped: repository read failed: %v", err)
+				return
+			}
+			if nj.State == j.State {
 				break
 			}
 			j = nj
@@ -511,7 +533,7 @@ func (e *Engine) retry(j job.Job, err error, max int, what string) {
 		return
 	}
 	if errors.Is(err, backend.ErrBusy) {
-		_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+		_, _ = e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
 			c.Reason = err.Error() + " (waiting)"
 			c.NextRun = e.Now().Add(time.Minute)
 			c.Updated = e.Now()
@@ -524,7 +546,7 @@ func (e *Engine) retry(j job.Job, err error, max int, what string) {
 		return
 	}
 	wait := time.Duration(15*(j.Attempts+1)) * time.Second
-	_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+	_, _ = e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
 		c.Attempts++
 		c.Reason = fmt.Sprintf("%s: %v (retrying)", what, err)
 		c.NextRun = e.Now().Add(wait)
@@ -535,7 +557,7 @@ func (e *Engine) retry(j job.Job, err error, max int, what string) {
 
 func (e *Engine) fail(j job.Job, reason string) {
 	e.Log.Printf("job %s failed: %s", short(j.ID), reason)
-	_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+	_, _ = e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
 		if c.State == job.Cleaned {
 			return nil
 		}
@@ -546,7 +568,7 @@ func (e *Engine) fail(j job.Job, reason string) {
 
 func (e *Engine) doSubmit(ctx context.Context, j job.Job) {
 	if e.Cfg.Get().IntakePaused {
-		_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			c.Reason = "intake is paused"
 			c.NextRun = e.Now().Add(15 * time.Second)
 			return nil
@@ -563,7 +585,7 @@ func (e *Engine) doSubmit(ctx context.Context, j job.Job) {
 		e.retry(j, err, 4, "submit to client")
 		return
 	}
-	_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+	_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 		c.Backend, c.RemoteID, c.SavePath = b.Name(), rid, save
 		c.LastProgress = e.Now()
 		c.Move(job.Submitted, "sent to "+c.Backend, e.Now())
@@ -586,7 +608,7 @@ func (e *Engine) doDownload(ctx context.Context, j job.Job) {
 	now := e.Now()
 	if j.Attempts > 0 || strings.HasSuffix(j.Reason, "(retrying)") {
 		// A good answer ends the retry streak and its stale message.
-		j, _ = e.Store.Update(j.ID, func(c *job.Job) error { c.Attempts, c.Reason = 0, ""; return nil })
+		j, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error { c.Attempts, c.Reason = 0, ""; return nil })
 	}
 	switch it.Status {
 	case backend.Missing:
@@ -597,7 +619,7 @@ func (e *Engine) doDownload(ctx context.Context, j job.Job) {
 	case backend.Errored:
 		e.failStalled(ctx, j, it.Error)
 	case backend.Complete:
-		_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			c.Progress = 1
 			c.Move(job.Downloaded, "download finished", now)
 			return nil
@@ -619,7 +641,7 @@ func (e *Engine) doDownload(ctx context.Context, j job.Job) {
 			e.failStalled(ctx, j, fmt.Sprintf("no progress for %d minutes", int(stall.Minutes())))
 			return
 		}
-		_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			if moved {
 				c.Progress, c.LastProgress = it.Progress, now
 			}
@@ -679,7 +701,7 @@ func (e *Engine) doDownloaded(ctx context.Context, j job.Job) {
 			e.retry(j, err, 10, "locate files")
 			return
 		}
-		_, _ = e.Store.Update(j.ID, func(c *job.Job) error { c.SavePath = dir; return nil })
+		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error { c.SavePath = dir; return nil })
 		j.SavePath = dir
 	}
 	if len(j.Files) == 0 {
@@ -718,7 +740,7 @@ func (e *Engine) doDownloaded(ctx context.Context, j job.Job) {
 			}
 			rel = append(rel, r)
 		}
-		_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			c.StagingDir, c.Files, c.Updated = staging, rel, e.Now()
 			return nil
 		})
@@ -780,7 +802,7 @@ func (e *Engine) handBack(j job.Job) {
 		return
 	}
 	e.openUpLog(dest)
-	_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+	_, _ = e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
 		c.CompleteDir, c.StagingDir = dest, ""
 		c.Move(job.Ready, "moved to "+dest, e.Now())
 		return nil
@@ -807,7 +829,7 @@ func (e *Engine) doReady(ctx context.Context, j job.Job) {
 			e.retry2(j, err)
 			return
 		}
-		_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			c.Move(job.Cleaned, "delivered to "+c.CompleteDir, now)
 			return nil
 		})
@@ -815,7 +837,7 @@ func (e *Engine) doReady(ctx context.Context, j job.Job) {
 		return
 	}
 	if j.ArrDeleted {
-		_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			c.Move(job.Imported, "the arr removed the item after import", now)
 			return nil
 		})
@@ -830,7 +852,7 @@ func (e *Engine) doReady(ctx context.Context, j job.Job) {
 		case err != nil:
 			e.Log.Printf("job %s import check: %v", short(j.ID), err)
 		case ok:
-			_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+			_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 				c.Move(job.Imported, "import event found in the arr's history", now)
 				return nil
 			})
@@ -845,7 +867,7 @@ func (e *Engine) doReady(ctx context.Context, j job.Job) {
 	// none are left a while after the job was ready, the import happened even when
 	// the history call did not show it.
 	if j.CompleteDir != "" && now.Sub(j.StateChanged) > time.Minute && !hasMedia(j.CompleteDir) {
-		_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 			c.Move(job.Imported, "the files left the complete folder, so the arr moved them", now)
 			return nil
 		})
@@ -856,7 +878,7 @@ func (e *Engine) doReady(ctx context.Context, j job.Job) {
 	if h := int(now.Sub(j.StateChanged).Hours()); h >= s.FlagImportHours {
 		flag = fmt.Sprintf("waiting for the arr to import for %d hours", h)
 	}
-	_, _ = e.Store.Update(j.ID, func(c *job.Job) error { c.NextRun, c.Flag = next, flag; return nil })
+	_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error { c.NextRun, c.Flag = next, flag; return nil })
 }
 
 func (e *Engine) removeBackendItem(ctx context.Context, j job.Job) error {
@@ -976,7 +998,7 @@ func (e *Engine) doCleanup(ctx context.Context, j job.Job) {
 		e.retry2(j, err)
 		return
 	}
-	_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+	_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 		c.Move(job.Cleaned, "staging, complete and client items confirmed gone", e.Now())
 		return nil
 	})
@@ -990,7 +1012,7 @@ func (e *Engine) retry2(j job.Job, err error) {
 	if wait > 10*time.Minute {
 		wait = 10 * time.Minute
 	}
-	_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+	_, _ = e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
 		c.Attempts++
 		if c.State != job.Failed { // a failed job keeps the reason it failed
 			c.Reason = "cleanup: " + err.Error() + " (retrying)"
@@ -1008,7 +1030,7 @@ func (e *Engine) doFailed(ctx context.Context, j job.Job) {
 			return
 		}
 		j.FailCleaned = true
-		_, _ = e.Store.Update(j.ID, func(c *job.Job) error { c.FailCleaned, c.Attempts, c.NextRun = true, 0, time.Time{}; return nil })
+		_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error { c.FailCleaned, c.Attempts, c.NextRun = true, 0, time.Time{}; return nil })
 	}
 	// Do not wait for the arr's own failed-download handling (it may be switched
 	// off, or the item may already be gone from its queue): tell it directly, so it
@@ -1043,7 +1065,7 @@ func (e *Engine) doFailed(ctx context.Context, j job.Job) {
 }
 
 func (e *Engine) endFailed(j job.Job, why string) {
-	_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+	_, _ = e.Store.Update(context.Background(), j.ID, func(c *job.Job) error {
 		c.ArrNotified = true
 		c.Attempts, c.NextRun = 0, time.Time{}
 		c.Move(job.Cleaned, why, e.Now())
@@ -1124,7 +1146,7 @@ func (e *Engine) planPull(ctx context.Context, j job.Job, b backend.Backend) {
 		e.fail(j, "no media files in the download")
 		return
 	}
-	_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+	_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 		c.PullTotal, c.PullDone, c.LastProgress = total, 0, e.Now()
 		c.Move(job.Pulling, fmt.Sprintf("copying %d file(s) from %s", len(picked), c.Backend), e.Now())
 		return nil
@@ -1152,8 +1174,12 @@ func (e *Engine) doPulling(ctx context.Context, j job.Job) {
 }
 
 func (e *Engine) runPull(ctx context.Context, id string) {
-	j, ok := e.Store.Get(id)
-	if !ok || j.State != job.Pulling {
+	j, err := e.Store.Get(ctx, id)
+	if err != nil {
+		e.Log.Printf("pull stopped: repository read failed: %v", err)
+		return
+	}
+	if j.State != job.Pulling {
 		return
 	}
 	b := e.backend(j)
@@ -1200,7 +1226,7 @@ func (e *Engine) runPull(ctx context.Context, id string) {
 			got += n
 			if now := e.Now(); now.Sub(lastSave) > 2*time.Second {
 				lastSave = now
-				_, _ = e.Store.Update(id, func(c *job.Job) error {
+				_, _ = e.Store.Update(ctx, id, func(c *job.Job) error {
 					c.PullDone, c.LastProgress, c.Updated = base+got, now, now
 					return nil
 				})
@@ -1210,14 +1236,18 @@ func (e *Engine) runPull(ctx context.Context, id string) {
 			if ctx.Err() != nil {
 				return
 			}
-			cur, _ := e.Store.Get(id)
+			cur, readErr := e.Store.Get(ctx, id)
+			if readErr != nil {
+				e.Log.Printf("pull retry stopped: repository read failed: %v", readErr)
+				return
+			}
 			e.retry(cur, err, 8, "copy from "+j.Backend)
 			return
 		}
 		done += rf.Size
 		rel = append(rel, r)
 	}
-	_, _ = e.Store.Update(id, func(c *job.Job) error {
+	_, _ = e.Store.Update(ctx, id, func(c *job.Job) error {
 		if c.State != job.Pulling {
 			return nil
 		}

@@ -15,6 +15,7 @@ import (
 
 	"github.com/z354prance/overmynd/internal/job"
 	"github.com/z354prance/overmynd/internal/media"
+	"github.com/z354prance/overmynd/internal/store"
 )
 
 // Re-encoding runs a file that is already in the library through the same Tdarr
@@ -62,7 +63,11 @@ func (e *Engine) SubmitReencode(path string) (job.Job, error) {
 	id := ReencodeID(clean)
 	e.submitMu.Lock()
 	defer e.submitMu.Unlock()
-	if cur, ok := e.Store.Get(id); ok && cur.State != job.Cleaned && cur.State != job.Failed {
+	cur, readErr := e.Store.Get(context.Background(), id)
+	if readErr != nil && !errors.Is(readErr, store.ErrNotFound) {
+		return job.Job{}, fmt.Errorf("read job before reencode: %w", readErr)
+	}
+	if readErr == nil && cur.State != job.Cleaned && cur.State != job.Failed {
 		return cur, nil
 	}
 	now := e.Now()
@@ -70,7 +75,7 @@ func (e *Engine) SubmitReencode(path string) (job.Job, error) {
 		State: job.Received, Size: fi.Size(), Original: clean, OriginalSize: fi.Size(), OriginalMod: fi.ModTime().UnixNano(),
 		Created: now, Updated: now, StateChanged: now, LastProgress: now}
 	j.History = []job.Transition{{At: now, To: job.Received, Reason: "queued for re-encoding to AV1"}}
-	if err := e.Store.Put(j); err != nil {
+	if err := e.Store.Put(context.Background(), j); err != nil {
 		return job.Job{}, err
 	}
 	e.Log.Printf("job %s queued: re-encode %s", short(id), clean)
@@ -165,8 +170,12 @@ func copyFileSynced(ctx context.Context, src, dst string, tick func(int64)) (int
 }
 
 func (e *Engine) runReencodeStage(ctx context.Context, id string) {
-	j, ok := e.Store.Get(id)
-	if !ok || (j.State != job.Received && j.State != job.Pulling) {
+	j, err := e.Store.Get(ctx, id)
+	if err != nil {
+		e.Log.Printf("reencode stopped: repository read failed: %v", err)
+		return
+	}
+	if j.State != job.Received && j.State != job.Pulling {
 		return
 	}
 	if err := libraryFileUnchanged(j); err != nil {
@@ -182,7 +191,7 @@ func (e *Engine) runReencodeStage(ctx context.Context, id string) {
 		e.retry(j, err, 6, "create staging")
 		return
 	}
-	_, _ = e.Store.Update(id, func(c *job.Job) error {
+	_, _ = e.Store.Update(ctx, id, func(c *job.Job) error {
 		c.PullTotal, c.PullDone = c.OriginalSize, 0
 		c.Move(job.Pulling, "copying from the library", e.Now())
 		return nil
@@ -190,7 +199,7 @@ func (e *Engine) runReencodeStage(ctx context.Context, id string) {
 	base := filepath.Base(j.Original)
 	tmp, dst := filepath.Join(staging, ".part"), filepath.Join(staging, base)
 	n, err := copyFileSynced(ctx, j.Original, tmp, func(done int64) {
-		_, _ = e.Store.Update(id, func(c *job.Job) error { c.PullDone, c.LastProgress = done, e.Now(); return nil })
+		_, _ = e.Store.Update(ctx, id, func(c *job.Job) error { c.PullDone, c.LastProgress = done, e.Now(); return nil })
 	})
 	if err != nil {
 		if ctx.Err() != nil {
@@ -211,7 +220,7 @@ func (e *Engine) runReencodeStage(ctx context.Context, id string) {
 		e.retry(j, err, 6, "finish the copy")
 		return
 	}
-	_, _ = e.Store.Update(id, func(c *job.Job) error {
+	_, _ = e.Store.Update(ctx, id, func(c *job.Job) error {
 		c.StagingDir, c.Files, c.PullDone = staging, []string{base}, n
 		c.LastProgress = e.Now()
 		c.Move(job.Downloaded, "copied to staging", e.Now())
@@ -261,7 +270,7 @@ func (e *Engine) doReencodeSwap(ctx context.Context, j job.Job) {
 	// Write the whole new file beside the original first; nothing in the library
 	// changes until it is complete and read back.
 	part := filepath.Join(filepath.Dir(newPath), ".undermynd-"+short(j.ID)+".part")
-	_, _ = e.Store.Update(j.ID, func(c *job.Job) error { c.Reason = "writing the AV1 file into the library"; return nil })
+	_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error { c.Reason = "writing the AV1 file into the library"; return nil })
 	n, err := copyFileSynced(ctx, src, part, func(int64) {})
 	if err != nil || n != fileSize(src) {
 		_ = os.Remove(part)
@@ -295,7 +304,7 @@ func (e *Engine) finishReencode(ctx context.Context, j job.Job, why string) {
 		e.retry2(j, err)
 		return
 	}
-	_, _ = e.Store.Update(j.ID, func(c *job.Job) error {
+	_, _ = e.Store.Update(ctx, j.ID, func(c *job.Job) error {
 		c.Move(job.Cleaned, why, e.Now())
 		return nil
 	})
