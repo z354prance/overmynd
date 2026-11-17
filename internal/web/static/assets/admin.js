@@ -112,8 +112,8 @@
     bar.appendChild(el('span','sp'));
     var pb=el('button','','');function pauseLabel(){pb.textContent=paused?'resume intake':'pause intake';pb.className=paused?'go':''}
     pb.onclick=function(){api('POST','/intake',{paused:!paused}).then(function(r){paused=r.paused;pauseLabel();banner()}).catch(fail)};pauseLabel();bar.appendChild(pb);
-    body.appendChild(bar);var note=el('div','notice');body.appendChild(note);var host=el('div');body.appendChild(host);
-    function banner(){note.textContent=paused?'Intake is paused: new grabs are accepted but held until you resume.':'';note.style.display=paused?'block':'none';pauseLabel()}
+    body.appendChild(bar);var storageUnavailable=false;var note=el('div','notice');body.appendChild(note);var host=el('div');body.appendChild(host);
+    function banner(){note.textContent=storageUnavailable?'Job storage is unavailable. Showing the last received jobs.':paused?'Intake is paused: new grabs are accepted but held until you resume.':'';note.style.display=(paused||storageUnavailable)?'block':'none';pauseLabel()}
     function inGroup(r,g){
       if(g==='attention')return r.attention&&r.state!=='cleaned';
       if(g==='working')return !!WORKING[r.group];
@@ -135,10 +135,11 @@
       if(!list.length){host.appendChild(el('div','empty',lastRows.length?'nothing matches these filters':'no jobs yet'));return}
       var box=el('div','jlist');list.forEach(function(j){box.appendChild(jobRow(j,function(j){detailId=j.id;detail(body,j.id)}))});host.appendChild(box);
     }
-    function take(d){lastRows=d.jobs||[];paused=!!d.paused;banner();drawRows()}
+    function take(d){storageUnavailable=false;lastRows=d.jobs||[];paused=!!d.paused;banner();drawRows()}
     function poll(){api('GET','/jobs').then(function(rows){lastRows=rows;drawRows()}).catch(fail)}
     if(window.EventSource){
       es=new EventSource('/admin/api/events');
+      es.addEventListener('storage-error',function(){storageUnavailable=true;banner()});
       es.addEventListener('jobs',function(e){try{take(JSON.parse(e.data))}catch(x){}});
       es.onerror=function(){if(es&&es.readyState===2){es.close();es=null;poll();timer=setInterval(poll,3000)}};
     }else{poll();timer=setInterval(poll,3000)}

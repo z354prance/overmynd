@@ -6,6 +6,7 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/z354prance/overmynd/internal/tdarr"
 	"io/fs"
@@ -43,7 +44,7 @@ const (
 )
 
 type Server struct {
-	Store    store.LegacyRepository
+	Store    store.Repository
 	Engine   *pipeline.Engine
 	Cfg      *config.Config
 	Auth     *auth.Auth
@@ -63,6 +64,9 @@ type Server struct {
 }
 
 func New(s store.LegacyRepository, e *pipeline.Engine, c *config.Config, a *auth.Auth, l *log.Logger) *Server {
+	return NewRepository(store.FromLegacy(s), e, c, a, l)
+}
+func NewRepository(s store.Repository, e *pipeline.Engine, c *config.Config, a *auth.Auth, l *log.Logger) *Server {
 	return &Server{Store: s, Engine: e, Cfg: c, Auth: a, Log: l, setupTry: map[string]int{}}
 }
 
@@ -280,7 +284,12 @@ var stageName = map[job.State]string{
 // paths, IDs, failure reasons, backend names or settings.
 func (s *Server) publicJobs(w http.ResponseWriter, r *http.Request) {
 	out := []publicJob{}
-	for _, j := range s.Store.List() {
+	jobs, err := s.Store.List(r.Context())
+	if err != nil {
+		jobStorageError(w)
+		return
+	}
+	for _, j := range jobs {
 		if j.State == job.Cleaned || j.Source == "reencode" {
 			continue
 		}
@@ -420,17 +429,28 @@ type jobRow struct {
 	Changed  time.Time `json:"changed"`
 }
 
-func (s *Server) jobRows() []jobRow {
+func (s *Server) jobRows(ctx context.Context) ([]jobRow, error) {
 	out := []jobRow{}
-	for _, j := range s.Store.List() {
+	jobs, err := s.Store.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, j := range jobs {
 		out = append(out, jobRow{ID: j.ID, Name: j.Name, Source: j.Source, Category: j.Category, State: j.State, Group: job.Group(j.State),
 			Reason: j.Reason, Flag: j.Flag, Attn: j.State == job.Failed || j.Flag != "", Progress: job.Overall(j), Backend: j.Backend,
 			Node: j.TranscodeNode, Worker: j.TranscodeWorker, Created: j.Created, Changed: j.StateChanged, FailedAt: job.FailedStage(j)})
 	}
-	return out
+	return out, nil
 }
 
-func (s *Server) jobs(w http.ResponseWriter, r *http.Request) { writeJSON(w, s.jobRows()) }
+func (s *Server) jobs(w http.ResponseWriter, r *http.Request) {
+	rows, err := s.jobRows(r.Context())
+	if err != nil {
+		jobStorageError(w)
+		return
+	}
+	writeJSON(w, rows)
+}
 
 // events streams the job list whenever it changes, so progress moves without refreshing.
 func (s *Server) events(w http.ResponseWriter, r *http.Request) {
@@ -439,13 +459,23 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 		jsonErr(w, http.StatusInternalServerError, "streaming is not supported")
 		return
 	}
+	if _, err := s.jobRows(r.Context()); err != nil {
+		jobStorageError(w)
+		return
+	}
 	_ = http.NewResponseController(w).SetWriteDeadline(time.Time{})
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Accel-Buffering", "no")
 	var last string
 	send := func() bool {
-		b, _ := json.Marshal(map[string]any{"jobs": s.jobRows(), "paused": s.Cfg.Get().IntakePaused})
+		rows, err := s.jobRows(r.Context())
+		if err != nil {
+			_, _ = fmt.Fprint(w, "event: storage-error\ndata: {\"error\":\"job storage is unavailable\"}\n\n")
+			fl.Flush()
+			return false
+		}
+		b, _ := json.Marshal(map[string]any{"jobs": rows, "paused": s.Cfg.Get().IntakePaused})
 		if string(b) != last {
 			last = string(b)
 			if _, err := fmt.Fprintf(w, "event: jobs\ndata: %s\n\n", b); err != nil {
@@ -504,9 +534,13 @@ func (s *Server) setIntake(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) jobDetail(w http.ResponseWriter, r *http.Request) {
-	j, ok := s.Store.Get(r.PathValue("id"))
-	if !ok {
+	j, err := s.Store.Get(r.Context(), r.PathValue("id"))
+	if errors.Is(err, store.ErrNotFound) {
 		jsonErr(w, http.StatusNotFound, "no such job")
+		return
+	}
+	if err != nil {
+		jobStorageError(w)
 		return
 	}
 	j.Magnet = "" // magnets can carry tracker passkeys
@@ -947,4 +981,8 @@ func jsonErr(w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
+}
+
+func jobStorageError(w http.ResponseWriter) {
+	jsonErr(w, http.StatusServiceUnavailable, "job storage is unavailable")
 }

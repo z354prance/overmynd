@@ -64,7 +64,7 @@ type tracked struct {
 
 type Tracker struct {
 	Cfg   *config.Config
-	Store store.LegacyRepository
+	Store store.Repository
 	Log   *log.Logger
 	Now   func() time.Time
 	// ArrFor builds the client for a category; tests replace it.
@@ -82,6 +82,9 @@ type Tracker struct {
 }
 
 func New(c *config.Config, s store.LegacyRepository, l *log.Logger) *Tracker {
+	return NewRepository(c, store.FromLegacy(s), l)
+}
+func NewRepository(c *config.Config, s store.Repository, l *log.Logger) *Tracker {
 	t := &Tracker{Cfg: c, Store: s, Log: l, Now: time.Now, path: filepath.Join(c.Env.ConfigDir, "tracked-shows.json"),
 		tracked: map[string]tracked{}, grabs: map[string][]arr.Grab{}, snap: Snapshot{Seasons: []Season{}, Missing: []Missing{}, Errors: []string{}}}
 	t.ArrFor = func(cat config.Category) *arr.Client { return arr.New(cat.Kind, cat.ArrURL, string(cat.ArrAPIKey)) }
@@ -135,7 +138,12 @@ func (t *Tracker) Refresh(ctx context.Context) {
 	// 1. Learn which series and episodes the active Sonarr jobs are for.
 	queued := map[string]map[int64]bool{}
 	live := map[string]bool{}
-	for _, j := range t.Store.List() {
+	jobs, readErr := t.Store.List(ctx)
+	if readErr != nil {
+		t.snap.Errors = []string{"job storage is unavailable"}
+		return
+	}
+	for _, j := range jobs {
 		if j.State == job.Cleaned || j.State == job.Failed || j.Source == "rss" || j.Source == "watch" {
 			continue
 		}

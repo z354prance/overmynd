@@ -2,6 +2,7 @@ package web
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 	"github.com/z354prance/overmynd/internal/job"
 	"github.com/z354prance/overmynd/internal/media"
 	"github.com/z354prance/overmynd/internal/pipeline"
+	"github.com/z354prance/overmynd/internal/store"
 )
 
 type reencodeFile struct {
@@ -47,7 +49,12 @@ func (s *Server) reencodeScan(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 		}
-		if j, ok := s.Store.Get(pipeline.ReencodeID(f.Path)); ok && j.State != job.Cleaned && j.State != job.Failed {
+		j, readErr := s.Store.Get(r.Context(), pipeline.ReencodeID(f.Path))
+		if readErr != nil && !errors.Is(readErr, store.ErrNotFound) {
+			jobStorageError(w)
+			return
+		}
+		if readErr == nil && j.State != job.Cleaned && j.State != job.Failed {
 			rf.Queued = true
 		}
 		out = append(out, rf)

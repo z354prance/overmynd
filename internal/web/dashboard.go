@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -18,11 +19,19 @@ func (s *Server) dashboardRoutes(mux *http.ServeMux, files http.Handler) {
 	// Same data under a name common ad-block lists do not match (some block /api/v1/activity).
 	mux.HandleFunc("GET /api/v1/media-progress", s.v1Activity)
 	mux.HandleFunc("GET /api/v1/downloads", func(w http.ResponseWriter, r *http.Request) {
-		d, _, _ := s.dashboardRecords()
+		d, _, _, err := s.dashboardRecords(r.Context())
+		if err != nil {
+			jobStorageError(w)
+			return
+		}
 		writeJSON(w, map[string]any{"downloads": d, "errors": []string{}})
 	})
 	mux.HandleFunc("GET /api/v1/processing", func(w http.ResponseWriter, r *http.Request) {
-		_, p, _ := s.dashboardRecords()
+		_, p, _, err := s.dashboardRecords(r.Context())
+		if err != nil {
+			jobStorageError(w)
+			return
+		}
 		writeJSON(w, map[string]any{"jobs": p, "errors": []string{}})
 	})
 	mux.HandleFunc("GET /api/v1/recently-added", s.v1Recent)
@@ -103,9 +112,13 @@ type v1Lifecycle struct {
 
 // dashboardRecords turns every unfinished job into the download and processing
 // records the page correlates, plus one lifecycle per job.
-func (s *Server) dashboardRecords() ([]v1Download, []v1Process, []v1Lifecycle) {
+func (s *Server) dashboardRecords(ctx context.Context) ([]v1Download, []v1Process, []v1Lifecycle, error) {
 	downloads, procs, lifes := []v1Download{}, []v1Process{}, []v1Lifecycle{}
-	for _, j := range s.Store.List() {
+	jobs, err := s.Store.List(ctx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	for _, j := range jobs {
 		if j.State == job.Cleaned || j.Source == "reencode" {
 			continue
 		}
@@ -174,11 +187,15 @@ func (s *Server) dashboardRecords() ([]v1Download, []v1Process, []v1Lifecycle) {
 		}
 		lifes = append(lifes, l)
 	}
-	return downloads, procs, lifes
+	return downloads, procs, lifes, nil
 }
 
 func (s *Server) v1Activity(w http.ResponseWriter, r *http.Request) {
-	d, p, l := s.dashboardRecords()
+	d, p, l, err := s.dashboardRecords(r.Context())
+	if err != nil {
+		jobStorageError(w)
+		return
+	}
 	seasons := []map[string]any{}
 	if s.Progress != nil {
 		for _, n := range s.Progress.Snapshot().Seasons {
