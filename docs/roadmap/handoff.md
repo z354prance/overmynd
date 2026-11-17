@@ -97,8 +97,15 @@ CGO-disabled image build were rerun. Local Go caches are excluded from Git and
 Docker contexts. The inherited pipeline race package takes roughly two minutes
 on this host; allow it to finish rather than assuming a hang.
 
-Next: propagate error-aware reads through application callers, add operator-facing
-capture/import tooling, prove jobs/operational backup and restore,
+The jobs-only backup/restore regression tests passed GitHub Linux CI (format,
+vet, race tests, XML and Docker build). A development-only maintenance command now
+provides explicit captured-snapshot import and jobs backup operations; see
+[maintenance commands](../sqlite-maintenance.md). It never starts the pipeline or
+changes the executable's storage selection. Complete operational capture/restore
+is still outstanding.
+
+Next: propagate error-aware reads through application callers, provide coordinated
+operational capture and restore,
 and connect intents to safe import reconciliation. No SQLite application cutover,
 real-service validation, production import or phase-complete claim has been made.
 Do not start Phase 1B until the Phase 1A gate is evaluated.
