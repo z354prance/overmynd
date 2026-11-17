@@ -1,0 +1,24 @@
+name: overmynd-rework
+services:
+  sandbox:
+    build: .
+    image: overmynd:development
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    user: "65532:65532"
+    environment:
+      OVERMYND_CONFIG: /config
+      OVERMYND_DATA: /data
+      OVERMYND_WORK: /data/overmynd-development/work
+      OVERMYND_COMPLETE: /data/overmynd-development/complete
+      OVERMYND_PUBLIC_ADDR: "127.0.0.1:18080"
+      OVERMYND_MACHINE_ADDR: "127.0.0.1:18081"
+    tmpfs:
+      - /tmp
+      - /config:uid=65532,gid=65532,mode=0700
+      - /data:uid=65532,gid=65532,mode=0700
+    pids_limit: 128
+    mem_limit: 256m
+    cpus: 1.0
