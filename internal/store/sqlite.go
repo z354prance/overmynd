@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/z354prance/overmynd/internal/job"
@@ -133,7 +134,17 @@ func (s *SQLite) List(ctx context.Context) ([]job.Job, error) {
 		}
 		out = append(out, j)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// Preserve the inherited queue's newest-first iteration semantics.
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Created.Equal(out[j].Created) {
+			return out[i].ID < out[j].ID
+		}
+		return out[i].Created.After(out[j].Created)
+	})
+	return out, nil
 }
 
 // Put inserts a job exactly once. Changes use Update so history cannot be lost
