@@ -10,3 +10,7 @@ precedence. Preserve the mounts and environment of the current Undermynd contain
 
 The original dashboard-only Overmynd database is not a configuration for this
 application. See the README before switching container images.
+
+This baseline is on Overmynd main for the upcoming overhaul. Pushes run CI but do
+not publish container images. Publication is manual through the CI workflow until
+the replacement is ready; the working Undermynd deployment remains separate.
