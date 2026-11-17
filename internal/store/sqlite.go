@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/z354prance/overmynd/internal/job"
 	_ "modernc.org/sqlite"
@@ -42,7 +43,12 @@ func OpenSQLite(ctx context.Context, path string) (*SQLite, error) {
 	if err := f.Close(); err != nil {
 		return nil, err
 	}
-	u := url.URL{Scheme: "file", Path: absolute}
+	uriPath := filepath.ToSlash(absolute)
+	// A Windows drive path must be a URI path, not a file:// authority.
+	if filepath.VolumeName(absolute) != "" && !strings.HasPrefix(uriPath, "/") {
+		uriPath = "/" + uriPath
+	}
+	u := url.URL{Scheme: "file", Path: uriPath}
 	q := u.Query()
 	q.Add("_pragma", "foreign_keys(1)")
 	q.Add("_pragma", "busy_timeout(5000)")
