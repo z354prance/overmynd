@@ -9,8 +9,8 @@ applications with separate containers. Undermynd remains in production and must
 not be changed or repointed while Overmynd is developed. The eventual destination
 is native acquisition/library management, starting with the anime RSS/import flow.
 The user approved the controlled core rewrite and asked for the roadmap to be
-reworked around it. No feature implementation has been requested in this planning
-step beyond preparing that plan.
+reworked around it. Implementation is now authorized for Phase 0 and Phase 1A;
+keep later phases behind their acceptance gates.
 
 ## Repository state
 
@@ -18,7 +18,7 @@ step beyond preparing that plan.
 - Undermynd snapshot 0f46f7b was copied, then the project/module/executable renamed
   to Overmynd. PR #2 established this baseline and is merged.
 - Existing adapters, UI and tests are inherited functional baseline code. The
-  redesigned SQLite/catalog/native importer does not exist yet.
+  opt-in SQLite repository now exists; catalog/native importer work remains.
 - OVERMYND_* environment aliases accept existing UNDERMYND_* names. Legacy client
   credentials and work-directory defaults were retained; do not casually rename
   paths or protocol IDs during development.
@@ -28,7 +28,7 @@ step beyond preparing that plan.
 - Original roadmaps, the review and active revised plan are approved for public
   GitHub publication. Preserve the source documents as historical references.
 
-## Confirmed code findings
+## Baseline code findings (before implementation)
 
 - internal/store/store.go: JSON in-memory store writes the whole file; updates
   mutate memory before save success; Get/List cannot report storage read errors.
@@ -66,3 +66,29 @@ acceptance tests and distinguish simulated checks from real-service validation.
 Work in small commits. The user wants direct progress and concise plain-language
 updates. Keep production Undermynd separate. Do not interpret old requests from the
 original dashboard conversation as a current instruction to redeploy Overmynd.
+
+## Implementation progress (2026-11-16)
+
+Work branch: `rework/phase-0-1a-foundation`. Phase 0's disposable compose boundary
+has passed a local Linux Docker build and healthcheck; no production resources
+were mounted, and the sandbox was removed afterward. Public/admin baseline tests
+continue passing. The permanent real-name fixture corpus remains outstanding.
+
+The legacy repository interface, JSON commit-before-publish fix and slice clone
+regression tests are committed. The executable still uses JSON. The separately
+available context-aware SQLite repository has schema v1, WAL/FULL synchronization,
+foreign keys, busy timeout, transactional job changes, full transition history and
+per-file import intent records. See [SQLite development](../sqlite-development.md) for dependency review,
+contracts and limits. modernc.org/sqlite v1.44.3 and matching libc v1.67.6 are pinned.
+
+Local Docker validation: module verification, gofmt, vet, full Linux race suite,
+CGO-disabled image build, XML parse and isolated compose healthcheck. Targeted
+SQLite tests additionally prove SQLITE_FULL rollback, SQL failure rollback,
+cancellation, independent concurrent writers, bounded-payload/unbounded-journal
+history and copying-intent restart recovery. These are simulated fixture tests.
+
+Next: propagate error-aware reads through application callers, validate/import an
+immutable captured JSON snapshot transactionally, prove jobs/operational restore,
+and connect intents to safe import reconciliation. No SQLite application cutover,
+real-service validation, production import or phase-complete claim has been made.
+Do not start Phase 1B until the Phase 1A gate is evaluated.

@@ -17,6 +17,17 @@ docker compose -f compose.development.yaml exec sandbox /overmynd healthcheck
 docker compose -f compose.development.yaml down
 ```
 
+To run Go checks in Docker instead of installing Go on the host:
+
+```sh
+docker run --rm -v "$PWD:/src" -w /src golang:1.24 \
+  sh -c 'go mod verify && go vet ./... && go test -race ./...'
+```
+
+This mounts only the Overmynd checkout. A direct Go build in this root-run test
+container may reject checkout ownership for VCS stamping; use `-buildvcs=false`
+for that measurement. The normal image build excludes .git and needs no workaround.
+
 The compose file has no host bind mounts, published ports, external network or
 production image tags. Config and data use disposable tmpfs mounts owned by the unprivileged app user.
 State disappears when the sandbox stops; restart durability is tested separately
@@ -58,10 +69,11 @@ names must be labelled synthetic; do not invent real examples or assume season 1
 
 ## Phase gates
 
-Phase 0 is not complete until the compose smoke check and fixture isolation are
-verified on Linux. Phase 1A starts with commit-before-publish behavior and a
-repository boundary. SQLite selection/pinning, error propagation through all
-callers, durable transitions/import intents, cancellation/concurrency/failure
-coverage and restart recovery remain required before its exit gate.
+The compose smoke check passed locally on Linux with no host mounts or network;
+the permanent representative fixture corpus remains incomplete. Phase 1A now has
+commit-before-publish JSON behavior and a separately tested SQLite repository.
+See [SQLite development](sqlite-development.md) for its dependency review and tests.
+Error propagation through callers, migration/restore and importer reconciliation
+remain required before its exit gate.
 JSON import and SQLite backup/restore are separate explicit work; do not point a
 development process at a changing production JSON file.

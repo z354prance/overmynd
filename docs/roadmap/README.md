@@ -2,7 +2,7 @@
 
 Updated 2026-11-16. This is the active implementation plan. It supersedes the
 phase ordering in the two source roadmaps and the earlier review, which remain
-as historical references. Status: planning complete; implementation not started.
+as historical references. Status: Phase 0 and Phase 1A foundations implemented; exit gates remain open.
 
 ## Product and deployment boundary
 

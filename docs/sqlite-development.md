@@ -54,3 +54,9 @@ around filesystem finalization. An intent table alone does not solve partial imp
 Do not copy a live SQLite database file as a backup, and do not read a changing
 production JSON file. Full operational backup must also preserve secret.key and
 settings; that is later migration/restore work.
+
+Local measurement (Linux amd64, Go 1.24, CGO disabled, stripped build): executable
+12,587,192 bytes. The network-isolated scratch-container smoke test used about
+2.8 MiB idle memory and 0% CPU in a single Docker stats sample. The app was using
+JSON during this measurement; it is not a SQLite workload benchmark. Measure again
+when the application actually opens SQLite under representative load.
