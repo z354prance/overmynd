@@ -70,3 +70,17 @@ Local measurement (Linux amd64, Go 1.24, CGO disabled, stripped build): executab
 2.8 MiB idle memory and 0% CPU in a single Docker stats sample. The app was using
 JSON during this measurement; it is not a SQLite workload benchmark. Measure again
 when the application actually opens SQLite under representative load.
+
+## Jobs-only backup API
+
+`SQLite.Backup(ctx, destination)` uses SQLite's consistent `VACUUM INTO`
+operation while the source remains open. It includes committed job payloads,
+schema, transition journal, import intents and the one-time import marker.
+Destinations are exclusively created with mode 0600; existing paths are refused.
+Failure removes the newly owned incomplete output. The completed file is flushed.
+
+Restore validation opens the backup as a separate development repository, checks
+its integrity and compares payloads, journal, intents and import retry behavior.
+This API is not yet operator-facing restore tooling or a complete operational
+backup: settings, authentication files and secret.key still require a coordinated
+backup procedure. It does not restore into a running application's database.
