@@ -61,7 +61,7 @@ type rec struct {
 	TokenExpires int64  `json:"token_expires,omitempty"`
 }
 
-// Manager keeps requests in one JSON file. Settings live in Undermynd's own config;
+// Manager keeps requests in one JSON file. Settings live in Overmynd's own config;
 // Load and Save connect them so this package does not depend on it.
 type Manager struct {
 	path  string

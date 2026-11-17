@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/backend"
+	"github.com/z354prance/overmynd/internal/backend"
 )
 
 // The list endpoint can leave out a real item (a cap, or a stale cache); asking

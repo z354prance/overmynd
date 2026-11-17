@@ -1,6 +1,6 @@
-<p align="center"><img src="assets/undermynd-logo.svg" width="160" alt="Undermynd"></p>
+<p align="center"><img src="assets/undermynd-logo.svg" width="160" alt="Overmynd"></p>
 
-# Undermynd
+# Overmynd
 
 One container that owns the whole download-to-library path for Sonarr, Radarr and Lidarr.
 
@@ -25,12 +25,12 @@ The design is in `docs/`.
 
 ## Run
 
-Use the Unraid template in `unraid/undermynd.xml`, or:
+Use the Unraid template in `unraid/overmynd.xml`, or:
 
 ```
-docker run -d --name undermynd -p 8080:8080 -p 8081:8081 \
+docker run -d --name overmynd -p 8080:8080 -p 8081:8081 \
   -v /mnt/user/appdata/undermynd/config:/config -v /mnt/user/data:/data \
-  -e PUID=99 -e PGID=100 ghcr.io/z354prance/undermynd:latest
+  -e PUID=99 -e PGID=100 ghcr.io/z354prance/overmynd:latest
 ```
 
 1. Read the container log. On first start it prints the **download client login** for the arrs and a **setup key**.
@@ -38,7 +38,7 @@ docker run -d --name undermynd -p 8080:8080 -p 8081:8081 \
 3. Under *settings*: set each category's arr URL and API key (the arr that confirms the import), and the local qBittorrent URL and login.
 4. In Sonarr, Radarr and Lidarr add a **qBittorrent** download client: host = this machine, port = **8081**, the login from step 1, and the category (`radarr`, `tv-sonarr`, `lidarr`).
 
-Mount the same `/data` in Undermynd, qBittorrent, the arrs and Tdarr, on one cache-only share, so every move is a rename.
+Mount the same `/data` in Overmynd, qBittorrent, the arrs and Tdarr, on one cache-only share, so every move is a rename.
 
 ## Ports
 
@@ -78,15 +78,15 @@ Logo files are in `assets/`; the Unraid icon is `unraid/undermynd-icon.png`.
 
 ## Usenet (SABnzbd side)
 
-Add Undermynd to Sonarr/Radarr/Lidarr as a **SABnzbd** client on the machine port (host 18081 by default).
+Add Overmynd to Sonarr/Radarr/Lidarr as a **SABnzbd** client on the machine port (host 18081 by default).
 The **API key is the client password** (shown once in the log on first run, rotatable in the admin page).
 Usenet goes to TorBox when a token is set, otherwise to NZBGet when its address is set.
 
 ## Tdarr hand-off
 
-For categories with transcode on, finished videos go to the Tdarr **input folder** and Undermynd collects the result from the **output folder**. Create a dedicated Tdarr library that reads the input folder and writes folder-to-folder into the output folder. Undermynd never touches any other library.
+For categories with transcode on, finished videos go to the Tdarr **input folder** and Overmynd collects the result from the **output folder**. Create a dedicated Tdarr library that reads the input folder and writes folder-to-folder into the output folder. Overmynd never touches any other library.
 
-With a Tdarr address (and API key, if Tdarr has authentication on) and the library's ID set on the Transcode tab, Undermynd also:
+With a Tdarr address (and API key, if Tdarr has authentication on) and the library's ID set on the Transcode tab, Overmynd also:
 - asks Tdarr to scan just that job's folder, so timing does not depend on a folder watcher;
 - shows the node, worker and percentage while a worker holds the file (`get-nodes`, and `cruddb` file records, the same calls Overmynd uses);
 - fails the job at once when Tdarr marks the file errored, and treats a worker with no progress for the stall time as failed;
@@ -106,14 +106,29 @@ Keep both inside one mount of one cache-only share so every move is a rename.
 
 ## Log
 
-Admin → Log shows the last 2000 lines of the container log since Undermynd started, with a filter box (a job id, `tdarr`, `failed`) and a follow switch. The one-time setup key is never kept in it.
+Admin → Log shows the last 2000 lines of the container log since Overmynd started, with a filter box (a job id, `tdarr`, `failed`) and a follow switch. The one-time setup key is never kept in it.
 
 ## Resolution check
 
-When a download finishes, Undermynd reads the real frame size of each video from its container header and asks the arr (Sonarr or Radarr, through the download's history) what quality it grabbed the release as. If the video is below that step (2160, 1080, 720, 480), such as a release labelled 1080p that is really 480p, the job fails and the arr is told to blocklist the release and search again. Wider-than-tall crops count by width, so a 1920x800 film is 1080p. If the arr cannot say, cannot be reached, or the frame size cannot be read, the download goes on as normal. Turn it off under Admin → System → Timing ("check resolution against the arr").
+When a download finishes, Overmynd reads the real frame size of each video from its container header and asks the arr (Sonarr or Radarr, through the download's history) what quality it grabbed the release as. If the video is below that step (2160, 1080, 720, 480), such as a release labelled 1080p that is really 480p, the job fails and the arr is told to blocklist the release and search again. Wider-than-tall crops count by width, so a 1920x800 film is 1080p. If the arr cannot say, cannot be reached, or the frame size cannot be read, the download goes on as normal. Turn it off under Admin → System → Timing ("check resolution against the arr").
 
 ## Re-encoding files already in the library
 
 The admin **Re-encode** tab lists videos in `Movies`, `Episodes` and `Anime` under the media share (`UNDERMYND_STORAGE_ROOT`, mounted at `/media`) that are not AV1 and arrived since a date you choose. The codec is read from the file's own header, so nothing needs ffprobe. Picked files are copied to staging, sent through the same Tdarr flow as a new grab, and the result is checked (valid container, read back as AV1) before it is written beside the original and moved over it. If Tdarr fails, produces anything that is not AV1, or the library file changes meanwhile, the library file is left as it was. These jobs never touch Sonarr or Radarr and are not shown on the public page; run a rescan in Sonarr or Radarr afterwards so it picks up the new files.
 
 This is the only thing that writes to the media share, so the share has to be mounted read-write.
+
+## Continuing from Undermynd
+
+This repository now continues the Undermynd application as Overmynd. Existing
+Undermynd configuration files, secret keys, jobs, client credentials and working
+paths remain compatible. Keep your current /config, /data, /media and other mounts,
+ports and environment settings when switching to the Overmynd image.
+Do not substitute an old dashboard-only Overmynd configuration for the current
+Undermynd configuration. Back up the current configuration before changing images.
+
+Existing UNDERMYND_* variables remain supported. OVERMYND_* equivalents take
+precedence when supplied. The default work folder and download-client username
+retain their existing values so in-flight downloads and arr connections continue
+using the same paths and credentials. Configure Sonarr/Radarr/Lidarr against the
+existing machine port (8081); the public/admin port remains 8080.

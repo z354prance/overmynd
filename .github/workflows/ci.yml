@@ -18,9 +18,9 @@ jobs:
       - run: go vet ./...
       - run: go test -race ./...
       - name: Validate Unraid template
-        run: python3 -c "import xml.dom.minidom as m; m.parse('unraid/undermynd.xml')"
+        run: python3 -c "import xml.dom.minidom as m; m.parse('unraid/overmynd.xml')"
       - name: Build container
-        run: docker build -t undermynd:ci .
+        run: docker build -t overmynd:ci .
 
   publish:
     name: Publish image

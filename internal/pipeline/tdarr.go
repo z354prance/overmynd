@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/job"
-	"github.com/z354prance/undermynd/internal/tdarr"
+	"github.com/z354prance/overmynd/internal/job"
+	"github.com/z354prance/overmynd/internal/tdarr"
 )
 
 var videoExt = map[string]bool{
@@ -202,7 +202,7 @@ func (e *Engine) doTranscode(ctx context.Context, j job.Job) {
 	now := e.Now()
 	s := e.Cfg.Get()
 	// Tdarr is asked often: it is a local call, and the wait between Tdarr starting
-	// and Undermynd noticing is time the person sits through.
+	// and Overmynd noticing is time the person sits through.
 	next := now.Add(5 * time.Second)
 	cli := e.tdarrClient()
 

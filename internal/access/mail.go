@@ -64,7 +64,7 @@ func (l letter) text() string {
 	if l.Note != "" {
 		b.WriteString(l.Note + "\n")
 	}
-	b.WriteString("\n-- Undermynd\n")
+	b.WriteString("\n-- Overmynd\n")
 	return b.String()
 }
 
@@ -157,7 +157,7 @@ func message(s Settings, to, subject string, l letter) (string, error) {
 			domain = a.Address[i+1:]
 		}
 	}
-	from := (&mail.Address{Name: "Undermynd", Address: s.From}).String()
+	from := (&mail.Address{Name: "Overmynd", Address: s.From}).String()
 	crlf := func(t string) string { return strings.ReplaceAll(strings.ReplaceAll(t, "\r\n", "\n"), "\n", "\r\n") }
 	_ = crlf
 	var b strings.Builder

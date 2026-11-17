@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/z354prance/undermynd/internal/config"
-	"github.com/z354prance/undermynd/internal/job"
-	"github.com/z354prance/undermynd/internal/media"
-	"github.com/z354prance/undermynd/internal/pipeline"
+	"github.com/z354prance/overmynd/internal/config"
+	"github.com/z354prance/overmynd/internal/job"
+	"github.com/z354prance/overmynd/internal/media"
+	"github.com/z354prance/overmynd/internal/pipeline"
 )
 
 func rvint(n int) []byte {

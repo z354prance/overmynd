@@ -14,18 +14,18 @@ import (
 	"time"
 	_ "time/tzdata" // so TZ works in a minimal image
 
-	"github.com/z354prance/undermynd/internal/auth"
-	"github.com/z354prance/undermynd/internal/config"
-	"github.com/z354prance/undermynd/internal/logbuf"
-	"github.com/z354prance/undermynd/internal/pipeline"
-	"github.com/z354prance/undermynd/internal/progress"
-	"github.com/z354prance/undermynd/internal/qbitapi"
-	"github.com/z354prance/undermynd/internal/rss"
-	"github.com/z354prance/undermynd/internal/sabapi"
-	"github.com/z354prance/undermynd/internal/storage"
-	"github.com/z354prance/undermynd/internal/store"
-	"github.com/z354prance/undermynd/internal/watch"
-	"github.com/z354prance/undermynd/internal/web"
+	"github.com/z354prance/overmynd/internal/auth"
+	"github.com/z354prance/overmynd/internal/config"
+	"github.com/z354prance/overmynd/internal/logbuf"
+	"github.com/z354prance/overmynd/internal/pipeline"
+	"github.com/z354prance/overmynd/internal/progress"
+	"github.com/z354prance/overmynd/internal/qbitapi"
+	"github.com/z354prance/overmynd/internal/rss"
+	"github.com/z354prance/overmynd/internal/sabapi"
+	"github.com/z354prance/overmynd/internal/storage"
+	"github.com/z354prance/overmynd/internal/store"
+	"github.com/z354prance/overmynd/internal/watch"
+	"github.com/z354prance/overmynd/internal/web"
 )
 
 // dropPrivileges runs the app as PUID:PGID (Unraid: 99:100) when started as root,
@@ -77,7 +77,7 @@ func healthcheck(addr string) {
 
 func main() {
 	logs := logbuf.New(2000)
-	logger := log.New(io.MultiWriter(os.Stdout, logs), "undermynd ", log.LstdFlags)
+	logger := log.New(io.MultiWriter(os.Stdout, logs), "overmynd ", log.LstdFlags)
 	env := config.LoadEnv()
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
 		healthcheck(env.PublicAddr)
@@ -128,8 +128,8 @@ func main() {
 	go eng.Run(ctx, env.TickInterval)
 	pt := progress.New(cfg, st, logger)
 	site.Progress = pt
-	site.Storage = storage.New(os.Getenv("UNDERMYND_STORAGE_ROOT"))
-	if root := os.Getenv("UNDERMYND_STORAGE_ROOT"); root != "" {
+	site.Storage = storage.New(config.EnvValue("UNDERMYND_STORAGE_ROOT"))
+	if root := config.EnvValue("UNDERMYND_STORAGE_ROOT"); root != "" {
 		// The folders a re-encode may read and replace files in: the video libraries only.
 		for _, f := range []string{"Movies", "Episodes", "Anime"} {
 			eng.LibraryRoots = append(eng.LibraryRoots, filepath.Join(root, f))

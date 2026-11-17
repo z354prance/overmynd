@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/config"
-	"github.com/z354prance/undermynd/internal/job"
-	"github.com/z354prance/undermynd/internal/pipeline"
-	"github.com/z354prance/undermynd/internal/watch"
+	"github.com/z354prance/overmynd/internal/config"
+	"github.com/z354prance/overmynd/internal/job"
+	"github.com/z354prance/overmynd/internal/pipeline"
+	"github.com/z354prance/overmynd/internal/watch"
 )
 
 type fake struct {

@@ -19,13 +19,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/bencode"
-	"github.com/z354prance/undermynd/internal/config"
-	"github.com/z354prance/undermynd/internal/job"
-	"github.com/z354prance/undermynd/internal/pipeline"
-	"github.com/z354prance/undermynd/internal/qbitapi"
-	"github.com/z354prance/undermynd/internal/secret"
-	"github.com/z354prance/undermynd/internal/store"
+	"github.com/z354prance/overmynd/internal/bencode"
+	"github.com/z354prance/overmynd/internal/config"
+	"github.com/z354prance/overmynd/internal/job"
+	"github.com/z354prance/overmynd/internal/pipeline"
+	"github.com/z354prance/overmynd/internal/qbitapi"
+	"github.com/z354prance/overmynd/internal/secret"
+	"github.com/z354prance/overmynd/internal/store"
 )
 
 // fakeQBit is a minimal real-client stand-in that the engine's qBittorrent backend talks to.

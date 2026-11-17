@@ -7,7 +7,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"github.com/z354prance/undermynd/internal/tdarr"
+	"github.com/z354prance/overmynd/internal/tdarr"
 	"io/fs"
 	"log"
 	"net"
@@ -20,18 +20,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/access"
-	"github.com/z354prance/undermynd/internal/arr"
-	"github.com/z354prance/undermynd/internal/auth"
-	"github.com/z354prance/undermynd/internal/config"
-	"github.com/z354prance/undermynd/internal/job"
-	"github.com/z354prance/undermynd/internal/logbuf"
-	"github.com/z354prance/undermynd/internal/pipeline"
-	"github.com/z354prance/undermynd/internal/progress"
-	"github.com/z354prance/undermynd/internal/rss"
-	"github.com/z354prance/undermynd/internal/secret"
-	"github.com/z354prance/undermynd/internal/storage"
-	"github.com/z354prance/undermynd/internal/store"
+	"github.com/z354prance/overmynd/internal/access"
+	"github.com/z354prance/overmynd/internal/arr"
+	"github.com/z354prance/overmynd/internal/auth"
+	"github.com/z354prance/overmynd/internal/config"
+	"github.com/z354prance/overmynd/internal/job"
+	"github.com/z354prance/overmynd/internal/logbuf"
+	"github.com/z354prance/overmynd/internal/pipeline"
+	"github.com/z354prance/overmynd/internal/progress"
+	"github.com/z354prance/overmynd/internal/rss"
+	"github.com/z354prance/overmynd/internal/secret"
+	"github.com/z354prance/overmynd/internal/storage"
+	"github.com/z354prance/overmynd/internal/store"
 )
 
 //go:embed static
@@ -147,7 +147,7 @@ func (s *Server) Handler() http.Handler {
 // were: the public dashboard and the admin pages. UNDERMYND_FRAME_ANCESTORS replaces
 // the list; "'none'" turns embedding off.
 func frameAncestors() string {
-	if v := strings.TrimSpace(os.Getenv("UNDERMYND_FRAME_ANCESTORS")); v != "" {
+	if v := strings.TrimSpace(config.EnvValue("UNDERMYND_FRAME_ANCESTORS")); v != "" {
 		return v
 	}
 	return "'self' https://xivix.cc https://www.xivix.cc"
@@ -726,7 +726,7 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, own := range []string{s.Cfg.Env.Complete(), s.Cfg.Env.Work()} {
 			if wf.Dir == own || strings.HasPrefix(wf.Dir+"/", own+"/") {
-				jsonErr(w, http.StatusBadRequest, "watch folder "+wf.Dir+": that is one of Undermynd's own folders, so files would loop")
+				jsonErr(w, http.StatusBadRequest, "watch folder "+wf.Dir+": that is one of Overmynd's own folders, so files would loop")
 				return
 			}
 		}

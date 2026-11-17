@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/job"
-	"github.com/z354prance/undermynd/internal/media"
+	"github.com/z354prance/overmynd/internal/job"
+	"github.com/z354prance/overmynd/internal/media"
 )
 
 // ResolutionLooker is implemented by an arr client that knows the quality a download was

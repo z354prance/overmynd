@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/seerr"
+	"github.com/z354prance/overmynd/internal/seerr"
 )
 
 // Visitors may send 10 requests a minute from one address; the table is bounded.

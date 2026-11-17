@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/secret"
+	"github.com/z354prance/overmynd/internal/secret"
 )
 
 func TestTOTPVector(t *testing.T) {

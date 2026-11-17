@@ -73,7 +73,7 @@ func setupNotice(r Request, s Settings, token string) notice {
 			"Sign in with Emby Connect, or with your username and this password.",
 		},
 		Button: [2]string{"Finish setting up", link},
-		Note:   "This link works once and expires in 24 hours. Do not share it. Undermynd will never ask for your Emby Connect password. If the link expires, ask the server owner to send a new one.",
+		Note:   "This link works once and expires in 24 hours. Do not share it. Overmynd will never ask for your Emby Connect password. If the link expires, ask the server owner to send a new one.",
 	}}
 }
 
@@ -103,9 +103,9 @@ func adminStuckNotice(id int64, s Settings, message string) notice {
 }
 
 func testNotice(s Settings) notice {
-	return notice{s.AdminEmail, "Undermynd email test", letter{
+	return notice{s.AdminEmail, "Overmynd email test", letter{
 		Title:   "Email is working",
-		Intro:   []string{"This is a test from Undermynd. Account request emails will be delivered like this one."},
+		Intro:   []string{"This is a test from Overmynd. Account request emails will be delivered like this one."},
 		Details: [][2]string{{"Sent from", s.From}, {"Server", s.SMTPHost}},
 	}}
 }

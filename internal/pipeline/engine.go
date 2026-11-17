@@ -18,12 +18,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/arr"
-	"github.com/z354prance/undermynd/internal/backend"
-	"github.com/z354prance/undermynd/internal/bencode"
-	"github.com/z354prance/undermynd/internal/config"
-	"github.com/z354prance/undermynd/internal/job"
-	"github.com/z354prance/undermynd/internal/store"
+	"github.com/z354prance/overmynd/internal/arr"
+	"github.com/z354prance/overmynd/internal/backend"
+	"github.com/z354prance/overmynd/internal/bencode"
+	"github.com/z354prance/overmynd/internal/config"
+	"github.com/z354prance/overmynd/internal/job"
+	"github.com/z354prance/overmynd/internal/store"
 )
 
 type ImportChecker interface {

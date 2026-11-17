@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/job"
+	"github.com/z354prance/overmynd/internal/job"
 )
 
 // Locator is implemented by backends that decide where the files land only when they finish.

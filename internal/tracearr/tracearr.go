@@ -32,7 +32,7 @@ func (c *Client) get(ctx context.Context, path string, out any) error {
 		return fmt.Errorf("Tracearr request: %w", err)
 	}
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "Undermynd")
+	req.Header.Set("User-Agent", "Overmynd")
 	req.Header.Set("Authorization", "Bearer "+c.Token)
 	resp, err := c.HTTP.Do(req)
 	if err != nil {

@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/job"
-	"github.com/z354prance/undermynd/internal/media"
-	"github.com/z354prance/undermynd/internal/pipeline"
+	"github.com/z354prance/overmynd/internal/job"
+	"github.com/z354prance/overmynd/internal/media"
+	"github.com/z354prance/overmynd/internal/pipeline"
 )
 
 type reencodeFile struct {

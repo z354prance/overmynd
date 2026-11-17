@@ -13,8 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/job"
-	"github.com/z354prance/undermynd/internal/media"
+	"github.com/z354prance/overmynd/internal/job"
+	"github.com/z354prance/overmynd/internal/media"
 )
 
 // Re-encoding runs a file that is already in the library through the same Tdarr

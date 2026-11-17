@@ -90,7 +90,7 @@ body .panel-header h2 { font-size:14px; text-transform:lowercase; }
 body .panel-header h2::before { content:none; }
 body .dashboard-brand img { display:block; width:42px; height:42px; }
 body .dashboard-brand h1 { display:none; }
-body .dashboard-brand::after { content:"~/undermynd > status"; font-size:13px; color:var(--accent); }
+body .dashboard-brand::after { content:"~/overmynd > status"; font-size:13px; color:var(--accent); }
 body .dashboard-brand { flex-direction:row; flex-wrap:wrap; gap:8px 14px; }
 body :is(.service-primary-button,.service-secondary-button,.service-close-button) { border-color:transparent; background:transparent; padding:8px; }
 body :is(.service-primary-button,.service-secondary-button,.service-close-button)::before { content:"[ " / ""; }
@@ -238,7 +238,7 @@ body .dashboard-footer > .live-indicator { display:flex; align-items:center; gap
 
 a.nav-item { text-decoration:none; color:inherit; display:inline-flex; align-items:center; gap:6px; }
 
-/* Undermynd: posters come back as small thumbnails beside the text rows. */
+/* Overmynd: posters come back as small thumbnails beside the text rows. */
 #dashboardView :is(#playbackList,#recentlyAddedList) .playback-art { display:block !important; position:relative; overflow:hidden; border-radius:2px; background:var(--panel-soft); }
 #playbackList .now-playing-card { grid-template-columns:46px minmax(0,1fr); column-gap:10px; }
 #playbackList .playback-art { grid-column:1; grid-row:1 / span 2; width:46px; height:69px; align-self:start; }

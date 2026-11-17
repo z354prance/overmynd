@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/z354prance/undermynd/internal/job"
+	"github.com/z354prance/overmynd/internal/job"
 )
 
 var mkvHead = "\x1a\x45\xdf\xa3\x01\x00\x00\x00"

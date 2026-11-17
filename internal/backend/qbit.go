@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/job"
+	"github.com/z354prance/overmynd/internal/job"
 )
 
 // QBit hands grabs to a local qBittorrent through its WebUI API (v2).

@@ -6,7 +6,7 @@
       .then(function(r){return r.json().catch(function(){return {}}).then(function(d){if(!r.ok){var e=new Error(d.error||('HTTP '+r.status));e.status=r.status;throw e}return d})});
   }
   function field(form,label,type,name,ph){form.appendChild(el('label','',label));var i=el('input');i.type=type||'text';i.name=name;if(ph)i.placeholder=ph;i.autocomplete=type==='password'?'current-password':'off';form.appendChild(i);return i}
-  function prompt(cmd){var d=el('div');d.appendChild(el('span','prompt','~/undermynd '));var b=el('b','','❯');b.style.color='var(--teal)';b.style.fontWeight='400';d.appendChild(b);d.appendChild(el('span','cmd',' '+cmd));return d}
+  function prompt(cmd){var d=el('div');d.appendChild(el('span','prompt','~/overmynd '));var b=el('b','','❯');b.style.color='var(--teal)';b.style.fontWeight='400';d.appendChild(b);d.appendChild(el('span','cmd',' '+cmd));return d}
   function start(){
     stopLive();logoutBtn.hidden=true;document.body.classList.remove('wide');
     api('GET','/session').then(function(s){
@@ -54,7 +54,7 @@
     root.replaceChildren();
     document.body.classList.add('wide');
     var shell=el('div','shell'),side=el('nav','side');
-    var brand=el('a','brand');brand.href='/admin';var bi=el('img');bi.src='/assets/logo.svg';bi.alt='';brand.appendChild(bi);brand.appendChild(el('span','',  '~/undermynd'));side.appendChild(brand);
+    var brand=el('a','brand');brand.href='/admin';var bi=el('img');bi.src='/assets/logo.svg';bi.alt='';brand.appendChild(bi);brand.appendChild(el('span','',  '~/overmynd'));side.appendChild(brand);
     function nav(t,label){var b=el('button',t===tab?'on':'',label);tabBtns[t]=b;b.onclick=function(){stopLive();tab=t;detailId=null;app()};side.appendChild(b)}
     nav('overview','Overview');nav('jobs','Jobs');nav('requests','Requests');nav('library','Library');nav('reencode','Re-encode');
     [['Connections',[['arrs','Arrs & categories'],['clients','Download clients'],['transcode','Transcode']]],['Public site',[['playback','Playback'],['public','Public page']]],['Automation',[['rss','Feeds']]],['Server',[['system','Settings'],['log','Log']]]].forEach(function(g){
@@ -156,7 +156,7 @@
   function setReqBadge(n){if(!tabBtns.requests)return;tabBtns.requests.textContent='Requests';if(n){var bd=el('span','badge',String(n));tabBtns.requests.appendChild(bd)}}
   function logView(body){
     body.appendChild(el('h2','ptitle','Log'));
-    body.appendChild(el('p','hint','The container log since Undermynd last started, newest at the bottom. Type a job id (the short code after "job"), or words like tdarr or failed, to narrow it. The last 2000 lines are kept.'));
+    body.appendChild(el('p','hint','The container log since Overmynd last started, newest at the bottom. Type a job id (the short code after "job"), or words like tdarr or failed, to narrow it. The last 2000 lines are kept.'));
     var bar=el('div','rebar');var q=el('input');q.placeholder='filter';q.style.minWidth='220px';bar.appendChild(q);
     var fl=el('label','','');var follow=el('input');follow.type='checkbox';follow.checked=true;fl.appendChild(follow);fl.appendChild(document.createTextNode(' follow'));bar.appendChild(fl);
     var info=el('span','msg');bar.appendChild(info);body.appendChild(bar);
@@ -314,7 +314,7 @@
 
   function arrsPane(body){
     body.appendChild(head('Arrs & categories','Each category is a label an arr sends when it grabs something. It decides which arr confirms the import, and which folder the finished download lands in.'));
-    var conn=el('div','card');conn.appendChild(el('h4','','Connect an arr to Undermynd'));
+    var conn=el('div','card');conn.appendChild(el('h4','','Connect an arr to Overmynd'));
     var host=location.hostname;
     conn.appendChild(help('In Sonarr, Radarr or Lidarr: Settings → Download Clients → add. Use SABnzbd for usenet and qBittorrent for torrents.'));
     [['host',host],['port','8081 (the LAN-only machine port)'],['SABnzbd API key','the client password (see the System tab)'],['qBittorrent login','username '+S.clientUser+' and the client password'],['category','one of the names below, exactly']].forEach(function(p){var d=el('div','kv');d.appendChild(el('span','k',p[0]));d.appendChild(el('span','v',p[1]));conn.appendChild(d)});
@@ -324,7 +324,7 @@
       var card=el('div','card cat kind-'+(c.kind||'none'));var f={};var g=el('div','grid3');f.orig=c.name||'';
       f.name=row(g,'category name',{value:c.name,help:'what the arr sends, e.g. tv'});
       var w=el('div','fld');w.appendChild(el('label','','arr type'));var k=el('select');[['sonarr','sonarr'],['radarr','radarr'],['lidarr','lidarr'],['rss','no arr (RSS / watch folder)']].forEach(function(p){var x=p[0];var o=el('option','',p[1]);o.value=x;if(c.kind===x)o.selected=true;k.appendChild(o)});w.appendChild(k);g.appendChild(w);f.kind=k;
-      f.arrUrl=row(g,'arr address',{value:c.arrUrl,ph:'http://10.0.0.5:8989',help:'so Undermynd can confirm the import'});
+      f.arrUrl=row(g,'arr address',{value:c.arrUrl,ph:'http://10.0.0.5:8989',help:'so Overmynd can confirm the import'});
       f.arrApiKey=row(g,'arr API key',{type:'password',ph:c.hasArrApiKey?'set — leave blank to keep':'',help:'in the arr: Settings → General'});
       f.transcode=row(g,'transcode with Tdarr',{type:'checkbox',value:c.transcode,help:'off for music'});
       f.libraryDir=row(g,'library folder',{value:c.libraryDir,ph:'/media/Anime',help:'only for “no arr” categories: finished episodes are matched to a show folder here and renamed'});
@@ -343,7 +343,7 @@
   }
 
   function clientsPane(body){
-    body.appendChild(head('Download clients','Undermynd downloads through TorBox when a token is set. Otherwise usenet goes to NZBGet and torrents go to qBittorrent, both optional and local.'));
+    body.appendChild(head('Download clients','Overmynd downloads through TorBox when a token is set. Otherwise usenet goes to NZBGet and torrents go to qBittorrent, both optional and local.'));
     var tb=el('div','card');var h=el('h4','','TorBox ');h.appendChild(chip(S.torbox.hasToken,S.torbox.hasToken?'token set':'no token'));tb.appendChild(h);
     var g=el('div','grid3');
     var tok=row(g,'API token',{type:'password',ph:S.torbox.hasToken?'set — leave blank to keep':'paste your token',help:'TorBox → Settings → API'});
@@ -370,17 +370,17 @@
   }
 
   function transcodePane(body){
-    body.appendChild(head('Transcode (Tdarr)','Videos for categories with transcode on are handed to a dedicated Tdarr library. Undermynd watches Tdarr over its API, so it can show progress and notice failures.'));
+    body.appendChild(head('Transcode (Tdarr)','Videos for categories with transcode on are handed to a dedicated Tdarr library. Overmynd watches Tdarr over its API, so it can show progress and notice failures.'));
     var c0=el('div','card');var h0=el('h4','','Connection ');h0.appendChild(chip(!!S.tdarr.url,S.tdarr.url?'configured':'not set — folder hand-off only'));c0.appendChild(h0);
     var g0=el('div','grid3');
     var url=row(g0,'Tdarr address',{value:S.tdarr.url,ph:'http://10.0.0.8:8265',help:'the Tdarr server, port 8265 by default'});
     var key=row(g0,'API key',{type:'password',ph:S.tdarr.hasApiKey?'set — leave blank to keep':'only if Tdarr has authentication on',help:'Tdarr → Tools → API Keys'});
-    var lib=row(g0,'library ID',{value:S.tdarr.libraryId,help:'the ID of the dedicated Undermynd library (shown in the library’s settings)'});
+    var lib=row(g0,'library ID',{value:S.tdarr.libraryId,help:'the ID of the dedicated Overmynd library (shown in the library’s settings)'});
     c0.appendChild(g0);var tb=el('button','','test connection');var tm=el('span','msg');tm.style.marginLeft='12px';
     tb.onclick=function(){tm.className='msg';tm.textContent='testing…';api('POST','/tdarr/test',{url:url.value,apiKey:key.value}).then(function(r){tm.className='msg ok';tm.textContent='connected: '+r.nodes+' node(s), '+r.busyWorkers+' busy worker(s)'}).catch(function(e){tm.className='msg err';tm.textContent=e.message})};
     c0.appendChild(tb);c0.appendChild(tm);body.appendChild(c0);
     var c=el('div','card');c.appendChild(el('h4','','Folders and limits'));var g=el('div','grid3');
-    var inn=row(g,'input folder (library source)',{value:S.tdarr.inDir,help:'the same path inside Undermynd and Tdarr'});
+    var inn=row(g,'input folder (library source)',{value:S.tdarr.inDir,help:'the same path inside Overmynd and Tdarr'});
     var out=row(g,'output folder (library output)',{value:S.tdarr.outDir});
     var mx=row(g,'jobs with Tdarr at once',{type:'number',value:S.tdarr.maxInFlight,help:'others wait their turn; waiting is not a failure'});
     var st=row(g,'stall timeout (minutes)',{type:'number',value:S.tdarr.stallMinutes,help:'a worker holding a file with no progress this long counts as failed'});
@@ -561,7 +561,7 @@
       var c3=el('div','card');c3.appendChild(el('h4','','Tdarr'));var t1=el('div','kv');t1.appendChild(el('span','k','jobs with Tdarr'));t1.appendChild(el('span','v',d.tdarr.inFlight+' of '+d.tdarr.max));c3.appendChild(t1);
       var t2=el('div','kv');t2.appendChild(el('span','k','watched over the API'));t2.appendChild(chip(d.tdarr.api,d.tdarr.api?'yes':'no — folders only'));c3.appendChild(t2);g.appendChild(c3);
       [['Work folder',d.work],['Complete folder',d.complete]].forEach(function(p){var c=el('div','card');c.appendChild(el('h4','',p[0]));var a=el('div','kv');a.appendChild(el('span','k','path'));a.appendChild(el('span','v',p[1].path));c.appendChild(a);
-        var b=el('div','kv');b.appendChild(el('span','k','used by Undermynd'));b.appendChild(el('span','v',bytes(p[1].usedByUs)+(p[1].partial?' (partial count)':'')));c.appendChild(b);
+        var b=el('div','kv');b.appendChild(el('span','k','used by Overmynd'));b.appendChild(el('span','v',bytes(p[1].usedByUs)+(p[1].partial?' (partial count)':'')));c.appendChild(b);
         if(p[1].totalBytes){var f=el('div','kv');f.appendChild(el('span','k','free on this disk'));f.appendChild(el('span','v',bytes(p[1].freeBytes)+' of '+bytes(p[1].totalBytes)));c.appendChild(f)}g.appendChild(c)});
       live.appendChild(g)}).catch(fail)}
     drawSystem();timer=setInterval(function(){if(tab==='system')drawSystem()},5000);

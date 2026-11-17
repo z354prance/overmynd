@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/z354prance/undermynd/internal/arr"
+	"github.com/z354prance/overmynd/internal/arr"
 )
 
 func server(t *testing.T, key string) *httptest.Server {

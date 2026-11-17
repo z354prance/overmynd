@@ -4,13 +4,13 @@ RUN apk add --no-cache ca-certificates
 WORKDIR /src
 COPY go.mod ./
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/undermynd ./cmd/undermynd
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/overmynd ./cmd/overmynd
 
 FROM scratch
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-COPY --from=build /out/undermynd /undermynd
+COPY --from=build /out/overmynd /overmynd
 ENV UNDERMYND_CONFIG=/config UNDERMYND_DATA=/data PUID=99 PGID=100
 EXPOSE 8080 8081
 VOLUME ["/config"]
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s CMD ["/undermynd", "healthcheck"]
-ENTRYPOINT ["/undermynd"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s CMD ["/overmynd", "healthcheck"]
+ENTRYPOINT ["/overmynd"]

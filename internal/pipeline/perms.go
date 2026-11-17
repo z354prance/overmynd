@@ -9,7 +9,7 @@ import (
 
 // openUp makes everything under root readable and writable by anyone (dirs 0777,
 // files 0666), the way Unraid shares expect, so a network share can move and delete
-// what Undermynd delivered whatever user the files were created by. Best effort: it
+// what Overmynd delivered whatever user the files were created by. Best effort: it
 // can only change what this process owns. It returns how many entries it could not
 // change and a description of the first one (path and owner).
 func openUp(root string) (failed int, first string) {

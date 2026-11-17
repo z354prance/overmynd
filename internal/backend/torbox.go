@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/job"
+	"github.com/z354prance/overmynd/internal/job"
 )
 
 // TorBox downloads usenet items on TorBox and copies the finished files down.

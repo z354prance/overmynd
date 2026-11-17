@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/config"
-	"github.com/z354prance/undermynd/internal/job"
-	"github.com/z354prance/undermynd/internal/library"
+	"github.com/z354prance/overmynd/internal/config"
+	"github.com/z354prance/overmynd/internal/job"
+	"github.com/z354prance/overmynd/internal/library"
 )
 
 // placeInLibrary moves each finished episode into its show's season folder, named

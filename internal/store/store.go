@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/job"
+	"github.com/z354prance/overmynd/internal/job"
 )
 
 var ErrNotFound = errors.New("job not found")

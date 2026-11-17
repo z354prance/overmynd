@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/secret"
+	"github.com/z354prance/overmynd/internal/secret"
 )
 
 const pbkdf2Iterations = 600_000
@@ -162,8 +162,8 @@ func (a *Auth) Setup(key, password string) (SetupResult, error) {
 		a.acct = nil
 		return SetupResult{}, err
 	}
-	u := url.URL{Scheme: "otpauth", Host: "totp", Path: "/Undermynd:admin"}
-	q := url.Values{"secret": {sec}, "issuer": {"Undermynd"}}
+	u := url.URL{Scheme: "otpauth", Host: "totp", Path: "/Overmynd:admin"}
+	q := url.Values{"secret": {sec}, "issuer": {"Overmynd"}}
 	u.RawQuery = q.Encode()
 	return SetupResult{TOTPSecret: sec, OTPAuthURI: u.String()}, nil
 }

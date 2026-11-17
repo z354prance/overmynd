@@ -1,4 +1,4 @@
-/* Undermynd admin. Scoped to body.ui; the public page keeps its own look. */
+/* Overmynd admin. Scoped to body.ui; the public page keeps its own look. */
 body.ui{
   --bg:#0d0d0d;--panel:#101010;--raise:#161616;--line:#2a2a2a;--line2:#333;
   --text:#d4d4d4;--dim:#666;--faint:#444;

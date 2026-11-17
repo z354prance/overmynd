@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/access"
-	"github.com/z354prance/undermynd/internal/config"
-	"github.com/z354prance/undermynd/internal/secret"
+	"github.com/z354prance/overmynd/internal/access"
+	"github.com/z354prance/overmynd/internal/config"
+	"github.com/z354prance/overmynd/internal/secret"
 )
 
 var accessLimit requestLimiter

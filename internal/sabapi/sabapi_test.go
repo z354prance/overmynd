@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/z354prance/undermynd/internal/config"
-	"github.com/z354prance/undermynd/internal/pipeline"
-	"github.com/z354prance/undermynd/internal/sabapi"
-	"github.com/z354prance/undermynd/internal/store"
+	"github.com/z354prance/overmynd/internal/config"
+	"github.com/z354prance/overmynd/internal/pipeline"
+	"github.com/z354prance/overmynd/internal/sabapi"
+	"github.com/z354prance/overmynd/internal/store"
 )
 
 // Sonarr works out where finished downloads land from get_config; an empty

@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/z354prance/undermynd/internal/job"
+	"github.com/z354prance/overmynd/internal/job"
 )
 
 type Status string

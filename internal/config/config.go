@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/secret"
+	"github.com/z354prance/overmynd/internal/secret"
 )
 
 // Env are process-level settings that come from the container environment.
@@ -27,26 +27,36 @@ type Env struct {
 	TickInterval time.Duration
 }
 
+// EnvValue prefers the Overmynd spelling while preserving all existing
+// Undermynd deployment settings. An explicitly empty new variable overrides it.
+func EnvValue(legacy string) string {
+	modern := strings.Replace(legacy, "UNDERMYND_", "OVERMYND_", 1)
+	if value, ok := os.LookupEnv(modern); ok {
+		return value
+	}
+	return os.Getenv(legacy)
+}
+
 func LoadEnv() Env {
 	get := func(k, d string) string {
-		if v := os.Getenv(k); v != "" {
+		if v := EnvValue(k); v != "" {
 			return v
 		}
 		return d
 	}
 	tick := 5 * time.Second
-	if d, err := time.ParseDuration(os.Getenv("UNDERMYND_TICK")); err == nil && d > 0 {
+	if d, err := time.ParseDuration(EnvValue("UNDERMYND_TICK")); err == nil && d > 0 {
 		tick = d
 	}
 	return Env{
 		ConfigDir:    get("UNDERMYND_CONFIG", "/config"),
 		DataDir:      get("UNDERMYND_DATA", "/data"),
-		WorkDir:      os.Getenv("UNDERMYND_WORK"),
-		CompleteDir:  os.Getenv("UNDERMYND_COMPLETE"),
+		WorkDir:      EnvValue("UNDERMYND_WORK"),
+		CompleteDir:  EnvValue("UNDERMYND_COMPLETE"),
 		PublicAddr:   get("UNDERMYND_PUBLIC_ADDR", ":8080"),
 		MachineAddr:  get("UNDERMYND_MACHINE_ADDR", ":8081"),
-		TrustProxy:   os.Getenv("UNDERMYND_TRUST_PROXY") == "true",
-		LogRequests:  os.Getenv("UNDERMYND_LOG_REQUESTS") == "1",
+		TrustProxy:   EnvValue("UNDERMYND_TRUST_PROXY") == "true",
+		LogRequests:  EnvValue("UNDERMYND_LOG_REQUESTS") == "1",
 		TickInterval: tick,
 	}
 }
@@ -91,11 +101,11 @@ type NZBGet struct {
 }
 
 // Tdarr hands videos to a Tdarr library by folder. Create a library in Tdarr that
-// watches InDir and writes to OutDir (folder to folder); Undermynd does not touch any other library.
+// watches InDir and writes to OutDir (folder to folder); Overmynd does not touch any other library.
 type Tdarr struct {
-	URL            string        `json:"url"` // optional; with it Undermynd watches Tdarr over its API
+	URL            string        `json:"url"` // optional; with it Overmynd watches Tdarr over its API
 	APIKey         secret.String `json:"apiKey"`
-	LibraryID      string        `json:"libraryId"` // the dedicated Undermynd library
+	LibraryID      string        `json:"libraryId"` // the dedicated Overmynd library
 	MaxInFlight    int           `json:"maxInFlight"`
 	StallMinutes   int           `json:"stallMinutes"`
 	InDir          string        `json:"inDir"`
@@ -386,7 +396,7 @@ func SafeName(s string) string {
 	return s
 }
 
-// Work is the folder for everything Undermynd creates while a job is in flight.
+// Work is the folder for everything Overmynd creates while a job is in flight.
 func (e Env) Work() string {
 	if e.WorkDir != "" {
 		return e.WorkDir

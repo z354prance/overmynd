@@ -1,3 +1,3 @@
-module github.com/z354prance/undermynd
+module github.com/z354prance/overmynd
 
 go 1.24

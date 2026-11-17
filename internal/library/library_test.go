@@ -3,7 +3,7 @@ package library_test
 import (
 	"testing"
 
-	"github.com/z354prance/undermynd/internal/library"
+	"github.com/z354prance/overmynd/internal/library"
 )
 
 func TestParseSubsPlease(t *testing.T) {

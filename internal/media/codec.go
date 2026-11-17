@@ -1,5 +1,5 @@
 // Package media reads the video codec of a file straight from its container header, so
-// Undermynd can tell AV1 from everything else without ffprobe.
+// Overmynd can tell AV1 from everything else without ffprobe.
 package media
 
 import (

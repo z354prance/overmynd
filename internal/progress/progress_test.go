@@ -12,12 +12,12 @@ import (
 
 	"context"
 
-	"github.com/z354prance/undermynd/internal/arr"
-	"github.com/z354prance/undermynd/internal/config"
-	"github.com/z354prance/undermynd/internal/job"
-	"github.com/z354prance/undermynd/internal/progress"
-	"github.com/z354prance/undermynd/internal/secret"
-	"github.com/z354prance/undermynd/internal/store"
+	"github.com/z354prance/overmynd/internal/arr"
+	"github.com/z354prance/overmynd/internal/config"
+	"github.com/z354prance/overmynd/internal/job"
+	"github.com/z354prance/overmynd/internal/progress"
+	"github.com/z354prance/overmynd/internal/secret"
+	"github.com/z354prance/overmynd/internal/store"
 )
 
 var now = time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)

@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/z354prance/undermynd/internal/config"
+	"github.com/z354prance/overmynd/internal/config"
 )
 
 // validDonations cleans and checks the public donation links: HTTPS only, no

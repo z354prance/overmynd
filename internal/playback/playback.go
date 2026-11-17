@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/tracearr"
+	"github.com/z354prance/overmynd/internal/tracearr"
 )
 
 var idPattern = regexp.MustCompile(`^[a-zA-Z0-9-]+$`)

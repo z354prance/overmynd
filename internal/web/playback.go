@@ -17,8 +17,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/z354prance/undermynd/internal/playback"
-	"github.com/z354prance/undermynd/internal/tracearr"
+	"github.com/z354prance/overmynd/internal/playback"
+	"github.com/z354prance/overmynd/internal/tracearr"
 )
 
 // Signed poster links expire with the process, as in Overmynd.

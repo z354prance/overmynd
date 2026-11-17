@@ -14,12 +14,12 @@ import (
 
 	"context"
 
-	"github.com/z354prance/undermynd/internal/config"
-	"github.com/z354prance/undermynd/internal/job"
-	"github.com/z354prance/undermynd/internal/pipeline"
-	"github.com/z354prance/undermynd/internal/rss"
-	"github.com/z354prance/undermynd/internal/secret"
-	"github.com/z354prance/undermynd/internal/store"
+	"github.com/z354prance/overmynd/internal/config"
+	"github.com/z354prance/overmynd/internal/job"
+	"github.com/z354prance/overmynd/internal/pipeline"
+	"github.com/z354prance/overmynd/internal/rss"
+	"github.com/z354prance/overmynd/internal/secret"
+	"github.com/z354prance/overmynd/internal/store"
 )
 
 func feed(items ...string) string {

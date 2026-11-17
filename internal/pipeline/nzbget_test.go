@@ -10,7 +10,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/z354prance/undermynd/internal/job"
+	"github.com/z354prance/overmynd/internal/job"
 )
 
 type fakeNZBGet struct {
