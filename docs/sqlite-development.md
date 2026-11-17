@@ -2,8 +2,8 @@
 
 This is a Phase 1A foundation, not an application storage cutover. The executable
 still opens its JSON store. `store.Repository` is context-aware and reports missing
-jobs separately from storage failures; `LegacyRepository` keeps inherited callers
-honest until their error handling is migrated. Never wrap SQLite read failures as
+jobs separately from storage failures; `LegacyRepository` remains only for compatibility constructors; migrated
+components use `Repository` through an explicit JSON adapter. Never wrap SQLite read failures as
 an empty legacy list or a missing legacy job.
 
 ## Dependency decision
@@ -84,3 +84,25 @@ its integrity and compares payloads, journal, intents and import retry behavior.
 This API is not yet operator-facing restore tooling or a complete operational
 backup: settings, authentication files and secret.key still require a coordinated
 backup procedure. It does not restore into a running application's database.
+
+## Application boundary after the read-error pass
+
+Pipeline, client APIs, web projections and progress tracking now consume Repository.
+NewRepository constructors accept it directly; inherited constructors wrap JSON via
+FromLegacy. Startup still selects JSON. Database failures propagate separately from
+ErrNotFound; public responses sanitize database errors. Stored progress is retained
+when a refresh cannot read jobs. Context-taking intake methods propagate cancellation
+from HTTP and RSS calls; compatibility wrappers retain background contexts.
+
+SQLite paths are normalized to file URI paths, including Windows drive prefixes;
+tests cover spaces, percent signs, hashes and reopen behavior. List retains the
+inherited newest-first queue order, with stable ID ordering for timestamp ties.
+
+Job-state writes no longer silently continue a stage after failure. This does not
+roll back a file move or remote submission that already occurred. Uncertain Add
+responses/remote-ID commit failures still require durable external-effect recovery.
+Similarly, JSON Put's historical replace behavior and SQLite Put's insert-only
+contract need an explicit terminal-job resubmission design before storage cutover.
+Do not enable SQLite startup merely because error-aware constructors now compile.
+
+See the updated roadmap handoff for outstanding restore/import/concurrency gates.

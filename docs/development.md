@@ -63,8 +63,10 @@ this compose boundary does not claim a global simulation switch exists.
 
 See internal/library tests for parser cases and internal/pipeline tests for fake
 download, transfer, transcode and placement flows. The roadmap's permanent corpus
-still needs the user's actual Trix/Judas/SubsPlease names, absolute-numbering
-mappings, batches, duplicate releases and interrupted partial placements. Synthetic
+now preserves supplied Trix/Judas/SubsPlease examples and labelled synthetic
+edge cases in [the parser corpus](parser-fixtures.md). Confirmed absolute-numbering
+mappings, duplicate acquisition and interrupted partial-placement acceptance tests
+remain outstanding. Synthetic
 names must be labelled synthetic; do not invent real examples or assume season 1.
 
 ## Phase gates
